@@ -1,0 +1,27 @@
+# Replace the hostname with the public DNS name for this service.
+# Caddy must run on the same Docker host as Compose.
+# If INDEX01_HOST_PORT changes, change both upstreams below.
+your-hook.example.com {
+	@webhook {
+		method POST
+		path /webhook
+	}
+	handle @webhook {
+		request_body {
+			max_size 64MiB
+		}
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	@readyz {
+		method GET
+		path /readyz
+	}
+	handle @readyz {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	handle {
+		respond 404
+	}
+}
