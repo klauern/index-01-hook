@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: index-01-hook
+  namespace: index-01-hook
+  labels:
+    app.kubernetes.io/name: index-01-hook
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: index-01-hook
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

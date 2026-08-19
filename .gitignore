@@ -1,0 +1,20 @@
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+
+# Local build artifacts
+dist/
+/index-01-hook
+
+# Local Compose environment files
+.env
+.env.*
+!.env.example
+
+/deploy/kubernetes/index-01-hook-secrets.env
+!/deploy/kubernetes/index-01-hook-secrets.env.example
+!/deploy/
+!/deploy/kubernetes/

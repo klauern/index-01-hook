@@ -1,0 +1,57 @@
+services:
+  index-01-hook:
+    build:
+      context: .
+    image: "${INDEX01_IMAGE:-index-01-hook:local}"
+    container_name: index-01-hook
+    restart: unless-stopped
+    read_only: true
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:${INDEX01_HOST_PORT:-8080}:8080"
+    volumes:
+      - index-01-hook-data:/var/lib/index-01-hook
+    environment:
+      INDEX01_WEBHOOK_TOKEN: "${INDEX01_WEBHOOK_TOKEN:?INDEX01_WEBHOOK_TOKEN is required}"
+      INDEX01_DB_PATH: /var/lib/index-01-hook/data/index01.db
+      INDEX01_LISTEN_ADDR: ":8080"
+      INDEX01_MAX_BODY_BYTES: "${INDEX01_MAX_BODY_BYTES:-67108864}"
+      INDEX01_DEEPSEEK_TOKEN: "${INDEX01_DEEPSEEK_TOKEN:?INDEX01_DEEPSEEK_TOKEN is required}"
+      INDEX01_DEEPSEEK_MODEL: "${INDEX01_DEEPSEEK_MODEL:-deepseek-v4-flash}"
+      INDEX01_TIME_ZONE: "${INDEX01_TIME_ZONE:-UTC}"
+      INDEX01_TICKTICK_TOKEN: "${INDEX01_TICKTICK_TOKEN:?INDEX01_TICKTICK_TOKEN is required}"
+      INDEX01_TICKTICK_DEFAULT_PROJECT_ID: "${INDEX01_TICKTICK_DEFAULT_PROJECT_ID:?INDEX01_TICKTICK_DEFAULT_PROJECT_ID is required}"
+      INDEX01_TICKTICK_NOTE_PROJECT_ID: "${INDEX01_TICKTICK_NOTE_PROJECT_ID:?INDEX01_TICKTICK_NOTE_PROJECT_ID is required}"
+      INDEX01_TICKTICK_PROJECT_ALIASES: "${INDEX01_TICKTICK_PROJECT_ALIASES:-{}}"
+      INDEX01_WORKER_OWNER: "${INDEX01_WORKER_OWNER:-index-01-hook}"
+    healthcheck:
+      test: ["CMD", "/index-01-hook", "healthcheck"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 20s
+
+  index-01-hook-maintenance:
+    profiles:
+      - maintenance
+    image: "${INDEX01_IMAGE:-index-01-hook:local}"
+    read_only: true
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    network_mode: none
+    volumes:
+      - index-01-hook-data:/var/lib/index-01-hook
+    environment:
+      INDEX01_DB_PATH: /var/lib/index-01-hook/data/index01.db
+
+volumes:
+  index-01-hook-data:
+    name: index-01-hook-data

@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: index-01-hook
+  namespace: index-01-hook
+  labels:
+    app.kubernetes.io/name: index-01-hook
+spec:
+  ingressClassName: KUBE_INGRESS_CLASS_PLACEHOLDER
+  tls:
+    - hosts:
+        - KUBE_INGRESS_HOST_PLACEHOLDER
+      secretName: KUBE_TLS_SECRET_PLACEHOLDER
+  rules:
+    - host: KUBE_INGRESS_HOST_PLACEHOLDER
+      http:
+        paths:
+          - path: /webhook
+            pathType: Exact
+            backend:
+              service:
+                name: index-01-hook
+                port:
+                  name: http
+          - path: /readyz
+            pathType: Exact
+            backend:
+              service:
+                name: index-01-hook
+                port:
+                  name: http
