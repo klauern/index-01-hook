@@ -1,0 +1,379 @@
+version: "3"
+
+vars:
+  ARTIFACT_DIR: dist
+
+tasks:
+  test:
+    desc: Run the local test suite
+    cmds:
+      - go test ./...
+      - ./scripts/compose-config_test.sh
+      - ./scripts/compose-production_test.sh
+      - ./scripts/compose-operations_test.sh
+      - ./scripts/compose-proxy_test.sh
+      - ./scripts/render-manifests_test.sh
+      - ./scripts/release-security_test.sh
+      - ./scripts/rollback_test.sh
+      - ./scripts/workload-security_test.sh
+      - ./scripts/backup-export_test.sh
+      - ./scripts/kubernetes-maintenance-lock_test.sh
+      - ./scripts/restore-external-backup_test.sh
+
+  test-compose-runtime:
+    desc: Build and test the local image with a fresh Docker volume
+    cmds:
+      - docker build --tag index-01-hook:local .
+      - ./scripts/compose-volume_test.sh
+
+  test-clean-public-source:
+    desc: Validate a clean exported public source tree
+    cmds:
+      - ./scripts/clean-public-source_test.sh
+
+  test-publish-public-history:
+    desc: Validate the fresh single-commit public publication candidate
+    cmds:
+      - ./scripts/publish-public-history_test.sh
+
+  test-public-e2e:
+    desc: Run the synthetic provider end-to-end deployment test
+    cmds:
+      - ./scripts/public-experience-e2e.sh
+
+  test-public-infrastructure:
+    desc: Validate Caddy and disposable Kubernetes infrastructure
+    cmds:
+      - ./scripts/public-infrastructure_test.sh
+
+  test-deepseek-live:
+    desc: Validate the live DeepSeek contract with synthetic input only
+    preconditions:
+      - sh: test -n "${INDEX01_DEEPSEEK_TOKEN:-}"
+        msg: INDEX01_DEEPSEEK_TOKEN is required
+    cmds:
+      - INDEX01_RUN_LIVE_DEEPSEEK_TEST=1 go test -run '^TestDeepSeekLiveSyntheticContract$' -count=1 -v
+
+  release-artifacts:
+    desc: Build the four cross-platform release artifacts
+    requires:
+      vars: [VERSION, COMMIT, BUILD_DATE]
+    cmds:
+      - ./scripts/build-release-artifacts.sh {{.VERSION | shellQuote}} {{.COMMIT | shellQuote}} {{.BUILD_DATE | shellQuote}} {{default "dist/release" .OUTPUT_DIR | shellQuote}}
+
+  test-release-artifacts:
+    desc: Test release tag validation and artifact generation
+    cmds:
+      - ./scripts/validate-release-tag_test.sh
+      - ./scripts/build-release-artifacts_test.sh
+
+  build:
+    desc: Build a versioned Linux binary and its checksum
+    requires:
+      vars: [VERSION, COMMIT, BUILD_DATE]
+    cmds:
+      - |
+        set -eu
+        version={{.VERSION | shellQuote}}
+        commit={{.COMMIT | shellQuote}}
+        build_date={{.BUILD_DATE | shellQuote}}
+        artifact_dir={{.ARTIFACT_DIR | shellQuote}}
+        ./scripts/validate-release-inputs.sh metadata "$version" "$commit" "$build_date"
+        mkdir -p "$artifact_dir"
+        output="$artifact_dir/index-01-hook-linux-amd64-$version"
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false \
+          -ldflags="-s -w -X main.version=$version -X main.commit=$commit -X main.buildDate=$build_date" \
+          -o "$output" .
+        shasum -a 256 "$output" >"$output.sha256"
+
+  image:
+    desc: Build a versioned non-root container image
+    requires:
+      vars: [GO_IMAGE, IMAGE_TAG, VERSION, COMMIT, BUILD_DATE]
+    cmds:
+      - |
+        set -eu
+        go_image={{.GO_IMAGE | shellQuote}}
+        image_tag={{.IMAGE_TAG | shellQuote}}
+        version={{.VERSION | shellQuote}}
+        commit={{.COMMIT | shellQuote}}
+        build_date={{.BUILD_DATE | shellQuote}}
+        ./scripts/validate-release-inputs.sh immutable-image "$go_image" GO_IMAGE
+        ./scripts/validate-release-inputs.sh output-image "$image_tag"
+        ./scripts/validate-release-inputs.sh metadata "$version" "$commit" "$build_date"
+        docker build --pull=false \
+          --build-arg "GO_IMAGE=$go_image" \
+          --build-arg "VERSION=$version" \
+          --build-arg "COMMIT=$commit" \
+          --build-arg "BUILD_DATE=$build_date" \
+          --tag "$image_tag" .
+        docker image inspect "$image_tag" --format '{{`{{.Id}}`}}'
+
+  render:
+    desc: Render an immutable image reference into deployment manifests
+    requires:
+      vars: [IMAGE_REF, REGISTRY_ACCESS_MODE, KUBE_INGRESS_HOST, KUBE_INGRESS_CLASS, KUBE_TLS_SECRET]
+    cmds:
+      - |
+        set -eu
+        image_ref={{.IMAGE_REF | shellQuote}}
+        registry_access_mode={{.REGISTRY_ACCESS_MODE | shellQuote}}
+        ingress_host={{.KUBE_INGRESS_HOST | shellQuote}}
+        ingress_class={{.KUBE_INGRESS_CLASS | shellQuote}}
+        tls_secret={{.KUBE_TLS_SECRET | shellQuote}}
+        storage_class={{default "" .KUBE_STORAGE_CLASS | shellQuote}}
+        artifact_dir={{.ARTIFACT_DIR | shellQuote}}
+        REGISTRY_ACCESS_MODE="$registry_access_mode" \
+        KUBE_INGRESS_HOST="$ingress_host" \
+        KUBE_INGRESS_CLASS="$ingress_class" \
+        KUBE_TLS_SECRET="$tls_secret" \
+        KUBE_STORAGE_CLASS="$storage_class" \
+          ./scripts/render-manifests.sh "$image_ref" "$artifact_dir/manifests"
+
+  dry-run:
+    desc: Validate rendered Kubernetes manifests without changing the cluster
+    requires:
+      vars: [IMAGE_REF, REGISTRY_ACCESS_MODE, KUBE_INGRESS_HOST, KUBE_INGRESS_CLASS, KUBE_TLS_SECRET, KUBE_CONTEXT]
+    deps: [render]
+    cmds:
+      - |
+        set -eu
+        kube_context={{.KUBE_CONTEXT | shellQuote}}
+        image_ref={{.IMAGE_REF | shellQuote}}
+        artifact_dir={{.ARTIFACT_DIR | shellQuote}}
+        ./scripts/require-kube-context.sh "$kube_context"
+        for manifest in "$artifact_dir/manifests"/*.yaml; do
+          [ -f "$manifest" ] || { echo "No rendered Kubernetes manifests found" >&2; exit 1; }
+          kubectl --context="$kube_context" apply --dry-run=client --validate=strict -f "$manifest"
+        done
+        deployment_image=$(kubectl --context="$kube_context" create --dry-run=client \
+          --validate=strict -f "$artifact_dir/manifests/deployment.yaml" \
+          -o jsonpath='{.spec.template.spec.containers[0].image}')
+        maintenance_image=$(kubectl --context="$kube_context" create --dry-run=client \
+          --validate=strict -f "$artifact_dir/manifests/maintenance-pod.yaml" \
+          -o jsonpath='{.spec.containers[0].image}')
+        [ "$deployment_image" = "$image_ref" ] || { echo "Deployment image differs from IMAGE_REF" >&2; exit 1; }
+        [ "$maintenance_image" = "$image_ref" ] || { echo "Maintenance image differs from IMAGE_REF" >&2; exit 1; }
+
+  server-dry-run:
+    desc: Validate rendered manifests with the approved Kubernetes API server
+    requires:
+      vars: [IMAGE_REF, REGISTRY_ACCESS_MODE, KUBE_INGRESS_HOST, KUBE_INGRESS_CLASS, KUBE_TLS_SECRET, KUBE_CONTEXT]
+    deps: [render]
+    prompt: Run a server dry-run against the approved Kubernetes context?
+    cmds:
+      - |
+        set -eu
+        kube_context={{.KUBE_CONTEXT | shellQuote}}
+        artifact_dir={{.ARTIFACT_DIR | shellQuote}}
+        ./scripts/require-kube-context.sh "$kube_context"
+        for manifest in "$artifact_dir/manifests"/*.yaml; do
+          [ -f "$manifest" ] || { echo "No rendered Kubernetes manifests found" >&2; exit 1; }
+          kubectl --context="$kube_context" apply --dry-run=server --validate=strict -f "$manifest"
+        done
+
+  deploy:
+    desc: Deploy an approved immutable image
+    deps: [render]
+    requires:
+      vars: [IMAGE_REF, REGISTRY_ACCESS_MODE, KUBE_INGRESS_HOST, KUBE_INGRESS_CLASS, KUBE_TLS_SECRET, KUBE_CONTEXT]
+    prompt: Deploy index-01-hook to the approved Kubernetes context?
+    cmds:
+      - |
+        sh <<'TASK_SCRIPT'
+        set -eu
+        kube_context={{.KUBE_CONTEXT | shellQuote}}
+        artifact_dir={{.ARTIFACT_DIR | shellQuote}}
+        ./scripts/require-kube-context.sh "$kube_context"
+        kubectl --context="$kube_context" get namespace/index-01-hook -o name >/dev/null
+        holder_token_dir=$(mktemp -d "${TMPDIR:-/tmp}/index01-deploy-lock.XXXXXX")
+        holder_identity="deploy-$(basename "$holder_token_dir")"
+        rmdir "$holder_token_dir"
+        lock_acquired=0
+        cleanup() {
+          exit_status=$?
+          if [ "$lock_acquired" = 1 ]; then
+            if ! ./scripts/kubernetes-maintenance-lock.sh release "$kube_context" index-01-hook "$holder_identity"; then
+              echo "Kubernetes maintenance lock release failed" >&2
+              exit_status=1
+            fi
+          fi
+          return "$exit_status"
+        }
+        trap cleanup EXIT
+        trap 'exit 1' HUP INT TERM
+        ./scripts/kubernetes-maintenance-lock.sh acquire "$kube_context" index-01-hook "$holder_identity"
+        lock_acquired=1
+        for manifest in \
+          "$artifact_dir/manifests/namespace.yaml" \
+          "$artifact_dir/manifests/service-account.yaml" \
+          "$artifact_dir/manifests/network-policy.yaml" \
+          "$artifact_dir/manifests/pvc.yaml" \
+          "$artifact_dir/manifests/service.yaml" \
+          "$artifact_dir/manifests/ingress.yaml" \
+          "$artifact_dir/manifests/deployment.yaml"; do
+          kubectl --context="$kube_context" apply --validate=strict -f "$manifest"
+        done
+        kubectl --context="$kube_context" rollout status deployment/index-01-hook -n index-01-hook --timeout=180s
+        TASK_SCRIPT
+
+  status:
+    desc: Show deployment status
+    requires:
+      vars: [KUBE_CONTEXT]
+    cmds:
+      - |
+        set -eu
+        kube_context={{.KUBE_CONTEXT | shellQuote}}
+        ./scripts/require-kube-context.sh "$kube_context"
+        kubectl --context="$kube_context" get deployment,pod,service,pvc,ingress -n index-01-hook
+
+  logs:
+    desc: Show recent application logs
+    requires:
+      vars: [KUBE_CONTEXT]
+    cmds:
+      - |
+        set -eu
+        kube_context={{.KUBE_CONTEXT | shellQuote}}
+        ./scripts/require-kube-context.sh "$kube_context"
+        kubectl --context="$kube_context" logs -n index-01-hook -l 'app.kubernetes.io/name=index-01-hook' --tail=100
+
+  backup-export:
+    desc: Export an encrypted and verified database backup on the host
+    requires:
+      vars: [DESTINATION, AGE_RECIPIENT, KUBE_CONTEXT]
+    prompt: Export the live database to the approved encrypted host path?
+    cmds:
+      - ./scripts/backup-export.sh {{.DESTINATION | shellQuote}} {{.AGE_RECIPIENT | shellQuote}} {{.KUBE_CONTEXT | shellQuote}} index-01-hook
+
+  restart:
+    desc: Restart the deployment without changing its image
+    requires:
+      vars: [KUBE_CONTEXT]
+    prompt: Restart index-01-hook?
+    cmds:
+      - |
+        sh <<'TASK_SCRIPT'
+        set -eu
+        kube_context={{.KUBE_CONTEXT | shellQuote}}
+        ./scripts/require-kube-context.sh "$kube_context"
+        holder_token_dir=$(mktemp -d "${TMPDIR:-/tmp}/index01-restart-lock.XXXXXX")
+        holder_identity="restart-$(basename "$holder_token_dir")"
+        rmdir "$holder_token_dir"
+        lock_acquired=0
+        cleanup() {
+          exit_status=$?
+          if [ "$lock_acquired" = 1 ]; then
+            if ! ./scripts/kubernetes-maintenance-lock.sh release "$kube_context" index-01-hook "$holder_identity"; then
+              echo "Kubernetes maintenance lock release failed" >&2
+              exit_status=1
+            fi
+          fi
+          return "$exit_status"
+        }
+        trap cleanup EXIT
+        trap 'exit 1' HUP INT TERM
+        ./scripts/kubernetes-maintenance-lock.sh acquire "$kube_context" index-01-hook "$holder_identity"
+        lock_acquired=1
+        kubectl --context="$kube_context" rollout restart deployment/index-01-hook -n index-01-hook
+        kubectl --context="$kube_context" rollout status deployment/index-01-hook -n index-01-hook --timeout=180s
+        TASK_SCRIPT
+
+  rollback:
+    desc: Roll back to an approved Deployment revision
+    requires:
+      vars: [REVISION, CONFIRM, KUBE_CONTEXT]
+    prompt: Roll back index-01-hook to the approved Deployment revision?
+    cmds:
+      - |
+        sh <<'TASK_SCRIPT'
+        set -eu
+        revision={{.REVISION | shellQuote}}
+        confirmation={{.CONFIRM | shellQuote}}
+        kube_context={{.KUBE_CONTEXT | shellQuote}}
+        case "$revision" in
+          ''|*[!0-9]*|0*)
+            echo "REVISION must be a positive integer without a leading zero" >&2
+            exit 1
+            ;;
+        esac
+        if [ "$confirmation" != "rollback-to-revision-$revision" ]; then
+          echo "CONFIRM must equal rollback-to-revision-$revision" >&2
+          exit 1
+        fi
+        ./scripts/require-kube-context.sh "$kube_context"
+        holder_token_dir=$(mktemp -d "${TMPDIR:-/tmp}/index01-rollback-lock.XXXXXX")
+        holder_identity="rollback-$(basename "$holder_token_dir")"
+        rmdir "$holder_token_dir"
+        lock_acquired=0
+        cleanup() {
+          exit_status=$?
+          if [ "$lock_acquired" = 1 ]; then
+            if ! ./scripts/kubernetes-maintenance-lock.sh release "$kube_context" index-01-hook "$holder_identity"; then
+              echo "Kubernetes maintenance lock release failed" >&2
+              exit_status=1
+            fi
+          fi
+          return "$exit_status"
+        }
+        trap cleanup EXIT
+        trap 'exit 1' HUP INT TERM
+        ./scripts/kubernetes-maintenance-lock.sh acquire "$kube_context" index-01-hook "$holder_identity"
+        lock_acquired=1
+        kubectl --context="$kube_context" rollout undo deployment/index-01-hook -n index-01-hook \
+          --to-revision="$revision"
+        kubectl --context="$kube_context" rollout status deployment/index-01-hook -n index-01-hook \
+          --timeout=180s
+        TASK_SCRIPT
+
+  withdraw-first-deploy:
+    desc: Withdraw a failed first deployment while preserving data and secrets
+    requires:
+      vars: [CONFIRM, KUBE_CONTEXT]
+    prompt: Scale index-01-hook to zero and remove its Service and Ingress?
+    cmds:
+      - |
+        sh <<'TASK_SCRIPT'
+        set -eu
+        confirmation={{.CONFIRM | shellQuote}}
+        kube_context={{.KUBE_CONTEXT | shellQuote}}
+        if [ "$confirmation" != "withdraw-first-deploy" ]; then
+          echo "CONFIRM must equal withdraw-first-deploy" >&2
+          exit 1
+        fi
+        ./scripts/require-kube-context.sh "$kube_context"
+        holder_token_dir=$(mktemp -d "${TMPDIR:-/tmp}/index01-withdraw-lock.XXXXXX")
+        holder_identity="withdraw-$(basename "$holder_token_dir")"
+        rmdir "$holder_token_dir"
+        lock_acquired=0
+        cleanup() {
+          exit_status=$?
+          if [ "$lock_acquired" = 1 ]; then
+            if ! ./scripts/kubernetes-maintenance-lock.sh release "$kube_context" index-01-hook "$holder_identity"; then
+              echo "Kubernetes maintenance lock release failed" >&2
+              exit_status=1
+            fi
+          fi
+          return "$exit_status"
+        }
+        trap cleanup EXIT
+        trap 'exit 1' HUP INT TERM
+        ./scripts/kubernetes-maintenance-lock.sh acquire "$kube_context" index-01-hook "$holder_identity"
+        lock_acquired=1
+        deployment_name="$(kubectl --context="$kube_context" get deployment/index-01-hook \
+          -n index-01-hook --ignore-not-found=true -o name)"
+        case "$deployment_name" in
+          '') ;;
+          deployment.apps/index-01-hook)
+            kubectl --context="$kube_context" scale deployment/index-01-hook --replicas=0 \
+              -n index-01-hook
+            ;;
+          *)
+            echo "The Deployment lookup returned an unexpected resource" >&2
+            exit 1
+            ;;
+        esac
+        kubectl --context="$kube_context" delete service/index-01-hook ingress/index-01-hook \
+          -n index-01-hook --ignore-not-found=true
+        TASK_SCRIPT

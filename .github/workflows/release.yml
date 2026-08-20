@@ -1,0 +1,458 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/klauern/index-01-hook
+
+jobs:
+  validate:
+    name: Validate release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      commit: ${{ steps.metadata.outputs.commit }}
+      build_date: ${{ steps.metadata.outputs.build_date }}
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+      - name: Check release gate
+        env:
+          PUBLIC_RELEASE_APPROVED: ${{ vars.PUBLIC_RELEASE_APPROVED }}
+          REF_PROTECTED: ${{ github.ref_protected }}
+        run: |
+          set -eu
+          test "$GITHUB_REPOSITORY" = klauern/index-01-hook
+          test "$PUBLIC_RELEASE_APPROVED" = true
+          test "$REF_PROTECTED" = true
+      - name: Validate release tag
+        run: |
+          set -eu
+          ./scripts/validate-release-tag.sh "$GITHUB_REF_NAME"
+          test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = tag
+          tag_commit=$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{}")
+          test "$tag_commit" = "$GITHUB_SHA"
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Derive immutable metadata
+        id: metadata
+        run: |
+          set -eu
+          VERSION="$GITHUB_REF_NAME"
+          COMMIT="$GITHUB_SHA"
+          commit_epoch=$(git show -s --format=%ct "$COMMIT")
+          BUILD_DATE=$(date -u -d "@$commit_epoch" '+%Y-%m-%dT%H:%M:%SZ')
+          {
+            printf 'version=%s\n' "$VERSION"
+            printf 'commit=%s\n' "$COMMIT"
+            printf 'build_date=%s\n' "$BUILD_DATE"
+          } >>"$GITHUB_OUTPUT"
+          {
+            printf '### Validated release metadata\n\n'
+            printf -- "- VERSION: \`%s\`\n" "$VERSION"
+            printf -- "- COMMIT: \`%s\`\n" "$COMMIT"
+            printf -- "- BUILD_DATE: \`%s\`\n" "$BUILD_DATE"
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install release quality tools
+        run: |
+          set -eu
+          go install github.com/go-task/task/v3/cmd/task@v3.53.1
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          go install github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          echo "$(go env GOPATH)/bin" >>"$GITHUB_PATH"
+      - name: Download Go modules
+        run: go mod download all
+      - name: Run release quality checks
+        env:
+          GOTOOLCHAIN: local
+          GOPROXY: off
+        run: |
+          set -eu
+          go test ./...
+          go test -race ./...
+          go vet ./...
+          task test
+          task test-release-artifacts
+          task test-compose-runtime
+          ./scripts/ci-manifests.sh
+          govulncheck ./...
+          shellcheck scripts/*.sh
+          gitleaks git --redact --no-banner --exit-code 1 --log-opts="--all" .
+          gitleaks dir --redact --no-banner --exit-code 1 .
+          actionlint .github/workflows/*.yml
+
+  build:
+    name: Build release artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    needs: validate
+    permissions:
+      contents: read
+    steps:
+      - name: Check out validated commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.validate.outputs.commit }}
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install Syft
+        run: |
+          set -eu
+          go install github.com/anchore/syft/cmd/syft@v1.51.0
+          echo "$(go env GOPATH)/bin" >>"$GITHUB_PATH"
+      - name: Download Go modules
+        run: go mod download all
+      - name: Build release binaries
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          COMMIT: ${{ needs.validate.outputs.commit }}
+          BUILD_DATE: ${{ needs.validate.outputs.build_date }}
+          GOTOOLCHAIN: local
+          GOPROXY: off
+        run: |
+          set -eu
+          ./scripts/build-release-artifacts.sh "$VERSION" "$COMMIT" "$BUILD_DATE" dist/release
+      - name: Create source SPDX SBOM
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          mkdir -p dist/release
+          syft dir:. --exclude ./dist \
+            --source-name index-01-hook \
+            --source-version "$VERSION" \
+            --output "spdx-json=dist/release/index-01-hook-source.spdx.json"
+      - name: Replace sorted checksums
+        run: |
+          set -eu
+          cd dist/release
+          files=(
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_amd64"
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_arm64"
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_amd64"
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_arm64"
+            THIRD_PARTY_NOTICES.txt
+            index-01-hook-source.spdx.json
+          )
+          for file in "${files[@]}"; do test -f "$file"; done
+          printf '%s\n' "${files[@]}" | sort | xargs sha256sum > checksums.txt
+      - name: Verify release artifact set
+        run: |
+          set -eu
+          cd dist/release
+          jq -e '.spdxVersion and (.packages | type == "array") and (.packages | length > 0)' \
+            index-01-hook-source.spdx.json >/dev/null
+          grep -F 'Third-Party License Texts' THIRD_PARTY_NOTICES.txt >/dev/null
+          expected=$(printf '%s\n' \
+            "THIRD_PARTY_NOTICES.txt" \
+            "checksums.txt" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_amd64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_arm64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_amd64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_arm64" \
+            index-01-hook-source.spdx.json | sort)
+          actual=$(find . -maxdepth 1 -type f ! -name '*.sigstore.json' -printf '%f\n' | sort)
+          test "$actual" = "$expected"
+          sha256sum --check checksums.txt
+      - name: Upload release artifact bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-artifacts
+          path: dist/release
+          if-no-files-found: error
+          retention-days: 5
+
+  publish:
+    name: Publish release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs:
+      - validate
+      - build
+    environment: public-release
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out validated commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.validate.outputs.commit }}
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Download verified release artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-artifacts
+          path: dist/release
+          merge-multiple: true
+      - name: Reject unexpected artifact set
+        run: |
+          set -eu
+          cd dist/release
+          jq -e '.spdxVersion and (.packages | type == "array") and (.packages | length > 0)' \
+            index-01-hook-source.spdx.json >/dev/null
+          grep -F 'Third-Party License Texts' THIRD_PARTY_NOTICES.txt >/dev/null
+          expected=$(printf '%s\n' \
+            "THIRD_PARTY_NOTICES.txt" \
+            "checksums.txt" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_amd64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_arm64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_amd64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_arm64" \
+            index-01-hook-source.spdx.json | sort)
+          actual=$(find . -maxdepth 1 -type f ! -name '*.sigstore.json' -printf '%f\n' | sort)
+          test "$actual" = "$expected"
+          sha256sum --check checksums.txt
+      - name: Check public repository visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: test "$(gh api repos/klauern/index-01-hook --jq .visibility)" = public
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        with:
+          driver-opts: image=moby/buildkit@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8
+      - name: Build and push image by digest
+        id: image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            GO_IMAGE=docker.io/library/golang:1.26.6@sha256:0d1d3a794be25f809dd2cb3160d8c73276c4056a9f8242a138e908ddeee7b6b6
+            VERSION=${{ needs.validate.outputs.version }}
+            COMMIT=${{ needs.validate.outputs.commit }}
+            BUILD_DATE=${{ needs.validate.outputs.build_date }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/klauern/index-01-hook
+            org.opencontainers.image.revision=${{ needs.validate.outputs.commit }}
+            org.opencontainers.image.version=${{ needs.validate.outputs.version }}
+            org.opencontainers.image.created=${{ needs.validate.outputs.build_date }}
+            org.opencontainers.image.licenses=MIT AND BSD-3-Clause AND LicenseRef-SQLite-Public-Domain AND LicenseRef-CA-Certificates AND LicenseRef-IANA-TZData
+          outputs: type=image,name=ghcr.io/klauern/index-01-hook,push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=max
+          sbom: true
+      - name: Set up Cosign
+        uses: sigstore/cosign-installer@d58896d6a1865668819e1d91763c7751a165e159 # v3.9.2
+      - name: Set image identity
+        id: image-identity
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          set -eu
+          printf '%s\n' "$IMAGE_DIGEST" | grep -Eq '^sha256:[0-9a-f]{64}$' || {
+            echo 'Buildx did not return a SHA-256 digest' >&2
+            exit 1
+          }
+          {
+            printf 'digest=%s\n' "$IMAGE_DIGEST"
+            printf 'identity=https://github.com/klauern/index-01-hook/.github/workflows/release.yml@refs/tags/%s\n' '${{ needs.validate.outputs.version }}'
+          } >>"$GITHUB_OUTPUT"
+      - name: Attest release files
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-path: |
+            dist/release/THIRD_PARTY_NOTICES.txt
+            dist/release/checksums.txt
+            dist/release/index-01-hook_${{ needs.validate.outputs.version }}_darwin_amd64
+            dist/release/index-01-hook_${{ needs.validate.outputs.version }}_darwin_arm64
+            dist/release/index-01-hook_${{ needs.validate.outputs.version }}_linux_amd64
+            dist/release/index-01-hook_${{ needs.validate.outputs.version }}_linux_arm64
+            dist/release/index-01-hook-source.spdx.json
+      - name: Attest image digest
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
+        with:
+          subject-name: ghcr.io/klauern/index-01-hook
+          subject-digest: ${{ steps.image-identity.outputs.digest }}
+          push-to-registry: true
+      - name: Sign image digest
+        env:
+          IMAGE_DIGEST: ${{ steps.image-identity.outputs.digest }}
+        run: cosign sign --yes "ghcr.io/klauern/index-01-hook@$IMAGE_DIGEST"
+      - name: Sign release files
+        run: |
+          set -eu
+          cd dist/release
+          for file in \
+            THIRD_PARTY_NOTICES.txt \
+            checksums.txt \
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_amd64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_arm64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_amd64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_arm64" \
+            index-01-hook-source.spdx.json; do
+            cosign sign-blob --yes --bundle "$file.sigstore.json" "$file"
+          done
+      - name: Verify image and blob signatures
+        env:
+          IMAGE_DIGEST: ${{ steps.image-identity.outputs.digest }}
+          CERTIFICATE_IDENTITY: ${{ steps.image-identity.outputs.identity }}
+          CERTIFICATE_OIDC_ISSUER: https://token.actions.githubusercontent.com
+        run: |
+          set -eu
+          cosign verify "ghcr.io/klauern/index-01-hook@$IMAGE_DIGEST" \
+            --certificate-identity "$CERTIFICATE_IDENTITY" \
+            --certificate-oidc-issuer "$CERTIFICATE_OIDC_ISSUER"
+          cd dist/release
+          for file in \
+            THIRD_PARTY_NOTICES.txt \
+            checksums.txt \
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_amd64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_darwin_arm64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_amd64" \
+            "index-01-hook_${{ needs.validate.outputs.version }}_linux_arm64" \
+            index-01-hook-source.spdx.json; do
+            cosign verify-blob --bundle "$file.sigstore.json" "$file" \
+              --certificate-identity "$CERTIFICATE_IDENTITY" \
+              --certificate-oidc-issuer "$CERTIFICATE_OIDC_ISSUER"
+          done
+      - name: Verify package visibility and BuildKit attestations
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_DIGEST: ${{ steps.image-identity.outputs.digest }}
+        run: |
+          set -eu
+          test "$(gh api /users/klauern/packages/container/index-01-hook --jq .visibility)" = public
+          sbom=$(docker buildx imagetools inspect \
+            "ghcr.io/klauern/index-01-hook@$IMAGE_DIGEST" --format '{{json .SBOM}}')
+          provenance=$(docker buildx imagetools inspect \
+            "ghcr.io/klauern/index-01-hook@$IMAGE_DIGEST" --format '{{json .Provenance}}')
+          case "$sbom" in ''|null|'{}') exit 1 ;; esac
+          case "$provenance" in ''|null|'{}') exit 1 ;; esac
+      - name: Log out and inspect image anonymously
+        env:
+          IMAGE_DIGEST: ${{ steps.image-identity.outputs.digest }}
+        run: |
+          set -eu
+          docker logout ghcr.io
+          docker buildx imagetools inspect "ghcr.io/klauern/index-01-hook@$IMAGE_DIGEST"
+      - name: Reject an existing version image tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          existing=$(gh api --paginate /users/klauern/packages/container/index-01-hook/versions \
+            --jq ".[] | select(.metadata.container.tags[]? == \"$VERSION\") | .id")
+          test -z "$existing"
+      - name: Log in to create the version image tag
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Create the version image tag
+        env:
+          IMAGE_DIGEST: ${{ steps.image-identity.outputs.digest }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          docker buildx imagetools create \
+            --tag "ghcr.io/klauern/index-01-hook:$VERSION" \
+            "ghcr.io/klauern/index-01-hook@$IMAGE_DIGEST"
+      - name: Prove version tag digest anonymously
+        env:
+          IMAGE_DIGEST: ${{ steps.image-identity.outputs.digest }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          docker logout ghcr.io
+          resolved=$(docker buildx imagetools inspect \
+            "ghcr.io/klauern/index-01-hook:$VERSION" \
+            --format '{{.Manifest.Digest}}')
+          test "$resolved" = "$IMAGE_DIGEST"
+      - name: Create draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          gh release create "$VERSION" --draft --verify-tag --generate-notes --title "$VERSION" dist/release/*
+      - name: Verify draft release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          test "$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq .draft)" = true
+          expected=$(printf '%s\n' \
+            "THIRD_PARTY_NOTICES.txt" \
+            "THIRD_PARTY_NOTICES.txt.sigstore.json" \
+            "checksums.txt" \
+            "index-01-hook_${VERSION}_darwin_amd64" \
+            "index-01-hook_${VERSION}_darwin_amd64.sigstore.json" \
+            "index-01-hook_${VERSION}_darwin_arm64" \
+            "index-01-hook_${VERSION}_darwin_arm64.sigstore.json" \
+            "index-01-hook_${VERSION}_linux_amd64" \
+            "index-01-hook_${VERSION}_linux_amd64.sigstore.json" \
+            "index-01-hook_${VERSION}_linux_arm64" \
+            "index-01-hook_${VERSION}_linux_arm64.sigstore.json" \
+            index-01-hook-source.spdx.json \
+            index-01-hook-source.spdx.json.sigstore.json \
+            checksums.txt.sigstore.json | sort)
+          actual=$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq '.assets[].name' | sort)
+          test "$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq '.assets | length')" = 14
+          test "$actual" = "$expected"
+      - name: Publish draft GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: gh release edit "$VERSION" --draft=false
+      - name: Verify published GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -eu
+          test "$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq .draft)" = false
+          test "$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq .tag_name)" = "$VERSION"
+          test "$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq '.assets | length')" = 14
+      - name: Write immutable image reference
+        env:
+          IMAGE_DIGEST: ${{ steps.image-identity.outputs.digest }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          {
+            printf '### Published immutable image\n\n'
+            printf "\`ghcr.io/klauern/index-01-hook@%s\`\n" "$IMAGE_DIGEST"
+            printf "\nVersion tag: \`ghcr.io/klauern/index-01-hook:%s\`\n" "$VERSION"
+          } >>"$GITHUB_STEP_SUMMARY"

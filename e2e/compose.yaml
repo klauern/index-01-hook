@@ -1,0 +1,116 @@
+services:
+  provider-fixture:
+    build:
+      context: ./provider-fixture
+      dockerfile: Dockerfile
+    image: ${E2E_FIXTURE_IMAGE:?E2E_FIXTURE_IMAGE is required}
+    read_only: true
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    command:
+      - /provider-fixture
+      - -events
+      - /run/e2e/events/events.jsonl
+      - -ready
+      - /run/e2e/events/ready
+      - -cert
+      - /run/e2e/certs/server.crt
+      - -key
+      - /run/e2e/certs/server.key
+    volumes:
+      - type: bind
+        source: ${E2E_CERT_DIR:?E2E_CERT_DIR is required}
+        target: /run/e2e/certs
+        read_only: true
+      - type: bind
+        source: ${E2E_EVENT_DIR:?E2E_EVENT_DIR is required}
+        target: /run/e2e/events
+    networks:
+      providers:
+        aliases:
+          - api.deepseek.com
+          - api.ticktick.com
+
+  index-01-hook:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: "${INDEX01_IMAGE:-index-01-hook:local}"
+    read_only: true
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - index-01-hook-data:/var/lib/index-01-hook
+      - type: bind
+        source: ${E2E_CERT_DIR:?E2E_CERT_DIR is required}/ca.crt
+        target: /etc/ssl/certs/ca-certificates.crt
+        read_only: true
+    environment:
+      INDEX01_WEBHOOK_TOKEN: "${INDEX01_WEBHOOK_TOKEN:?INDEX01_WEBHOOK_TOKEN is required}"
+      INDEX01_DB_PATH: /var/lib/index-01-hook/data/index01.db
+      INDEX01_LISTEN_ADDR: ":8080"
+      INDEX01_MAX_BODY_BYTES: "67108864"
+      INDEX01_DEEPSEEK_TOKEN: "${INDEX01_DEEPSEEK_TOKEN:?INDEX01_DEEPSEEK_TOKEN is required}"
+      INDEX01_DEEPSEEK_MODEL: deepseek-v4-flash
+      INDEX01_TIME_ZONE: UTC
+      INDEX01_TICKTICK_TOKEN: "${INDEX01_TICKTICK_TOKEN:?INDEX01_TICKTICK_TOKEN is required}"
+      INDEX01_TICKTICK_DEFAULT_PROJECT_ID: task-default
+      INDEX01_TICKTICK_NOTE_PROJECT_ID: note-list
+      INDEX01_TICKTICK_PROJECT_ALIASES: '{"work":"task-work"}'
+      INDEX01_WORKER_OWNER: e2e-worker
+    healthcheck:
+      test: ["CMD", "/index-01-hook", "healthcheck"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 1s
+    networks:
+      - providers
+      - proxy
+
+  caddy:
+    image: docker.io/library/caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    read_only: true
+    user: "1000:1000"
+    cap_drop:
+      - NET_RAW
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - target: 443
+        published: ${E2E_CADDY_PORT:?E2E_CADDY_PORT is required}
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - type: bind
+        source: ./Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+      - type: bind
+        source: ${E2E_CERT_DIR:?E2E_CERT_DIR is required}
+        target: /run/e2e/certs
+        read_only: true
+    tmpfs:
+      - /data:uid=1000,gid=1000,mode=700
+      - /config:uid=1000,gid=1000,mode=700
+      - /tmp:uid=1000,gid=1000,mode=700
+    networks:
+      - proxy
+      - published
+
+volumes:
+  index-01-hook-data:
+    name: ${E2E_DB_VOLUME:?E2E_DB_VOLUME is required}
+
+networks:
+  providers:
+    internal: true
+  proxy:
+    internal: true
+  published: {}

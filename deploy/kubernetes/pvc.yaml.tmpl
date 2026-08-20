@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: index-01-hook-data
+  namespace: index-01-hook
+  labels:
+    app.kubernetes.io/name: index-01-hook
+spec:
+  accessModes:
+    - ReadWriteOnce
+  KUBE_STORAGE_CLASS_PLACEHOLDER
+  resources:
+    requests:
+      storage: 1Gi

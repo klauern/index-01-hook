@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: true
+      - name: Install Task
+        run: |
+          set -eu
+          go install github.com/go-task/task/v3/cmd/task@v3.53.1
+          echo "$(go env GOPATH)/bin" >>"$GITHUB_PATH"
+      - name: Verify host tools
+        run: |
+          set -eu
+          command -v docker
+          docker compose version
+          command -v shellcheck
+          shellcheck --version
+      - name: Download Go modules
+        run: go mod download
+      - name: Run Go quality checks
+        env:
+          GOTOOLCHAIN: local
+          GOPROXY: off
+        run: |
+          set -eu
+          go test ./...
+          go test -race ./...
+          go vet ./...
+      - name: Run Task checks
+        env:
+          GOTOOLCHAIN: local
+          GOPROXY: off
+        run: task test
+      - name: Build release-shaped binary
+        env:
+          GOTOOLCHAIN: local
+          GOPROXY: off
+        run: |
+          set -eu
+          task build \
+            VERSION=v0.0.0-ci \
+            COMMIT="$GITHUB_SHA" \
+            BUILD_DATE=2026-01-01T00:00:00Z
+          shasum -a 256 -c dist/index-01-hook-linux-amd64-v0.0.0-ci.sha256
+
+  container:
+    name: container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Build image
+        run: |
+          set -eu
+          docker build --pull=false --no-cache \
+            --build-arg GO_IMAGE=docker.io/library/golang:1.26.6@sha256:0d1d3a794be25f809dd2cb3160d8c73276c4056a9f8242a138e908ddeee7b6b6 \
+            --tag index-01-hook:local .
+      - name: Run container volume test
+        run: ./scripts/compose-volume_test.sh
+      - name: Verify configured image user and notices
+        run: |
+          set -eu
+          test "$(docker image inspect --format '{{.Config.User}}' index-01-hook:local)" = '65532:65532'
+          container_id=$(docker create index-01-hook:local)
+          trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
+          docker export "$container_id" | tar -tf - >"$RUNNER_TEMP/image-files.txt"
+          grep -Fx 'usr/share/licenses/index-01-hook/THIRD_PARTY_NOTICES.txt' "$RUNNER_TEMP/image-files.txt"
+          grep -Fx 'usr/share/licenses/ca-certificates/copyright' "$RUNNER_TEMP/image-files.txt"
+          grep -Fx 'usr/share/licenses/go/LICENSE' "$RUNNER_TEMP/image-files.txt"
+          grep -Fx 'usr/share/licenses/tzdata/README' "$RUNNER_TEMP/image-files.txt"
+
+  manifests:
+    name: manifests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: true
+      - name: Install kubeconform
+        run: |
+          set -eu
+          go install github.com/yannh/kubeconform/cmd/kubeconform@v0.8.0
+          echo "$(go env GOPATH)/bin" >>"$GITHUB_PATH"
+      - name: Validate rendered manifests
+        run: ./scripts/ci-manifests.sh
+
+  security:
+    name: security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: true
+      - name: Install security tools
+        run: |
+          set -eu
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          echo "$(go env GOPATH)/bin" >>"$GITHUB_PATH"
+      - name: Run ShellCheck
+        run: shellcheck scripts/*.sh
+      - name: Run govulncheck
+        run: govulncheck ./...
+      - name: Scan Git history for secrets
+        run: gitleaks git --redact --no-banner --exit-code 1 --log-opts="--all" .
+      - name: Scan checked-out tree for secrets
+        run: gitleaks dir --redact --no-banner --exit-code 1 .
+      - name: Lint workflows
+        run: actionlint .github/workflows/*.yml
