@@ -54,6 +54,9 @@ func executeWithInput(logger *slog.Logger, args []string, getenv func(string) st
 	if len(args) == 0 || len(args) == 1 && args[0] == "serve" {
 		return runWithEnvironment(logger, getenv)
 	}
+	if len(args) == 1 && args[0] == "dashboard" {
+		return runDashboard(logger, getenv)
+	}
 	if len(args) == 1 && args[0] == "version" {
 		return json.NewEncoder(output).Encode(versionResult{Version: version, Commit: commit, BuildDate: buildDate})
 	}
@@ -111,7 +114,7 @@ func executeWithInput(logger *slog.Logger, args []string, getenv func(string) st
 		return json.NewEncoder(output).Encode(fileOperationResult{State: "restored"})
 	}
 	if len(args) != 2 {
-		return fmt.Errorf("usage: index-01-hook [serve|version|healthcheck|maintenance|purge-expired|ticktick-projects|status ID|retry-recording ID|retry-delivery ID|backup PATH|restore PATH]")
+		return fmt.Errorf("usage: index-01-hook [serve|dashboard|version|healthcheck|maintenance|purge-expired|ticktick-projects|status ID|retry-recording ID|retry-delivery ID|backup PATH|restore PATH]")
 	}
 	if args[0] != "status" && args[0] != "retry-recording" && args[0] != "retry-delivery" && args[0] != "backup" {
 		return fmt.Errorf("unknown operator command %q", args[0])

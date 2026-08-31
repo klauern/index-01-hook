@@ -49,6 +49,8 @@ sorted_checksums=$(LC_ALL=C sort "$output_dir/checksums.txt")
 [ "$(wc -l <"$output_dir/checksums.txt")" -eq 5 ] || fail "checksum count is not five"
 grep -F 'Third-Party License Texts' "$output_dir/THIRD_PARTY_NOTICES.txt" >/dev/null ||
   fail "generated third-party notices are missing"
+grep -F '===== htmx 4.0.0 / LICENSE =====' "$output_dir/THIRD_PARTY_NOTICES.txt" >/dev/null ||
+  fail "generated third-party notices omit the embedded htmx license"
 grep -F 'Targets: linux/amd64, linux/arm64, darwin/amd64, darwin/arm64' \
   "$output_dir/THIRD_PARTY_NOTICES.txt" >/dev/null ||
   fail "generated notices do not cover all release targets"

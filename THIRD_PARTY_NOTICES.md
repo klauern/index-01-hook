@@ -6,8 +6,17 @@ complete. The local evidence does not establish every license or component in
 every build artifact.
 
 This source file does not paste all license text. Release automation generates
-`THIRD_PARTY_NOTICES.txt` with root license and notice files for the union of
-Go modules linked by all release targets and the Go toolchain.
+`THIRD_PARTY_NOTICES.txt` with the embedded HTMX license, linked Go module notices,
+and Go toolchain notices.
+
+## Embedded assets
+
+| Asset | Version | License evidence |
+| --- | --- | --- |
+| `htmx` browser asset | `4.0.0` | Zero-Clause BSD; `dashboard_static/htmx.LICENSE` |
+
+The dashboard embeds the minified htmx asset. The dashboard does not load this
+asset from a content delivery network.
 
 ## Go modules
 

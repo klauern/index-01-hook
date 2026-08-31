@@ -10,6 +10,8 @@ Kubernetes set deployment-specific values outside the application settings.
 | `INDEX01_WEBHOOK_TOKEN` | Yes | None | At least 32 bytes, with no whitespace; use a cryptographically random Bearer token for `/webhook` and `/readyz`. |
 | `INDEX01_DB_PATH` | No | `./index01.db` | SQLite path. Empty uses the default; whitespace-only is rejected. |
 | `INDEX01_LISTEN_ADDR` | No | `:8080` | Plain-HTTP listen address. Empty uses the default; whitespace-only is rejected. |
+| `INDEX01_DASHBOARD_LISTEN_ADDR` | No | `127.0.0.1:0` | Dashboard listen address. The address must be loopback. Whitespace-only is rejected. |
+| `INDEX01_DASHBOARD_NO_OPEN` | No | empty | Set to `1` to disable browser launch for `dashboard`. |
 | `INDEX01_MAX_BODY_BYTES` | No | `67108864` | Positive complete request-body limit in bytes. |
 | `INDEX01_DEEPSEEK_TOKEN` | Yes | None | Non-blank DeepSeek API token. |
 | `INDEX01_DEEPSEEK_MODEL` | No | `deepseek-v4-flash` | Safe provider identifier passed to DeepSeek. |

@@ -9,6 +9,7 @@ private content in command lines, logs, or support reports.
 | Command | Environment | Contract |
 | --- | --- | --- |
 | `serve` | All application variables. Required provider and routing values must be set. | Start the HTTP server, worker, SQLite store, and provider clients. |
+| `dashboard` | `INDEX01_DB_PATH`, `INDEX01_DASHBOARD_LISTEN_ADDR`, and optional `INDEX01_DASHBOARD_NO_OPEN=1` | Open the validated database in read-only mode and serve the local dashboard. |
 | `version` | None | Print version, commit, and build date as JSON. |
 | `healthcheck` | None | Check `http://127.0.0.1:8080/healthz` and print only `{"status":"ok"}` on success. |
 | `maintenance` | None | Wait as a long-running maintenance container process. |
@@ -27,6 +28,18 @@ wrappers for encrypted files.
 The `serve` command validates configured TickTick routing during startup. The
 `ticktick-projects` command does not load SQLite and does not require DeepSeek,
 webhook, or routing settings.
+
+
+## Dashboard
+
+Start the dashboard against the configured database:
+
+```sh
+INDEX01_DB_PATH=./index01.db index-01-hook dashboard
+```
+
+The command opens the browser and writes the selected loopback address to standard error.
+Press `Ctrl-C` to stop the dashboard. Set `INDEX01_DASHBOARD_NO_OPEN=1` when browser launch is not available.
 
 ## Retry work
 
@@ -106,10 +119,16 @@ stop, restore, restart, and health sequence.
 - `version` prints only build metadata.
 - `healthcheck` prints only a fixed success result.
 - `ticktick-projects` prints only `id`, `kind`, `closed`, and `writable`.
-- `status` prints queue state, hashes, markers, provider identifiers, and task identifiers. It does not print transcription, titles, notes, tokens, or provider bodies.
+- `status` prints safe queue state and identifiers. It does not print transcription, titles, notes, tokens, provider bodies, or full fingerprints.
+- `dashboard` serves aggregate worker status, server receipt times, transcription presence and character count, safe recording metadata, queue states, and TickTick item evidence. It does not print transcription text, titles, notes, tokens, provider bodies, full fingerprints, or markers.
 - Application status endpoints print aggregate values and safe reason codes only.
 - Provider errors retain classifications and safe status data. They do not retain provider bodies or credentials.
 - `backup -` is sensitive binary output. Protect it and encrypt it immediately.
+
+The `dashboard` command binds only to a loopback address. It uses `127.0.0.1:0` by default and does not change the database. Set `INDEX01_DASHBOARD_NO_OPEN=1` to disable browser launch. Treat client and trigger values as local operational data.
+
+The dashboard uses Go server-side templates and vendored HTMX 4.0.0. HTMX polls status and uses built-in morph swaps.
+Normal browser navigation returns full HTML.
 
 See [configuration](configuration.md) for environment boundaries and
 [security policy](../SECURITY.md) for vulnerability reporting.

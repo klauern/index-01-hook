@@ -21,8 +21,10 @@ service_account=$project_dir/deploy/kubernetes/service-account.yaml
 network_policy=$project_dir/deploy/kubernetes/network-policy.yaml
 ingress=$project_dir/deploy/kubernetes/ingress.yaml.tmpl
 deployment=$project_dir/deploy/kubernetes/deployment.yaml.tmpl
+service=$project_dir/deploy/kubernetes/service.yaml
 maintenance=$project_dir/deploy/kubernetes/maintenance-pod.yaml.tmpl
 secrets_example=$project_dir/deploy/kubernetes/index-01-hook-secrets.env.example
+kubernetes_doc=$project_dir/docs/kubernetes.md
 
 assert_contains "$namespace" "pod-security.kubernetes.io/enforce: restricted"
 assert_contains "$namespace" "pod-security.kubernetes.io/enforce-version: v1.31"
@@ -40,6 +42,50 @@ for template in "$deployment" "$maintenance"; do
 done
 assert_contains "$maintenance" "requests:"
 assert_contains "$maintenance" "limits:"
+
+dashboard_container=$test_root/dashboard-container.yaml
+awk '
+  /^        - name: dashboard$/ { capture = 1 }
+  capture && /^      volumes:$/ { exit }
+  capture { print }
+' "$deployment" >"$dashboard_container"
+[ -s "$dashboard_container" ] || {
+  echo "FAIL: deployment does not contain the dashboard container" >&2
+  exit 1
+}
+assert_contains "$dashboard_container" "image: IMAGE_REF_PLACEHOLDER"
+assert_contains "$dashboard_container" "- /index-01-hook"
+assert_contains "$dashboard_container" "- dashboard"
+assert_contains "$dashboard_container" "name: INDEX01_DB_PATH"
+assert_contains "$dashboard_container" "value: /var/lib/index-01-hook/data/index01.db"
+assert_contains "$dashboard_container" "name: INDEX01_DASHBOARD_LISTEN_ADDR"
+assert_contains "$dashboard_container" "value: 127.0.0.1:9090"
+assert_contains "$dashboard_container" "name: INDEX01_DASHBOARD_NO_OPEN"
+assert_contains "$dashboard_container" 'value: "1"'
+assert_contains "$dashboard_container" "mountPath: /var/lib/index-01-hook"
+assert_contains "$dashboard_container" "readOnly: true"
+if [ "$(grep -Ec '^            - name: INDEX01_' "$dashboard_container")" -ne 3 ]; then
+  echo "FAIL: dashboard container must receive exactly three INDEX01 settings" >&2
+  exit 1
+fi
+if grep -Eq 'envFrom:|secretRef:|INDEX01_(DEEPSEEK|TICKTICK|WEBHOOK)' "$dashboard_container"; then
+  echo "FAIL: dashboard container receives application or provider secrets" >&2
+  exit 1
+fi
+if [ "$(grep -cF 'image: IMAGE_REF_PLACEHOLDER' "$deployment")" -ne 2 ]; then
+  echo "FAIL: application and dashboard must use the same image placeholder" >&2
+  exit 1
+fi
+for public_manifest in "$service" "$ingress"; do
+  if grep -Eq '9090|dashboard' "$public_manifest"; then
+    echo "FAIL: public routing exposes the dashboard in $public_manifest" >&2
+    exit 1
+  fi
+done
+assert_contains "$kubernetes_doc" "port-forward --address=127.0.0.1"
+assert_contains "$kubernetes_doc" "The Service and Ingress do not expose the dashboard."
+assert_contains "$kubernetes_doc" "Do not run another writer against the SQLite volume."
+assert_contains "$kubernetes_doc" "dashboard sidecar is the approved read-only observer."
 
 assert_contains "$network_policy" "name: index-01-hook-default-deny"
 assert_contains "$network_policy" "name: index-01-hook-webhook-ingress"
@@ -65,7 +111,6 @@ for private_range in \
   fc00::/7 fe80::/10 ff00::/8; do
   assert_contains "$network_policy" "$private_range"
 done
-kubernetes_doc=$project_dir/docs/kubernetes.md
 assert_contains "$kubernetes_doc" "selected egress control"
 assert_contains "$kubernetes_doc" 'cannot restrict TCP `443` by DNS name'
 assert_contains "$kubernetes_doc" "provider-only"
