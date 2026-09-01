@@ -374,10 +374,10 @@ var dashboardTemplates = template.Must(template.New("dashboard").Funcs(template.
 		<h2>Recordings</h2>
 		<p>Page {{.Page}} of {{pageCount .Total .PageSize}}. The filter has {{.Total}} rows.</p>
 		<table>
-			<thead><tr><th>ID</th><th>Client recorded</th><th>Server received</th><th>Client</th><th>Trigger</th><th>Audio bytes</th><th>Transcription</th><th>Receives</th><th>Extraction</th><th>Deliveries</th></tr></thead>
+			<thead><tr><th class="id-column">ID</th><th>Client recorded</th><th>Server received</th><th>Client</th><th>Trigger</th><th>Audio bytes</th><th>Transcription</th><th>Receives</th><th>Extraction</th><th>Deliveries</th></tr></thead>
 			<tbody>
 			{{range .Rows}}
-				<tr><td><a href="/recordings/{{.ID}}">{{.ID}}</a></td><td>{{.RecordedAt}}</td><td>{{.FirstReceivedAt}}</td><td>{{.Client}}</td><td>{{.Trigger}}</td><td>{{.AudioBytes}}</td><td>{{.TranscriptionEvidence}}</td><td>{{.ReceiveCount}}</td><td>{{.ExtractionState}}</td><td>{{.DeliveryCount}}</td></tr>
+				<tr><td class="id-column"><a href="/recordings/{{.ID}}">{{.ID}}</a></td><td>{{.RecordedAt}}</td><td>{{.FirstReceivedAt}}</td><td>{{.Client}}</td><td>{{.Trigger}}</td><td>{{.AudioBytes}}</td><td>{{.TranscriptionEvidence}}</td><td>{{.ReceiveCount}}</td><td>{{.ExtractionState}}</td><td>{{.DeliveryCount}}</td></tr>
 			{{else}}
 				<tr><td colspan="10">No recordings found.</td></tr>
 			{{end}}
@@ -425,10 +425,10 @@ var dashboardTemplates = template.Must(template.New("dashboard").Funcs(template.
 	<section>
 		<h2>TickTick delivery evidence</h2>
 		<table>
-			<thead><tr><th>ID</th><th>Index</th><th>Kind</th><th>State</th><th>Attempts</th><th>Classification</th><th>Creation evidence</th><th>TickTick item ID</th><th>TickTick project ID</th><th>Completed</th><th>Updated</th></tr></thead>
+			<thead><tr><th class="id-column">ID</th><th>Index</th><th>Kind</th><th>State</th><th>Attempts</th><th>Classification</th><th>Creation evidence</th><th>TickTick item ID</th><th>TickTick project ID</th><th>Completed</th><th>Updated</th></tr></thead>
 			<tbody>
 			{{range .Deliveries}}
-				<tr><td>{{.ID}}</td><td>{{.TaskIndex}}</td><td>{{.Kind}}</td><td>{{.State}}</td><td>{{.AttemptCount}}</td><td>{{.LastClassification}}</td><td>{{.CreationEvidence}}</td><td>{{.TickTickTaskID}}</td><td>{{.TickTickProjectID}}</td><td>{{.CompletedAt}}</td><td>{{.UpdatedAt}}</td></tr>
+				<tr><td class="id-column">{{.ID}}</td><td>{{.TaskIndex}}</td><td>{{.Kind}}</td><td>{{.State}}</td><td>{{.AttemptCount}}</td><td>{{.LastClassification}}</td><td>{{.CreationEvidence}}</td><td>{{.TickTickTaskID}}</td><td>{{.TickTickProjectID}}</td><td>{{.CompletedAt}}</td><td>{{.UpdatedAt}}</td></tr>
 			{{else}}
 				<tr><td colspan="11">No delivery items exist.</td></tr>
 			{{end}}

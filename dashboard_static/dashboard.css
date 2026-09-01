@@ -73,6 +73,7 @@ table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { padding: 0.75rem 0.65rem; border-bottom: 1px solid #273451; text-align: left; vertical-align: top; }
 th { color: #93a4bf; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
 td { color: #dbe5f4; overflow-wrap: anywhere; }
+.id-column { min-width: 5rem; white-space: nowrap; }
 a { color: #7dd3fc; text-underline-offset: 0.2em; }
 nav { display: flex; gap: 1rem; margin-top: 1rem; }
 

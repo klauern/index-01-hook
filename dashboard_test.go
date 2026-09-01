@@ -113,6 +113,9 @@ func TestDashboardReadOnlyAndRedactedHTML(t *testing.T) {
 	if !strings.Contains(body, "hx-trigger=\"every 15s\"") || !strings.Contains(body, "hx-target=\"#recordings\"") || !strings.Contains(body, "hx-swap=\"outerMorph\"") {
 		t.Error("dashboard body does not contain HTMX 4 polling, targeting, and morph attributes")
 	}
+	if !strings.Contains(body, `<th class="id-column">ID</th>`) || !strings.Contains(body, `<td class="id-column"><a href="/recordings/`) {
+		t.Error("dashboard body does not mark the recording ID column")
+	}
 	if !strings.Contains(body, "mobile") || !strings.Contains(body, "button") {
 		t.Error("dashboard body does not contain safe recording fields")
 	}
@@ -141,6 +144,9 @@ func TestDashboardReadOnlyAndRedactedHTML(t *testing.T) {
 		if !strings.Contains(detailBody, safeValue) {
 			t.Errorf("dashboard detail does not contain %q", safeValue)
 		}
+	}
+	if !strings.Contains(detailBody, `<th class="id-column">ID</th>`) || !strings.Contains(detailBody, `<td class="id-column">`) {
+		t.Error("dashboard detail does not mark the delivery ID column")
 	}
 	for _, receiptEvidence := range []string{
 		"2026-08-30T14:10:00Z", "2026-08-30T14:12:00Z", "<dt>Receives</dt><dd>2</dd>",
@@ -258,6 +264,7 @@ func TestDashboardServesVendoredHTMX4(t *testing.T) {
 	}{
 		{path: "/static/htmx.min.js", contentType: "application/javascript; charset=utf-8", contains: `this.version="4.0.0"`},
 		{path: "/static/dashboard.css", contentType: "text/css; charset=utf-8", contains: "color-scheme"},
+		{path: "/static/dashboard.css", contentType: "text/css; charset=utf-8", contains: ".id-column { min-width: 5rem; white-space: nowrap; }"},
 	} {
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, localDashboardRequest(http.MethodGet, test.path))
