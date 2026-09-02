@@ -91,6 +91,38 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+        - name: dashboard
+          image: IMAGE_REF_PLACEHOLDER
+          imagePullPolicy: IfNotPresent
+          command:
+            - /index-01-hook
+          args:
+            - dashboard
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: INDEX01_DB_PATH
+              value: /var/lib/index-01-hook/data/index01.db
+            - name: INDEX01_DASHBOARD_LISTEN_ADDR
+              value: 127.0.0.1:9090
+            - name: INDEX01_DASHBOARD_NO_OPEN
+              value: "1"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/index-01-hook
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
       volumes:
         - name: data
           persistentVolumeClaim:

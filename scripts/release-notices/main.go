@@ -135,6 +135,15 @@ func collectNoticeFiles(targets []string) ([]noticeFile, error) {
 				path:       path,
 			})
 		}
+		if item.Main {
+			assetLicense := filepath.Join(item.Dir, "dashboard_static", "htmx.LICENSE")
+			if _, err := os.Stat(assetLicense); err != nil {
+				return nil, fmt.Errorf("read embedded htmx license: %w", err)
+			}
+			files = append(files, noticeFile{
+				modulePath: "htmx", version: "4.0.0", name: "LICENSE", path: assetLicense,
+			})
+		}
 	}
 
 	goRoot := runtime.GOROOT()
@@ -189,7 +198,7 @@ func writeNotices(output, version string, targets []string, files []noticeFile) 
 	if _, err := fmt.Fprintf(file, "Targets: %s\n\n", strings.Join(targets, ", ")); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(file, "This generated report includes root license and notice files for every Go module linked by these targets.\n"); err != nil {
+	if _, err := io.WriteString(file, "This generated report includes the embedded browser asset license and root notices for every linked Go module.\n"); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(file, "The container image also embeds its Certificate Authority bundle copyright file and Go time-zone data notice.\n"); err != nil {

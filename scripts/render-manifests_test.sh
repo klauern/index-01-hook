@@ -87,6 +87,16 @@ for registry_access_mode in public private; do
       [ "$(grep -cF -- '- name: index-01-hook-registry-pull' "$valid_output/$manifest")" -eq 1 ] || exit 1
     fi
   done
+  [ "$(grep -cF "image: $valid_ref" "$valid_output/deployment.yaml")" -eq 2 ] || {
+    echo "FAIL: $registry_access_mode/deployment.yaml does not use IMAGE_REF for both containers" >&2
+    exit 1
+  }
+  for public_manifest in service.yaml ingress.yaml; do
+    if grep -Eq '9090|dashboard' "$valid_output/$public_manifest"; then
+      echo "FAIL: $registry_access_mode/$public_manifest exposes the dashboard" >&2
+      exit 1
+    fi
+  done
 done
 
 ingress=$test_root/public/ingress.yaml

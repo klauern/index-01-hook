@@ -27,7 +27,8 @@ Prepare these items before deployment:
 - Provider accounts, tokens, and writable TickTick projects.
 
 The namespace is always `index-01-hook`. The deployment uses one replica and the
-`Recreate` strategy. Do not run another process against the same SQLite volume.
+`Recreate` strategy. Do not run another writer against the SQLite volume. The
+dashboard sidecar is the approved read-only observer.
 
 No public image exists until release automation publishes one. Use a synthetic
 digest for render-only checks. Use a locally published registry digest for
@@ -284,6 +285,33 @@ The endpoint must return `200` for a healthy worker. A `503` response can report
 degraded worker, queue, or provider state. Provider `last_failed` alone does not
 necessarily cause `503`; use the [HTTP API reference](api.md) for the aggregate
 readiness rules. Do not publish `/healthz` or `/statusz`.
+
+## Private dashboard access
+
+The Deployment runs the dashboard as a sidecar with the same application image.
+The sidecar mounts the application data volume as read-only. The sidecar does not
+load the application Secret or provider settings. It listens only on pod loopback
+port `9090`. The Service and Ingress do not expose the dashboard.
+
+Start a private port forward from the approved local machine:
+
+```sh
+kubectl --context="$KUBE_CONTEXT" --namespace=index-01-hook \
+  port-forward --address=127.0.0.1 deployment/index-01-hook 9090:9090
+```
+
+Open `http://127.0.0.1:9090` in the local browser. Press `Ctrl-C` to stop the
+port forward. The port forward does not create a public route.
+
+If local port `9090` is in use, select another local port. Keep the pod port at
+`9090`. This example uses local port `19090`:
+
+```sh
+kubectl --context="$KUBE_CONTEXT" --namespace=index-01-hook \
+  port-forward --address=127.0.0.1 deployment/index-01-hook 19090:9090
+```
+
+Open `http://127.0.0.1:19090` for the alternate port.
 
 ## Ingress and network policy
 
