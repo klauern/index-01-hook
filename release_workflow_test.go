@@ -49,6 +49,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"vars.PUBLIC_RELEASE_APPROVED",
 		"github.ref_protected",
 		"./scripts/validate-release-tag.sh",
+		"git fetch --force --no-tags origin \"refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME\"",
 		"git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main",
 		"main_commit=$(git rev-parse refs/remotes/origin/main)",
 		"git merge-base --is-ancestor \"$tag_commit\" \"$main_commit\"",
