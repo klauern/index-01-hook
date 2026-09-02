@@ -414,24 +414,26 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -eu
-          test "$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq .draft)" = true
+          release_id=$(gh api "repos/klauern/index-01-hook/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$VERSION\" and .draft == true) | .id" | head -n1)
+          test -n "$release_id"
+          test "$(gh api "repos/klauern/index-01-hook/releases/$release_id" --jq .draft)" = true
           expected=$(printf '%s\n' \
-            "THIRD_PARTY_NOTICES.txt" \
-            "THIRD_PARTY_NOTICES.txt.sigstore.json" \
-            "checksums.txt" \
-            "index-01-hook_${VERSION}_darwin_amd64" \
-            "index-01-hook_${VERSION}_darwin_amd64.sigstore.json" \
-            "index-01-hook_${VERSION}_darwin_arm64" \
-            "index-01-hook_${VERSION}_darwin_arm64.sigstore.json" \
-            "index-01-hook_${VERSION}_linux_amd64" \
-            "index-01-hook_${VERSION}_linux_amd64.sigstore.json" \
-            "index-01-hook_${VERSION}_linux_arm64" \
-            "index-01-hook_${VERSION}_linux_arm64.sigstore.json" \
-            index-01-hook-source.spdx.json \
-            index-01-hook-source.spdx.json.sigstore.json \
-            checksums.txt.sigstore.json | sort)
-          actual=$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq '.assets[].name' | sort)
-          test "$(gh api "repos/klauern/index-01-hook/releases/tags/$VERSION" --jq '.assets | length')" = 14
+          "THIRD_PARTY_NOTICES.txt" \
+          "THIRD_PARTY_NOTICES.txt.sigstore.json" \
+          "checksums.txt" \
+          "index-01-hook_${VERSION}_darwin_amd64" \
+          "index-01-hook_${VERSION}_darwin_amd64.sigstore.json" \
+          "index-01-hook_${VERSION}_darwin_arm64" \
+          "index-01-hook_${VERSION}_darwin_arm64.sigstore.json" \
+          "index-01-hook_${VERSION}_linux_amd64" \
+          "index-01-hook_${VERSION}_linux_amd64.sigstore.json" \
+          "index-01-hook_${VERSION}_linux_arm64" \
+          "index-01-hook_${VERSION}_linux_arm64.sigstore.json" \
+          index-01-hook-source.spdx.json \
+          index-01-hook-source.spdx.json.sigstore.json \
+          checksums.txt.sigstore.json | sort)
+          actual=$(gh api "repos/klauern/index-01-hook/releases/$release_id" --jq '.assets[].name' | sort)
+          test "$(gh api "repos/klauern/index-01-hook/releases/$release_id" --jq '.assets | length')" = 14
           test "$actual" = "$expected"
       - name: Publish draft GitHub Release
         env:
