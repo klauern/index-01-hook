@@ -44,8 +44,9 @@ jobs:
           test "$REF_PROTECTED" = true
       - name: Validate release tag
         run: |
-          set -eux
+          set -eu
           ./scripts/validate-release-tag.sh "$GITHUB_REF_NAME"
+          git fetch --force --no-tags origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
           test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = tag
           tag_commit=$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")
           git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
