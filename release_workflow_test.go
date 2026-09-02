@@ -53,7 +53,6 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"main_commit=$(git rev-parse refs/remotes/origin/main)",
 		"git merge-base --is-ancestor \"$tag_commit\" \"$main_commit\"",
 		"tag_commit=$(git rev-parse \"refs/tags/$GITHUB_REF_NAME^{commit}\")",
-		"github_commit=$(git rev-parse \"$GITHUB_SHA^{commit}\")",
 		"VERSION=\"$GITHUB_REF_NAME\"",
 		"COMMIT=$(git rev-parse \"refs/tags/$GITHUB_REF_NAME^{commit}\")",
 		"BUILD_DATE=$(date -u",
