@@ -50,8 +50,8 @@ jobs:
           tag_commit=$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")
           github_commit=$(git rev-parse "$GITHUB_SHA^{commit}")
           test "$tag_commit" = "$github_commit"
-          git fetch --no-tags origin main:refs/remotes/origin/main
-          git merge-base --is-ancestor "$tag_commit" origin/main
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$tag_commit" FETCH_HEAD
       - name: Derive immutable metadata
         id: metadata
         run: |
