@@ -25,7 +25,7 @@ module versions in the local module cache.
 
 | Module | Version | License evidence |
 | --- | --- | --- |
-| `modernc.org/sqlite` | `v1.56.0` | BSD-3-Clause wrapper license; `LICENSE`; bundled SQLite code public-domain dedication; `SQLITE-LICENSE` |
+| `modernc.org/sqlite` | `v1.57.0` | BSD-3-Clause wrapper license; `LICENSE`; bundled SQLite public-domain dedication; `LICENSE-SQLITE`; bundled sqlite-vec MIT license; `LICENSE-SQLITE_VEC` |
 | `github.com/dustin/go-humanize` | `v1.0.1` | MIT; `LICENSE` |
 | `github.com/google/uuid` | `v1.6.0` | BSD-3-Clause; `LICENSE` |
 | `github.com/mattn/go-isatty` | `v0.0.24` | MIT; `LICENSE` |
