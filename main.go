@@ -11,8 +11,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
+
+	"github.com/klauern/index-01-hook/internal/evalcorpus"
 )
 
 const tickTickAPIBaseURL = "https://api.ticktick.com/open/v1"
@@ -46,37 +49,30 @@ func runWithEnvironment(logger *slog.Logger, getenv func(string) string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	deepSeek, tickTick, router, err := validateProviders(ctx, cfg, http.DefaultTransport)
+	if err != nil {
+		return err
+	}
+
 	store, err := OpenStore(ctx, cfg.DBPath)
 	if err != nil {
 		return err
 	}
 	defer ignoreCloseError(store)
+	if err := store.ConfigureEvaluationCapture(cfg.EvaluationRetention); err != nil {
+		return err
+	}
+	if cfg.AllowLegacyWebhookToken {
+		logger.Info("legacy webhook token compatibility enabled")
+	}
 
-	deepSeek, err := NewDeepSeekClientWithConfig(cfg.DeepSeekToken, http.DefaultTransport, time.Now, DeepSeekClientConfig{Model: cfg.DeepSeekModel, TimeZone: cfg.TimeZone})
-	if err != nil {
-		return err
-	}
-	tickTick, err := NewTickTickClient(tickTickAPIBaseURL, cfg.TickTickToken, &http.Client{
-		Transport: http.DefaultTransport,
-		Timeout:   30 * time.Second,
-	})
-	if err != nil {
-		return err
-	}
-	router, err := tickTick.ValidateRouting(ctx, TickTickRoutingConfig{
-		DefaultProjectID: cfg.TickTickDefaultProjectID,
-		NoteProjectID:    cfg.TickTickNoteProjectID,
-		Aliases:          cfg.TickTickProjectAliases,
-	})
-	if err != nil {
-		return err
-	}
 	aliases := make([]string, 0, len(cfg.TickTickProjectAliases))
 	for alias := range cfg.TickTickProjectAliases {
 		aliases = append(aliases, alias)
 	}
 	worker, err := NewWorker(store, deepSeek, router, WorkerConfig{
-		Owner: cfg.WorkerOwner, TimeZone: cfg.TimeZone,
+		EvidenceRouting: &evalcorpus.RoutingConfig{TimeZone: cfg.TimeZone, Aliases: cfg.TickTickProjectAliases, DefaultProjectID: router.defaultProjectID, NoteProjectID: router.noteProjectID},
+		Owner:           cfg.WorkerOwner, TimeZone: cfg.TimeZone,
 		LeaseDuration: 2 * time.Minute, PollInterval: time.Second,
 		RetryBase: 30 * time.Second, RetryMaximum: 30 * time.Minute,
 		ExtractionMaxAttempts: 5, DeliveryMaxAttempts: 5, ReconcileMaxAttempts: 3,
@@ -85,7 +81,18 @@ func runWithEnvironment(logger *slog.Logger, getenv func(string) string) error {
 	if err != nil {
 		return err
 	}
+	var background sync.WaitGroup
+	defer func() {
+		stop()
+		background.Wait()
+	}()
+	background.Add(2)
 	go func() {
+		defer background.Done()
+		runEvaluationCollection(ctx, store, tickTick, cfg.EvaluationRetention, cfg.EvaluationPollInterval, logger)
+	}()
+	go func() {
+		defer background.Done()
 		if err := worker.Run(ctx); err != nil {
 			logger.Error("worker stopped", "error", err)
 		}

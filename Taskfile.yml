@@ -54,6 +54,79 @@ tasks:
     cmds:
       - INDEX01_RUN_LIVE_DEEPSEEK_TEST=1 go test -run '^TestDeepSeekLiveSyntheticContract$' -count=1 -v
 
+  eval:
+    desc: Run both offline evaluation suites and write separate JSON reports
+    env:
+      INDEX01_RUN_LIVE_EVALUATION: "0"
+      INDEX01_RUN_LIVE_CORPUS_EVALUATION: "0"
+      INDEX01_EVAL_CORPUS: ""
+      INDEX01_EVAL_CORPUS_MODE: replay
+      INDEX01_EVAL_REPORT_DIR: dist/evaluation
+    cmds:
+      - go test -run '^TestEvaluation' -count=1 -v .
+
+  eval-live:
+    desc: Run bounded synthetic DeepSeek trials and write a JSON report
+    requires:
+      vars: [TRIALS, CALL_BUDGET]
+    env:
+      INDEX01_RUN_LIVE_EVALUATION: "1"
+      INDEX01_EVAL_REPORT_DIR: dist/evaluation
+    cmds:
+      - INDEX01_EVAL_TRIALS={{.TRIALS | shellQuote}} INDEX01_EVAL_CALL_BUDGET={{.CALL_BUDGET | shellQuote}} go test -run '^TestEvaluationLive$' -count=1 -v .
+
+  eval-routing-feedback:
+    desc: Compare private TickTick snapshots and record list-move candidates
+    requires:
+      vars: [PREVIOUS, CURRENT, OUTPUT]
+    cmds:
+      - go run ./scripts/routing-feedback --previous {{.PREVIOUS | shellQuote}} --current {{.CURRENT | shellQuote}} --out {{.OUTPUT | shellQuote}}
+
+  eval-corpus-build:
+    desc: Convert a private TickTick snapshot or feedback ledger to evaluation data
+    requires:
+      vars: [INPUT, OUTPUT]
+    cmds:
+      - go run ./scripts/eval-corpus --input {{.INPUT | shellQuote}} --out {{.OUTPUT | shellQuote}} {{if .CONFIG}}--config {{.CONFIG | shellQuote}}{{end}}
+
+  eval-corpus:
+    desc: Audit private corpus coverage without model calls
+    requires:
+      vars: [CORPUS, REPORT_DIR]
+    env:
+      INDEX01_EVAL_CORPUS: '{{.CORPUS}}'
+      INDEX01_EVAL_CORPUS_MODE: audit
+      INDEX01_RUN_LIVE_CORPUS_EVALUATION: "0"
+      INDEX01_EVAL_REPORT_DIR: '{{.REPORT_DIR}}'
+    cmds:
+      - go test -run '^TestEvaluationFeedbackCorpus$' -count=1 -v .
+
+  eval-corpus-replay:
+    desc: Evaluate independent saved model outputs against corpus routing labels
+    requires:
+      vars: [CORPUS, REPORT_DIR]
+    env:
+      INDEX01_EVAL_CORPUS: '{{.CORPUS}}'
+      INDEX01_EVAL_CORPUS_MODE: replay
+      INDEX01_RUN_LIVE_CORPUS_EVALUATION: "0"
+      INDEX01_EVAL_REPORT_DIR: '{{.REPORT_DIR}}'
+    cmds:
+      - go test -run '^TestEvaluationFeedbackCorpus$' -count=1 -v .
+
+  eval-corpus-live:
+    desc: Evaluate eligible original transcripts with bounded live model trials
+    requires:
+      vars: [CORPUS, REPORT_DIR, TRIALS, CALL_BUDGET]
+    env:
+      INDEX01_EVAL_CORPUS: '{{.CORPUS}}'
+      INDEX01_EVAL_CORPUS_MODE: live
+      INDEX01_RUN_LIVE_CORPUS_EVALUATION: "1"
+      INDEX01_EVAL_TRIALS: '{{.TRIALS}}'
+      INDEX01_EVAL_CALL_BUDGET: '{{.CALL_BUDGET}}'
+      INDEX01_EVAL_REPORT_DIR: '{{.REPORT_DIR}}'
+    cmds:
+      - go test -run '^TestEvaluationFeedbackCorpus$' -count=1 -v .
+
   release-artifacts:
     desc: Build the four cross-platform release artifacts
     requires:

@@ -17,6 +17,9 @@ const defaultMaxBodyBytes int64 = 64 << 20
 const minWebhookTokenBytes = 32
 
 type Config struct {
+	AllowLegacyWebhookToken  bool
+	EvaluationRetention      time.Duration
+	EvaluationPollInterval   time.Duration
 	Token                    string
 	DBPath                   string
 	ListenAddr               string
@@ -45,7 +48,14 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		TickTickNoteProjectID:    getenv("INDEX01_TICKTICK_NOTE_PROJECT_ID"),
 		WorkerOwner:              getenv("INDEX01_WORKER_OWNER"),
 	}
-	if err := validateWebhookToken(cfg.Token); err != nil {
+	if raw := getenv("INDEX01_ALLOW_LEGACY_WEBHOOK_TOKEN"); raw != "" {
+		legacy, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("INDEX01_ALLOW_LEGACY_WEBHOOK_TOKEN must be a boolean")
+		}
+		cfg.AllowLegacyWebhookToken = legacy
+	}
+	if err := validateWebhookTokenWithLegacy(cfg.Token, cfg.AllowLegacyWebhookToken); err != nil {
 		return Config{}, err
 	}
 	if strings.TrimSpace(cfg.DeepSeekToken) == "" {
@@ -73,6 +83,23 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		return Config{}, fmt.Errorf("INDEX01_TIME_ZONE is invalid")
 	}
 	cfg.TimeZone = normalizedTimeZone
+	if raw := getenv("INDEX01_EVALUATION_RETENTION_DAYS"); raw != "" {
+		days, err := strconv.Atoi(raw)
+		if err != nil || days < 0 || days > 365 {
+			return Config{}, fmt.Errorf("INDEX01_EVALUATION_RETENTION_DAYS must be an integer from 0 to 365")
+		}
+		cfg.EvaluationRetention = time.Duration(days) * 24 * time.Hour
+	}
+	if cfg.EvaluationRetention > 0 {
+		cfg.EvaluationPollInterval = 6 * time.Hour
+	}
+	if raw := getenv("INDEX01_EVALUATION_POLL_INTERVAL"); raw != "" {
+		interval, err := time.ParseDuration(raw)
+		if err != nil || (interval != 0 && (interval < time.Hour || interval > 7*24*time.Hour)) {
+			return Config{}, fmt.Errorf("INDEX01_EVALUATION_POLL_INTERVAL must be 0 or a duration from 1h to 168h")
+		}
+		cfg.EvaluationPollInterval = interval
+	}
 	if strings.TrimSpace(cfg.TickTickToken) == "" {
 		return Config{}, fmt.Errorf("INDEX01_TICKTICK_TOKEN is required")
 	}
@@ -110,11 +137,21 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 }
 
 func validateWebhookToken(token string) error {
+	return validateWebhookTokenWithLegacy(token, false)
+}
+
+// Legacy mode preserves an existing sender credential during a coordinated upgrade.
+// New deployments retain the default 32-byte requirement.
+func validateWebhookTokenWithLegacy(token string, legacy bool) error {
 	if strings.TrimSpace(token) == "" {
 		return fmt.Errorf("INDEX01_WEBHOOK_TOKEN is required")
 	}
-	if len(token) < minWebhookTokenBytes {
-		return fmt.Errorf("INDEX01_WEBHOOK_TOKEN must be at least %d bytes", minWebhookTokenBytes)
+	minimum := minWebhookTokenBytes
+	if legacy {
+		minimum = 14
+	}
+	if len(token) < minimum {
+		return fmt.Errorf("INDEX01_WEBHOOK_TOKEN must be at least %d bytes", minimum)
 	}
 	if strings.IndexFunc(token, unicode.IsSpace) >= 0 {
 		return fmt.Errorf("INDEX01_WEBHOOK_TOKEN must not contain whitespace")

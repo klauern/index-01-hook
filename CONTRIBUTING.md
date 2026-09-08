@@ -54,6 +54,9 @@ check cannot run, state the reason in the pull request.
 
 Contributors must not run live tests unless maintainers approve them first.
 
+Run `task eval` for the offline evaluation suites and separate JSON reports.
+See [the evaluation contract](docs/evaluation.md) for scenarios, scoring rules, and opt-in model trials.
+
 ## Continuous integration
 
 The CI workflow has four checks: `test`, `container`, `manifests`, and `security`.

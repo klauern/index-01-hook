@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -17,8 +18,9 @@ import (
 var migrationFiles embed.FS
 
 type Store struct {
-	db  *sql.DB
-	now func() time.Time
+	evaluationRetention atomic.Int64
+	db                  *sql.DB
+	now                 func() time.Time
 }
 
 type RecordingInput struct {
@@ -195,6 +197,11 @@ func (s *Store) SaveRecording(ctx context.Context, input RecordingInput) (Receip
 	}
 
 	if strings.TrimSpace(input.Transcription) != "" {
+		if receiveCount == 1 {
+			if err := s.captureEvaluationInput(ctx, tx, id, nowTime); err != nil {
+				return Receipt{}, err
+			}
+		}
 		if _, err := tx.ExecContext(ctx, `
 			INSERT INTO extraction_jobs (
 				recording_id, state, attempt_count, next_attempt_at_ms,

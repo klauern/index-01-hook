@@ -54,6 +54,11 @@ func executeWithInput(logger *slog.Logger, args []string, getenv func(string) st
 	if len(args) == 0 || len(args) == 1 && args[0] == "serve" {
 		return runWithEnvironment(logger, getenv)
 	}
+	if len(args) == 1 && args[0] == "validate-config" {
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		return runValidateConfig(ctx, getenv, http.DefaultTransport, output)
+	}
 	if len(args) == 1 && args[0] == "dashboard" {
 		return runDashboard(logger, getenv)
 	}
@@ -71,6 +76,9 @@ func executeWithInput(logger *slog.Logger, args []string, getenv func(string) st
 	}
 	if len(args) == 1 && args[0] == "ticktick-projects" {
 		return runTickTickProjects(context.Background(), getenv("INDEX01_TICKTICK_TOKEN"), http.DefaultTransport, output)
+	}
+	if len(args) == 1 && (args[0] == "evaluation-status" || args[0] == "evaluation-collect") || len(args) == 2 && args[0] == "evaluation-export" {
+		return runEvaluationOperator(context.Background(), args, getenv, output)
 	}
 	if len(args) == 1 && args[0] == "purge-expired" {
 		if getenv("INDEX01_PURGE_CONFIRM") != "purge-expired-recordings" {
@@ -114,7 +122,7 @@ func executeWithInput(logger *slog.Logger, args []string, getenv func(string) st
 		return json.NewEncoder(output).Encode(fileOperationResult{State: "restored"})
 	}
 	if len(args) != 2 {
-		return fmt.Errorf("usage: index-01-hook [serve|dashboard|version|healthcheck|maintenance|purge-expired|ticktick-projects|status ID|retry-recording ID|retry-delivery ID|backup PATH|restore PATH]")
+		return fmt.Errorf("usage: index-01-hook [serve|validate-config|dashboard|version|healthcheck|maintenance|purge-expired|ticktick-projects|evaluation-status|evaluation-collect|evaluation-export PATH|status ID|retry-recording ID|retry-delivery ID|backup PATH|restore PATH]")
 	}
 	if args[0] != "status" && args[0] != "retry-recording" && args[0] != "retry-delivery" && args[0] != "backup" {
 		return fmt.Errorf("unknown operator command %q", args[0])

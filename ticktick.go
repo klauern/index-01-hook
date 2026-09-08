@@ -127,11 +127,10 @@ type TickTickReconciliationInput struct {
 }
 
 type tickTickProject struct {
-	ID            string          `json:"id"`
-	Closed        bool            `json:"closed"`
-	Kind          string          `json:"kind"`
-	Permission    json.RawMessage `json:"permission"`
-	closedPresent bool
+	ID         string          `json:"id"`
+	Closed     bool            `json:"closed"`
+	Kind       string          `json:"kind"`
+	Permission json.RawMessage `json:"permission"`
 }
 
 func (p *tickTickProject) UnmarshalJSON(data []byte) error {
@@ -147,8 +146,8 @@ func (p *tickTickProject) UnmarshalJSON(data []byte) error {
 	p.ID = fields.ID
 	p.Kind = fields.Kind
 	p.Permission = fields.Permission
-	p.closedPresent = fields.Closed != nil
-	if !p.closedPresent {
+	// The Open API can omit closed for an open project.
+	if fields.Closed == nil {
 		p.Closed = false
 		return nil
 	}
@@ -266,9 +265,6 @@ func (c *TickTickClient) ValidateRouting(ctx context.Context, config TickTickRou
 		if defaultID == tickTickInboxProjectID && strings.EqualFold(strings.TrimSpace(project.ID), tickTickInboxProjectID) {
 			continue
 		}
-		if !project.closedPresent {
-			return nil, malformedError("list projects", "project response has no closed field")
-		}
 		if strings.TrimSpace(project.ID) == "" {
 			return nil, malformedError("list projects", "project response contains an empty ID")
 		}
@@ -279,7 +275,7 @@ func (c *TickTickClient) ValidateRouting(ctx context.Context, config TickTickRou
 	}
 	if defaultID == tickTickInboxProjectID {
 		byID[tickTickInboxProjectID] = tickTickProject{
-			ID: tickTickInboxProjectID, Kind: "TASK", closedPresent: true,
+			ID: tickTickInboxProjectID, Kind: "TASK",
 		}
 	}
 	if err := validateTickTickDestination(byID, defaultID, "default", "TASK"); err != nil {
@@ -671,9 +667,6 @@ func (c *TickTickClient) ListProjectSummaries(ctx context.Context) ([]TickTickPr
 	summaries := make([]TickTickProjectSummary, 0, len(projects))
 	seen := make(map[string]struct{}, len(projects))
 	for _, project := range projects {
-		if !project.closedPresent {
-			return nil, malformedError("list project summaries", "project response has no closed field")
-		}
 		id := project.ID
 		if id != strings.TrimSpace(id) || !safeProviderIdentifier(id) {
 			return nil, malformedError("list project summaries", "project identifier is invalid")

@@ -117,6 +117,8 @@ test uses synthetic input and is not part of the normal test suite.
 
 ## References
 
+- [Private evaluation capture](docs/evaluation-capture.md): retain original inputs, observe list moves, and export evaluation evidence.
+
 - [Architecture](docs/architecture.md): data flow, queue states, leases, and retention.
 - [Configuration](docs/configuration.md): application and deployment inputs.
 - [API](docs/api.md): endpoints, authentication, limits, and responses.
@@ -132,3 +134,5 @@ test uses synthetic input and is not part of the normal test suite.
 - [Contributing](CONTRIBUTING.md): contributor workflow and quality checks.
 - [Third-party notices](THIRD_PARTY_NOTICES.md): dependency and artifact notices.
 - [License](LICENSE): MIT License terms.
+
+See [configuration preflight](docs/configuration-preflight.md) before replacing a receiver.

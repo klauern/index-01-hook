@@ -130,7 +130,7 @@ func TestTickTickValidateRoutingAlwaysUsesVirtualInbox(t *testing.T) {
 	}
 }
 
-func TestTickTickValidateRoutingRejectsProjectsWithoutClosed(t *testing.T) {
+func TestTickTickValidateRoutingAcceptsProjectsWithoutClosed(t *testing.T) {
 	tests := []struct {
 		name     string
 		projects string
@@ -164,14 +164,52 @@ func TestTickTickValidateRoutingRejectsProjectsWithoutClosed(t *testing.T) {
 			client := fixtureTickTickClient(t, func(*http.Request) (*http.Response, error) {
 				return fixtureResponse(http.StatusOK, test.projects), nil
 			})
-			_, err := client.ValidateRouting(context.Background(), test.config)
-			if tickTickErrorKind(err) != TickTickErrorMalformed {
-				t.Fatalf("ValidateRouting() error = %v, kind = %q", err, tickTickErrorKind(err))
+			if _, err := client.ValidateRouting(context.Background(), test.config); err != nil {
+				t.Fatalf("ValidateRouting() error = %v", err)
 			}
-			for _, privateValue := range []string{"private-alias", "private-notes", testTickTickToken} {
-				if strings.Contains(err.Error(), privateValue) {
-					t.Fatalf("routing error contains private value %q: %v", privateValue, err)
+		})
+	}
+}
+
+func TestTickTickProjectsRejectMalformedClosed(t *testing.T) {
+	for _, value := range []string{"null", `"false"`, "0", "{}", "[]"} {
+		t.Run(value, func(t *testing.T) {
+			client := fixtureTickTickClient(t, func(*http.Request) (*http.Response, error) {
+				return fixtureResponse(http.StatusOK, `[
+					{"id":"private-project","closed":`+value+`,"kind":"TASK","permission":null},
+					{"id":"notes","kind":"NOTE","permission":null}
+				]`), nil
+			})
+			_, routingErr := client.ValidateRouting(context.Background(), TickTickRoutingConfig{DefaultProjectID: "private-project", NoteProjectID: "notes"})
+			_, summaryErr := client.ListProjectSummaries(context.Background())
+			for _, err := range []error{routingErr, summaryErr} {
+				if tickTickErrorKind(err) != TickTickErrorMalformed {
+					t.Fatalf("invalid closed value accepted: error=%v", err)
 				}
+				if strings.Contains(err.Error(), "private-project") || strings.Contains(err.Error(), testTickTickToken) {
+					t.Fatalf("error exposes private data: %v", err)
+				}
+			}
+		})
+	}
+}
+
+func TestTickTickMissingClosedDoesNotAllowReadOnlyProjects(t *testing.T) {
+	for _, permission := range []string{"read", "comment"} {
+		t.Run(permission, func(t *testing.T) {
+			client := fixtureTickTickClient(t, func(*http.Request) (*http.Response, error) {
+				return fixtureResponse(http.StatusOK, `[
+					{"id":"default","kind":"TASK","permission":"`+permission+`"},
+					{"id":"notes","kind":"NOTE","permission":null}
+				]`), nil
+			})
+			_, err := client.ValidateRouting(context.Background(), TickTickRoutingConfig{DefaultProjectID: "default", NoteProjectID: "notes"})
+			if tickTickErrorKind(err) != TickTickErrorConfiguration {
+				t.Fatalf("read-only destination accepted: error=%v", err)
+			}
+			summaries, err := client.ListProjectSummaries(context.Background())
+			if err != nil || len(summaries) != 2 || summaries[0].Writable {
+				t.Fatalf("unexpected writable summary: summaries=%+v error=%v", summaries, err)
 			}
 		})
 	}
@@ -731,18 +769,18 @@ func TestTickTickListProjectSummariesClassifiesAuthenticationAndMalformedRespons
 	}
 }
 
-func TestTickTickListProjectSummariesRejectsMissingClosed(t *testing.T) {
+func TestTickTickListProjectSummariesAcceptsMissingClosed(t *testing.T) {
 	client := fixtureTickTickClient(t, func(*http.Request) (*http.Response, error) {
 		return fixtureResponse(http.StatusOK, `[{
 			"id":"private-project-id","kind":"TASK","permission":null
 		}]`), nil
 	})
-	_, err := client.ListProjectSummaries(context.Background())
-	if tickTickErrorKind(err) != TickTickErrorMalformed {
-		t.Fatalf("ListProjectSummaries() error = %v, kind = %q", err, tickTickErrorKind(err))
+	summaries, err := client.ListProjectSummaries(context.Background())
+	if err != nil {
+		t.Fatalf("ListProjectSummaries() error = %v", err)
 	}
-	if strings.Contains(err.Error(), "private-project-id") {
-		t.Fatalf("error exposes project identifier: %v", err)
+	if len(summaries) != 1 || summaries[0].Closed || !summaries[0].Writable {
+		t.Fatalf("unexpected project summary: %+v", summaries)
 	}
 }
 

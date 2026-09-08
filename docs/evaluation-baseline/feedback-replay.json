@@ -1,0 +1,204 @@
+{
+  "format_version": 1,
+  "fixture_version": 1,
+  "mode": "replay",
+  "source": {
+    "kind": "synthetic",
+    "sha256": "dc5e79cffadae0e1fe545b56b3acf96cdde7c10ada2b6f82f390f473e1f1c7e7",
+    "collected_at": "2026-09-08T12:00:00Z"
+  },
+  "corpus_sha256": "88f270d88fce00d7b823c52da3885a7f01cfd7025d041d8603e933f3dc7ddf2c",
+  "prompt_sha256": "ee69ca7c5d3f37f02cc186455ce2203e8cdd45c65048c8c215ca1cfb1fb2e2f2",
+  "model": "deepseek-v4-flash",
+  "routing": {
+    "clock": "2026-09-08T12:00:00Z",
+    "time_zone": "America/Chicago",
+    "aliases": {
+      "errands": "project-errands",
+      "home": "project-home",
+      "work": "project-work"
+    },
+    "default_project_id": "project-inbox",
+    "note_project_id": "project-notes"
+  },
+  "claim": "Saved-output replay checks production extraction parsing and routing. It does not measure model accuracy.",
+  "identity_limitation": "Items use exact normalized title and kind identity. Paraphrases can fail. This is not semantic grading.",
+  "generation_calls": 0,
+  "judge_calls": 0,
+  "call_budget": 0,
+  "trials": 1,
+  "counts": {
+    "error": 0,
+    "fail": 0,
+    "pass": 6,
+    "skip": 0,
+    "unsupported": 0
+  },
+  "coverage": {
+    "recordings": 6,
+    "targets": 8,
+    "ready": 6,
+    "blocked": 0,
+    "replay_ready": 6,
+    "input_provenance": {
+      "synthetic": 6
+    },
+    "target_label_status": {
+      "approved": 7,
+      "inferred": 1
+    },
+    "blockers": {},
+    "splits": {
+      "development": {
+        "recordings": 3,
+        "ready": 3,
+        "blocked": 0,
+        "replay_ready": 3
+      },
+      "held_out": {
+        "recordings": 3,
+        "ready": 3,
+        "blocked": 0,
+        "replay_ready": 3
+      }
+    }
+  },
+  "results": [
+    {
+      "id": "corrected-home-route",
+      "split": "development",
+      "input_provenance": "synthetic",
+      "trial": 1,
+      "status": "pass",
+      "observed_routes": [
+        {
+          "title": "Repair the garden gate",
+          "kind": "task",
+          "project_id": "project-home"
+        }
+      ],
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": null,
+        "provider_models": null,
+        "usage": null
+      }
+    },
+    {
+      "id": "explicit-reviewed-work-override",
+      "split": "development",
+      "input_provenance": "synthetic",
+      "trial": 1,
+      "status": "pass",
+      "observed_routes": [
+        {
+          "title": "Renew the office maintenance contract",
+          "kind": "task",
+          "project_id": "project-work"
+        }
+      ],
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": null,
+        "provider_models": null,
+        "usage": null
+      }
+    },
+    {
+      "id": "mixed-sibling-routes",
+      "split": "development",
+      "input_provenance": "synthetic",
+      "trial": 1,
+      "status": "pass",
+      "observed_routes": [
+        {
+          "title": "Send the budget",
+          "kind": "task",
+          "project_id": "project-work"
+        },
+        {
+          "title": "Replace the porch light",
+          "kind": "task",
+          "project_id": "project-home"
+        },
+        {
+          "title": "Porch bulb specification",
+          "kind": "note",
+          "project_id": "project-notes"
+        }
+      ],
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": null,
+        "provider_models": null,
+        "usage": null
+      }
+    },
+    {
+      "id": "unchanged-reviewed-work-route",
+      "split": "held_out",
+      "input_provenance": "synthetic",
+      "trial": 1,
+      "status": "pass",
+      "observed_routes": [
+        {
+          "title": "Review the quarterly forecast",
+          "kind": "task",
+          "project_id": "project-work"
+        }
+      ],
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": null,
+        "provider_models": null,
+        "usage": null
+      }
+    },
+    {
+      "id": "unrelated-errand-counterexample",
+      "split": "held_out",
+      "input_provenance": "synthetic",
+      "trial": 1,
+      "status": "pass",
+      "observed_routes": [
+        {
+          "title": "Pick up the prescription",
+          "kind": "task",
+          "project_id": "project-errands"
+        }
+      ],
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": null,
+        "provider_models": null,
+        "usage": null
+      }
+    },
+    {
+      "id": "unassigned-task-uses-inbox",
+      "split": "held_out",
+      "input_provenance": "synthetic",
+      "trial": 1,
+      "status": "pass",
+      "observed_routes": [
+        {
+          "title": "Check replacement filter size",
+          "kind": "task",
+          "project_id": "project-inbox"
+        }
+      ],
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": null,
+        "provider_models": null,
+        "usage": null
+      }
+    }
+  ]
+}

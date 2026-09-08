@@ -71,6 +71,7 @@ type QueuedTask struct {
 }
 
 type FrozenExtraction struct {
+	Evidence           *ExtractionEvidence `json:"evidence,omitempty"`
 	Provider           string
 	Model              string
 	ProviderResponseID string
@@ -233,6 +234,9 @@ func (s *Store) FreezeExtraction(ctx context.Context, recordingID int64, owner s
 	}
 	if err := requireOneRow(result); err != nil {
 		return fmt.Errorf("extraction is already frozen: %w", err)
+	}
+	if err := s.captureEvaluationExtraction(ctx, tx, recordingID, frozen, now); err != nil {
+		return err
 	}
 	for index, item := range items {
 		tags, _ := normalizeTickTickTags(item.Tags)
@@ -452,6 +456,9 @@ func (s *Store) CompleteDelivery(ctx context.Context, completion DeliveryComplet
 		WHERE id = ?`, completion.Classification, strings.TrimSpace(completion.TickTickTaskID),
 		strings.TrimSpace(completion.TickTickProjectID), timestamp(now), timestamp(now), completion.TaskID); err != nil {
 		return fmt.Errorf("complete delivery: %w", err)
+	}
+	if err := s.captureEvaluationDelivery(ctx, tx, completion.TaskID, now); err != nil {
+		return err
 	}
 	var remaining int
 	if err := tx.QueryRowContext(ctx, `

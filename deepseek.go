@@ -54,17 +54,19 @@ func (e *DeepSeekError) Error() string {
 }
 
 type DeepSeekClientConfig struct {
-	Model    string
-	TimeZone string
+	Model           string
+	TimeZone        string
+	CaptureEvidence bool
 }
 
 type DeepSeekClient struct {
-	token      string
-	model      string
-	timeZone   string
-	httpClient *http.Client
-	now        func() time.Time
-	location   *time.Location
+	captureEvidence bool
+	token           string
+	model           string
+	timeZone        string
+	httpClient      *http.Client
+	now             func() time.Time
+	location        *time.Location
 }
 
 type deepSeekRequest struct {
@@ -147,9 +149,10 @@ func NewDeepSeekClientWithConfig(token string, transport http.RoundTripper, now 
 		return nil, deepSeekMalformed("configure client", "time zone is invalid")
 	}
 	return &DeepSeekClient{
-		token:    token,
-		model:    model,
-		timeZone: timeZone,
+		captureEvidence: config.CaptureEvidence,
+		token:           token,
+		model:           model,
+		timeZone:        timeZone,
 		httpClient: &http.Client{
 			Transport: transport,
 			Timeout:   deepSeekRequestTimeout,
@@ -173,10 +176,11 @@ func (c *DeepSeekClient) Extract(ctx context.Context, transcription string, proj
 	if err != nil {
 		return FrozenExtraction{}, err
 	}
+	processingClock := c.now().In(c.location)
 	payload := deepSeekRequest{
 		Model: c.model,
 		Input: []deepSeekMessage{
-			{Role: "system", Content: deepSeekSystemPrompt(c.now().In(c.location), c.timeZone, aliases)},
+			{Role: "system", Content: deepSeekSystemPrompt(processingClock, c.timeZone, aliases)},
 			{Role: "user", Content: transcription},
 		},
 		Text: deepSeekText{Format: deepSeekFormat{
@@ -227,7 +231,20 @@ func (c *DeepSeekClient) Extract(ctx context.Context, transcription string, proj
 	if err != nil {
 		return FrozenExtraction{}, err
 	}
+	var evidence *ExtractionEvidence
+	if c.captureEvidence {
+		schema, err := json.Marshal(payload.Text.Format.Schema)
+		if err != nil {
+			return FrozenExtraction{}, deepSeekMalformed("capture evidence", "schema cannot be encoded")
+		}
+		evidence = &ExtractionEvidence{
+			Clock: processingClock, TimeZone: c.timeZone, SystemPrompt: payload.Input[0].Content,
+			PromptSHA256: evidenceHash([]byte(payload.Input[0].Content)), Schema: schema,
+			SchemaSHA256: evidenceHash(schema), SavedOutput: json.RawMessage(outputText), BuildCommit: commit,
+		}
+	}
 	return FrozenExtraction{
+		Evidence:           evidence,
 		Provider:           "deepseek",
 		Model:              c.model,
 		ProviderResponseID: envelope.ID,

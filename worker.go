@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"strings"
 	"time"
+
+	"github.com/klauern/index-01-hook/internal/evalcorpus"
 )
 
 type ExtractionProvider interface {
@@ -20,6 +22,7 @@ type DeliveryProvider interface {
 }
 
 type WorkerConfig struct {
+	EvidenceRouting       *evalcorpus.RoutingConfig
 	Owner                 string
 	TimeZone              string
 	LeaseDuration         time.Duration
@@ -144,6 +147,16 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 	extraction, err := w.extractor.Extract(ctx, claim.Transcription, w.config.ProjectAliases)
 	w.recordProviderLatency(ctx, "deepseek", time.Since(started), err != nil)
 	if err == nil {
+		if extraction.Evidence != nil && w.config.EvidenceRouting != nil {
+			routing := *w.config.EvidenceRouting
+			routing.Clock = extraction.Evidence.Clock.Format(time.RFC3339Nano)
+			routing.TimeZone = extraction.Evidence.TimeZone
+			routing.Aliases = make(map[string]string, len(w.config.EvidenceRouting.Aliases))
+			for alias, project := range w.config.EvidenceRouting.Aliases {
+				routing.Aliases[alias] = project
+			}
+			extraction.Evidence.Routing = &routing
+		}
 		return w.store.FreezeExtraction(ctx, claim.RecordingID, w.config.Owner, extraction)
 	}
 	w.logDeepSeekFailure(claim.RecordingID, err)

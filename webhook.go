@@ -71,6 +71,7 @@ type parsedWebhook struct {
 	client           string
 	trigger          string
 	transcription    string
+	isTest           bool
 	audioPresent     bool
 	audioFilename    string
 	audioByteCount   int64
@@ -123,6 +124,13 @@ func (s *webhookServer) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fingerprint := fingerprintWebhook(payload)
+	if payload.isTest {
+		s.logger.Info("received webhook test event")
+		writeJSON(w, http.StatusOK, struct {
+			State string `json:"state"`
+		}{State: "test_received"})
+		return
+	}
 	receipt, err := s.store.SaveRecording(r.Context(), RecordingInput{
 		RecordedAtMillis: payload.recordedAtMillis,
 		Client:           payload.client,
@@ -214,6 +222,7 @@ func parseWebhook(r *http.Request) (parsedWebhook, error) {
 	var payload parsedWebhook
 	seen := make(map[string]bool)
 	var recordedAt string
+	var testValue string
 	partCount := 0
 	for {
 		part, err := reader.NextPart()
@@ -234,7 +243,7 @@ func parseWebhook(r *http.Request) (parsedWebhook, error) {
 		}
 		name := part.FormName()
 		switch name {
-		case "recordedAt", "client", "transcription":
+		case "recordedAt", "client", "transcription", "test":
 			if seen[name] {
 				_ = part.Close()
 				return parsedWebhook{}, newWebhookRejectionError("duplicate_field", fmt.Errorf("duplicate %s field", name))
@@ -246,6 +255,8 @@ func parseWebhook(r *http.Request) (parsedWebhook, error) {
 				limit = maxWebhookClientBytes
 			case "transcription":
 				limit = deepSeekMaxInputBytes
+			case "test":
+				limit = len("true")
 			}
 			value, readErr := readWebhookField(part, limit)
 			closeErr := part.Close()
@@ -262,6 +273,8 @@ func parseWebhook(r *http.Request) (parsedWebhook, error) {
 				payload.client = strings.TrimSpace(string(value))
 			case "transcription":
 				payload.transcription = string(value)
+			case "test":
+				testValue = string(value)
 			}
 		case "audio":
 			if seen[name] {
@@ -309,7 +322,33 @@ func parseWebhook(r *http.Request) (parsedWebhook, error) {
 	if strings.ContainsAny(payload.trigger, "\r\n\x00") {
 		return parsedWebhook{}, newWebhookRejectionError("invalid_trigger", fmt.Errorf("trigger header is invalid"))
 	}
+	if seen["test"] || len(r.Header.Values("X-Index-Test")) > 0 || payload.trigger == "test-event" {
+		var reason string
+		switch {
+		case !seen["test"] || testValue != "true":
+			reason = "test_field_invalid"
+		case !singleWebhookHeader(r, "X-Index-Test", "true"):
+			reason = "test_header_invalid"
+		case !singleWebhookHeader(r, "X-Index-Trigger", "test-event"):
+			reason = "test_trigger_invalid"
+		case len(r.Header.Values("X-Index-Webhook-Version")) > 0 && !singleWebhookHeader(r, "X-Index-Webhook-Version", "1"):
+			reason = "test_version_invalid"
+		case payload.client != "ring":
+			reason = "test_client_invalid"
+		case payload.audioPresent:
+			reason = "test_audio_present"
+		}
+		if reason != "" {
+			return parsedWebhook{}, newWebhookRejectionError(reason, fmt.Errorf("test event markers are invalid"))
+		}
+		payload.isTest = true
+	}
 	return payload, nil
+}
+
+func singleWebhookHeader(r *http.Request, name, expected string) bool {
+	values := r.Header.Values(name)
+	return len(values) == 1 && values[0] == expected
 }
 
 func validateWebhookHeaders(r *http.Request) error {
