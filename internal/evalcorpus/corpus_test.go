@@ -399,6 +399,26 @@ func TestStrictCorpusAndRoutingValidation(t *testing.T) {
 	}
 }
 
+func TestImportDeduplicatesUnresolvedTaskBlockers(t *testing.T) {
+	row := fixtureCandidate("one", "home", strings.Repeat("a", 64), 0)
+	data := change(fixtureLedger([]json.RawMessage{row}, nil), func(m map[string]any) {
+		m["findings"] = []any{
+			map[string]any{"task_id": "missing-one", "status": "not_observed"},
+			map[string]any{"task_id": "missing-two", "status": "not_observed"},
+		}
+	})
+	c := mustImport(t, data)
+	count := 0
+	for _, blocker := range c.Examples[0].Blockers {
+		if blocker == "source_unresolved_task_identity" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("unresolved identity blocker count=%d", count)
+	}
+}
+
 func TestImportRecordingContext(t *testing.T) {
 	row := original(approvedCandidate(fixtureCandidate("one", "home", strings.Repeat("a", 64), 0), "home"), "Synthetic original")
 	row = change(row, func(m map[string]any) {

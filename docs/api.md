@@ -49,11 +49,11 @@ The receiver requires these markers together:
 - Exactly one `X-Index-Test: true` header.
 - Exactly one `X-Index-Trigger: test-event` header.
 - `client=ring`, a valid `recordedAt`, and no audio part.
+- Multipart field `transcription=Index webhook test event`.
 
 `X-Index-Webhook-Version` is optional. If present, it must appear once with value
 `1`. Released Pebble versions omit this header. Newer app code sends it.
 
-The published test payload includes `transcription=Index webhook test event`.
 Authentication, multipart validation, and intake limits still apply. Missing,
 conflicting, or duplicate test markers are rejected. A version header alone
 does not make an ordinary recording a test event.

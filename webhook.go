@@ -337,6 +337,8 @@ func parseWebhook(r *http.Request) (parsedWebhook, error) {
 			reason = "test_client_invalid"
 		case payload.audioPresent:
 			reason = "test_audio_present"
+		case !seen["transcription"] || payload.transcription != "Index webhook test event":
+			reason = "test_transcription_invalid"
 		}
 		if reason != "" {
 			return parsedWebhook{}, newWebhookRejectionError(reason, fmt.Errorf("test event markers are invalid"))

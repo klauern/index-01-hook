@@ -120,6 +120,27 @@ func TestWebhookPebbleTestEventRejectsConflictingMarkers(t *testing.T) {
 	}
 }
 
+func TestWebhookPebbleTestEventRejectsInvalidTranscription(t *testing.T) {
+	for _, transcription := range []string{"", "Synthetic ordinary recording"} {
+		t.Run(transcription, func(t *testing.T) {
+			store, handler, _ := newTestApp(t, defaultMaxBodyBytes)
+			parts := []multipartPart{{name: "test", value: "true"}, {name: "recordedAt", value: "1700000000000"}, {name: "client", value: "ring"}}
+			if transcription != "" {
+				parts = append(parts, multipartPart{name: "transcription", value: transcription})
+			}
+			request := multipartRequest(t, "", parts)
+			request.Header.Set("X-Index-Test", "true")
+			request.Header.Set("X-Index-Trigger", "test-event")
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("invalid transcription status=%d", response.Code)
+			}
+			assertNoWebhookTestWrites(t, store)
+		})
+	}
+}
+
 func TestWebhookPebbleTestEventValidatesWholeMultipart(t *testing.T) {
 	for _, name := range []string{"missing field", "invalid field", "duplicate field", "audio", "invalid recordedAt", "wrong client", "body limit", "field limit"} {
 		t.Run(name, func(t *testing.T) {

@@ -1,7 +1,10 @@
 # Evaluation contract
 
 The evaluation core uses Go tests, `go-cmp` v0.7.0, and repository-owned JSON fixtures.
-All evaluation code is in `evaluation_*_test.go`. It does not enter the application binary.
+The scorers and runners in `evaluation_*_test.go` are test-only.
+`internal/evalcorpus` provides shared corpus validation and import logic for tests, helper commands, and application exports.
+The helper commands in `scripts/eval-corpus` and `scripts/routing-feedback` build separate binaries.
+The application includes evidence capture, retention, collection, and export code.
 See [the framework decision](evaluation-framework-decision.md) for source evidence and selection reasons.
 
 ## Run the suites

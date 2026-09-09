@@ -7,6 +7,7 @@ import (
 	"errors"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -385,6 +386,7 @@ func Import(data []byte) (Corpus, error) {
 	for _, e := range groups {
 		sort.Slice(e.Targets, func(i, j int) bool { return e.Targets[i].ItemIndex < e.Targets[j].ItemIndex })
 		sort.Strings(e.Blockers)
+		e.Blockers = slices.Compact(e.Blockers)
 		corpus.Examples = append(corpus.Examples, *e)
 	}
 	sort.Slice(corpus.Examples, func(i, j int) bool { return corpus.Examples[i].ID < corpus.Examples[j].ID })
