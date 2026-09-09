@@ -98,8 +98,8 @@ func TestDeliveryQueueFreshDatabaseAndLegacyUpgrade(t *testing.T) {
 		if err := store.db.QueryRow(`SELECT max(version) FROM schema_migrations`).Scan(&version); err != nil {
 			t.Fatalf("query migration version: %v", err)
 		}
-		if version != 6 {
-			t.Fatalf("migration version = %d, want 6", version)
+		if version != 8 {
+			t.Fatalf("migration version = %d, want 8", version)
 		}
 		for _, table := range []string{"extraction_jobs", "extractions", "extraction_attempts", "delivery_tasks", "delivery_attempts", "worker_health"} {
 			var count int

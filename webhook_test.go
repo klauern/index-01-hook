@@ -17,9 +17,175 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 const testToken = "synthetic-webhook-token-0123456789abcdef"
+
+func pebbleTestEventRequest(t *testing.T) *http.Request {
+	t.Helper()
+	request := multipartRequest(t, "BOUNDARY", []multipartPart{
+		{name: "transcription", value: "Index webhook test event"},
+		{name: "test", value: "true"},
+		{name: "recordedAt", value: "1700000000000"},
+		{name: "client", value: "ring"},
+	})
+	request.Header.Set("X-Index-Test", "true")
+	request.Header.Set("X-Index-Trigger", "test-event")
+	request.Header.Set("X-Index-Webhook-Version", "1")
+	return request
+}
+
+func assertNoWebhookTestWrites(t *testing.T, store *Store) {
+	t.Helper()
+	for _, table := range []string{"recordings", "extraction_jobs", "delivery_tasks", "evaluation_evidence", "evaluation_deliveries", "evaluation_observations"} {
+		var count int
+		if err := store.db.QueryRow("SELECT count(*) FROM " + table).Scan(&count); err != nil || count != 0 {
+			t.Fatalf("test event wrote %s: count=%d error=%v", table, count, err)
+		}
+	}
+}
+
+func TestWebhookPebbleTestEventDoesNotCreateRecording(t *testing.T) {
+	store, handler, _ := newTestApp(t, defaultMaxBodyBytes)
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	for _, version := range []string{"released_1.11.0.4", "current_version_1"} {
+		t.Run(version, func(t *testing.T) {
+			for range 2 {
+				request := pebbleTestEventRequest(t)
+				if version == "released_1.11.0.4" {
+					request.Header.Del("X-Index-Webhook-Version")
+				}
+				response := httptest.NewRecorder()
+				handler.ServeHTTP(response, request)
+				if response.Code != http.StatusOK || strings.TrimSpace(response.Body.String()) != `{"state":"test_received"}` {
+					t.Fatalf("test acknowledgement: status=%d body=%s", response.Code, response.Body.String())
+				}
+				assertNoWebhookTestWrites(t, store)
+			}
+		})
+	}
+	request := multipartRequest(t, "", []multipartPart{
+		{name: "transcription", value: "Synthetic ordinary recording"},
+		{name: "recordedAt", value: "1700000000001"},
+		{name: "client", value: "ring"},
+	})
+	request.Header.Set("X-Index-Webhook-Version", "1")
+	request.Header.Set("X-Index-Trigger", "single-press")
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, request)
+	if response.Code != http.StatusAccepted {
+		t.Fatalf("ordinary recording status=%d body=%s", response.Code, response.Body.String())
+	}
+	for _, table := range []string{"recordings", "extraction_jobs", "evaluation_evidence"} {
+		var count int
+		if err := store.db.QueryRow("SELECT count(*) FROM " + table).Scan(&count); err != nil || count != 1 {
+			t.Fatalf("ordinary recording %s: count=%d error=%v", table, count, err)
+		}
+	}
+}
+
+func TestWebhookPebbleTestEventRejectsConflictingMarkers(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		change func(*http.Request)
+		reason string
+	}{
+		{"missing test header", func(r *http.Request) { r.Header.Del("X-Index-Test") }, "test_header_invalid"},
+		{"false test header", func(r *http.Request) { r.Header.Set("X-Index-Test", "false") }, "test_header_invalid"},
+		{"duplicate test header", func(r *http.Request) { r.Header.Add("X-Index-Test", "true") }, "test_header_invalid"},
+		{"missing trigger", func(r *http.Request) { r.Header.Del("X-Index-Trigger") }, "test_trigger_invalid"},
+		{"ordinary trigger", func(r *http.Request) { r.Header.Set("X-Index-Trigger", "single-press") }, "test_trigger_invalid"},
+		{"duplicate trigger", func(r *http.Request) { r.Header.Add("X-Index-Trigger", "test-event") }, "request_headers_invalid"},
+		{"unsupported version", func(r *http.Request) { r.Header.Set("X-Index-Webhook-Version", "2") }, "test_version_invalid"},
+		{"empty version", func(r *http.Request) { r.Header.Set("X-Index-Webhook-Version", "") }, "test_version_invalid"},
+		{"duplicate version", func(r *http.Request) { r.Header.Add("X-Index-Webhook-Version", "1") }, "test_version_invalid"},
+		{"invalid auth", func(r *http.Request) { r.Header.Set("Authorization", "Bearer invalid") }, "invalid_authorization"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			store, handler, _ := newTestAppWithLogger(t, defaultMaxBodyBytes, slog.New(slog.NewJSONHandler(&logs, nil)))
+			request := pebbleTestEventRequest(t)
+			test.change(request)
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code < 400 || response.Code >= 500 {
+				t.Fatalf("invalid test status=%d", response.Code)
+			}
+			assertWebhookRejectionLog(t, &logs, test.reason, response.Code, "Index webhook test event", "Bearer invalid")
+			assertNoWebhookTestWrites(t, store)
+		})
+	}
+}
+
+func TestWebhookPebbleTestEventRejectsInvalidTranscription(t *testing.T) {
+	for _, transcription := range []string{"", "Synthetic ordinary recording"} {
+		t.Run(transcription, func(t *testing.T) {
+			store, handler, _ := newTestApp(t, defaultMaxBodyBytes)
+			parts := []multipartPart{{name: "test", value: "true"}, {name: "recordedAt", value: "1700000000000"}, {name: "client", value: "ring"}}
+			if transcription != "" {
+				parts = append(parts, multipartPart{name: "transcription", value: transcription})
+			}
+			request := multipartRequest(t, "", parts)
+			request.Header.Set("X-Index-Test", "true")
+			request.Header.Set("X-Index-Trigger", "test-event")
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code != http.StatusBadRequest {
+				t.Fatalf("invalid transcription status=%d", response.Code)
+			}
+			assertNoWebhookTestWrites(t, store)
+		})
+	}
+}
+
+func TestWebhookPebbleTestEventValidatesWholeMultipart(t *testing.T) {
+	for _, name := range []string{"missing field", "invalid field", "duplicate field", "audio", "invalid recordedAt", "wrong client", "body limit", "field limit"} {
+		t.Run(name, func(t *testing.T) {
+			parts := []multipartPart{{name: "test", value: "true"}, {name: "recordedAt", value: "1700000000000"}, {name: "client", value: "ring"}}
+			limit := defaultMaxBodyBytes
+			switch name {
+			case "missing field":
+				parts = parts[1:]
+			case "invalid field":
+				parts[0].value = "TRUE"
+			case "duplicate field":
+				parts = append(parts, multipartPart{name: "test", value: "true"})
+			case "audio":
+				parts = append(parts, multipartPart{name: "audio", filename: "recording.m4a", contentType: "audio/mp4", value: "synthetic audio"})
+			case "invalid recordedAt":
+				parts[1].value = "invalid"
+			case "wrong client":
+				parts[2].value = "other"
+			case "body limit":
+				limit = 1
+			case "field limit":
+				parts = append(parts, multipartPart{name: "transcription", value: strings.Repeat("x", deepSeekMaxInputBytes+1)})
+			}
+			var logs bytes.Buffer
+			store, handler, _ := newTestAppWithLogger(t, limit, slog.New(slog.NewJSONHandler(&logs, nil)))
+			request := multipartRequest(t, "", parts)
+			request.Header.Set("X-Index-Test", "true")
+			request.Header.Set("X-Index-Trigger", "test-event")
+			request.Header.Set("X-Index-Webhook-Version", "1")
+			response := httptest.NewRecorder()
+			handler.ServeHTTP(response, request)
+			if response.Code < 400 || response.Code >= 500 {
+				t.Fatalf("invalid multipart test status=%d", response.Code)
+			}
+			reasons := map[string]string{
+				"missing field": "test_field_invalid", "invalid field": "test_field_invalid",
+				"duplicate field": "duplicate_field", "audio": "test_audio_present",
+				"invalid recordedAt": "invalid_recorded_at", "wrong client": "test_client_invalid",
+				"body limit": "body_too_large", "field limit": "field_too_large",
+			}
+			assertWebhookRejectionLog(t, &logs, reasons[name], response.Code, "synthetic audio")
+			assertNoWebhookTestWrites(t, store)
+		})
+	}
+}
 
 type multipartPart struct {
 	name        string

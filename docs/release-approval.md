@@ -3,6 +3,27 @@
 Use this checklist before a public release. The checklist does not prove that a
 release or package exists.
 
+## v0.2.0 approval
+
+Repository owner `klauern` approved the following actions on 2026-09-08:
+
+- Merge application PR #21 and infrastructure PR #40 after checks and review.
+- Publish v0.2.0 through the existing gated GHCR release workflow.
+- Deploy the same immutable image digest to the receiver and dashboard.
+
+The application publication history and directory passed secret scans.
+The publication history also passed the private-evidence scan.
+The repository and existing GHCR package are public.
+The active `release-tags` ruleset protects version tags.
+The `public-release` environment requires review by `klauern` and allows self-review.
+The release job has explicit write permissions; repository defaults remain read-only.
+The workflow retains its pinned builder inputs and artifact verification gates.
+
+Enable `PUBLIC_RELEASE_APPROVED` after this record reaches the release commit.
+Retain a verified schema7 backup and its compatible image before migration 008.
+Record the exact release commit, workflow, and published artifact evidence after publication.
+The separate infrastructure history rewrite still requires final owner approval.
+
 ## Required approval
 
 - [ ] The approved history cleanup is complete.

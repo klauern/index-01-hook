@@ -1,0 +1,297 @@
+{
+  "format_version": 1,
+  "type": "routing_evaluation_corpus",
+  "source": {
+    "kind": "synthetic",
+    "sha256": "dc5e79cffadae0e1fe545b56b3acf96cdde7c10ada2b6f82f390f473e1f1c7e7",
+    "collected_at": "2026-09-08T12:00:00Z"
+  },
+  "routing": {
+    "clock": "2026-09-08T12:00:00Z",
+    "time_zone": "America/Chicago",
+    "aliases": {
+      "home": "project-home",
+      "work": "project-work",
+      "errands": "project-errands"
+    },
+    "default_project_id": "project-inbox",
+    "note_project_id": "project-notes"
+  },
+  "examples": [
+    {
+      "id": "corrected-home-route",
+      "recording_fingerprint": "573cb73a0cc8aaef067c0eecf9a29f10bfa3a0955a3c354088b682964646585b",
+      "split": "development",
+      "input": {
+        "text": "Repair the garden gate. This belongs on my home list.",
+        "provenance": "synthetic"
+      },
+      "targets": [
+        {
+          "task_id": "synthetic-task-001",
+          "item_index": 0,
+          "title": "Repair the garden gate",
+          "kind": "task",
+          "observed_project_id": "project-work",
+          "label": {
+            "project_id": "project-home",
+            "status": "inferred",
+            "basis": "owner_default",
+            "event_id": "synthetic-move-001"
+          }
+        }
+      ],
+      "blockers": [],
+      "saved_output": {
+        "items": [
+          {
+            "title": "Repair the garden gate",
+            "content": "",
+            "kind": "task",
+            "project_alias": "home",
+            "due_at": null,
+            "all_day": false,
+            "priority": 0,
+            "tags": []
+          }
+        ]
+      },
+      "expected_item_count": 1
+    },
+    {
+      "id": "explicit-reviewed-work-override",
+      "recording_fingerprint": "43753f1a5bcfdd1492319344518afa97b6d9b78c0ee359f034367f0744e75578",
+      "split": "development",
+      "input": {
+        "text": "Renew the office maintenance contract. Put this in work.",
+        "provenance": "synthetic"
+      },
+      "targets": [
+        {
+          "task_id": "synthetic-task-002",
+          "item_index": 0,
+          "title": "Renew the office maintenance contract",
+          "kind": "task",
+          "observed_project_id": "project-home",
+          "label": {
+            "project_id": "project-work",
+            "status": "approved",
+            "basis": "event_review",
+            "event_id": "synthetic-move-002"
+          }
+        }
+      ],
+      "blockers": [],
+      "saved_output": {
+        "items": [
+          {
+            "title": "Renew the office maintenance contract",
+            "content": "",
+            "kind": "task",
+            "project_alias": "work",
+            "due_at": null,
+            "all_day": false,
+            "priority": 0,
+            "tags": []
+          }
+        ]
+      },
+      "expected_item_count": 1
+    },
+    {
+      "id": "mixed-sibling-routes",
+      "recording_fingerprint": "d5e1657352b31f8ad21e6e88f8f5abd95709bfdd82c38f93f7bccc9f94e8a995",
+      "split": "development",
+      "input": {
+        "text": "For work, send the budget. For home, replace the porch light. Also save a note that the porch bulb is E26.",
+        "provenance": "synthetic"
+      },
+      "targets": [
+        {
+          "task_id": "synthetic-task-003a",
+          "item_index": 0,
+          "title": "Send the budget",
+          "kind": "task",
+          "observed_project_id": "project-work",
+          "label": {
+            "project_id": "project-work",
+            "status": "approved",
+            "basis": "synthetic_fixture"
+          }
+        },
+        {
+          "task_id": "synthetic-task-003b",
+          "item_index": 1,
+          "title": "Replace the porch light",
+          "kind": "task",
+          "observed_project_id": "project-home",
+          "label": {
+            "project_id": "project-home",
+            "status": "approved",
+            "basis": "synthetic_fixture"
+          }
+        },
+        {
+          "task_id": "synthetic-task-003c",
+          "item_index": 2,
+          "title": "Porch bulb specification",
+          "kind": "note",
+          "observed_project_id": "project-notes",
+          "label": {
+            "project_id": "project-notes",
+            "status": "approved",
+            "basis": "synthetic_fixture"
+          }
+        }
+      ],
+      "blockers": [],
+      "saved_output": {
+        "items": [
+          {
+            "title": "Send the budget",
+            "content": "",
+            "kind": "task",
+            "project_alias": "work",
+            "due_at": null,
+            "all_day": false,
+            "priority": 0,
+            "tags": []
+          },
+          {
+            "title": "Replace the porch light",
+            "content": "",
+            "kind": "task",
+            "project_alias": "home",
+            "due_at": null,
+            "all_day": false,
+            "priority": 0,
+            "tags": []
+          },
+          {
+            "title": "Porch bulb specification",
+            "content": "E26 bulb",
+            "kind": "note"
+          }
+        ]
+      },
+      "expected_item_count": 3
+    },
+    {
+      "id": "unchanged-reviewed-work-route",
+      "recording_fingerprint": "9b467ffb2888669ca4c184d50ff68eafa9570f92b5c824e62c853d1272eb55ae",
+      "split": "held_out",
+      "input": {
+        "text": "Review the quarterly forecast for work.",
+        "provenance": "synthetic"
+      },
+      "targets": [
+        {
+          "task_id": "synthetic-task-004",
+          "item_index": 0,
+          "title": "Review the quarterly forecast",
+          "kind": "task",
+          "observed_project_id": "project-work",
+          "label": {
+            "project_id": "project-work",
+            "status": "approved",
+            "basis": "candidate_review"
+          }
+        }
+      ],
+      "blockers": [],
+      "saved_output": {
+        "items": [
+          {
+            "title": "Review the quarterly forecast",
+            "content": "",
+            "kind": "task",
+            "project_alias": "work",
+            "due_at": null,
+            "all_day": false,
+            "priority": 0,
+            "tags": []
+          }
+        ]
+      },
+      "expected_item_count": 1
+    },
+    {
+      "id": "unrelated-errand-counterexample",
+      "recording_fingerprint": "5d2fa649bd1f0be5884ec7e596e251fefb686a838c7979ae199bdbbcd0cb09be",
+      "split": "held_out",
+      "input": {
+        "text": "Pick up the prescription. Put it on errands.",
+        "provenance": "synthetic"
+      },
+      "targets": [
+        {
+          "task_id": "synthetic-task-005",
+          "item_index": 0,
+          "title": "Pick up the prescription",
+          "kind": "task",
+          "observed_project_id": "project-errands",
+          "label": {
+            "project_id": "project-errands",
+            "status": "approved",
+            "basis": "synthetic_fixture"
+          }
+        }
+      ],
+      "blockers": [],
+      "saved_output": {
+        "items": [
+          {
+            "title": "Pick up the prescription",
+            "content": "",
+            "kind": "task",
+            "project_alias": "errands",
+            "due_at": null,
+            "all_day": false,
+            "priority": 0,
+            "tags": []
+          }
+        ]
+      },
+      "expected_item_count": 1
+    },
+    {
+      "id": "unassigned-task-uses-inbox",
+      "recording_fingerprint": "4a1eae34672cd841742b2cbc05059fcec91e8081da6e2c78d65fe4e8286c59a4",
+      "split": "held_out",
+      "input": {
+        "text": "Remember to check the replacement filter size.",
+        "provenance": "synthetic"
+      },
+      "targets": [
+        {
+          "task_id": "synthetic-task-006",
+          "item_index": 0,
+          "title": "Check replacement filter size",
+          "kind": "task",
+          "observed_project_id": "project-inbox",
+          "label": {
+            "project_id": "project-inbox",
+            "status": "approved",
+            "basis": "candidate_review"
+          }
+        }
+      ],
+      "blockers": [],
+      "saved_output": {
+        "items": [
+          {
+            "title": "Check replacement filter size",
+            "content": "",
+            "kind": "task",
+            "due_at": null,
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "project_alias": null
+          }
+        ]
+      },
+      "expected_item_count": 1
+    }
+  ]
+}

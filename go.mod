@@ -3,6 +3,7 @@ module github.com/klauern/index-01-hook
 go 1.26.6
 
 require (
+	github.com/google/go-cmp v0.7.0
 	golang.org/x/sys v0.47.0
 	modernc.org/sqlite v1.57.0
 )

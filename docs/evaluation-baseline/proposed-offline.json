@@ -1,0 +1,1083 @@
+{
+  "version": 1,
+  "suite": "proposed",
+  "mode": "offline",
+  "fixture_sha256": "bb314e930e895fad9bda2c8b01ee88bf74b9b1bb3586d5299fc5c49138457ba2",
+  "prompt_schema_source_sha256": "1a6c21c52703708118b5ee121e1f5b9a7b6525b536ef89a82b419bfac12b1a04",
+  "call_budget": 0,
+  "application_cache": "none; each live trial calls Extract",
+  "provider_cache": "not controlled; usage records cache tokens when supplied",
+  "counts": {
+    "error": 0,
+    "fail": 0,
+    "pass": 15,
+    "skip": 0,
+    "unsupported": 0
+  },
+  "results": [
+    {
+      "suite": "proposed",
+      "case": "create-task-and-note",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "task-a",
+            "item": {
+              "id": "task-a",
+              "kind": "task",
+              "title": "Buy paper",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "note-a",
+            "item": {
+              "id": "note-a",
+              "kind": "note",
+              "title": "Paint",
+              "content": "Blue sample",
+              "route": "notes",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Buy paper",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "note-a",
+            "kind": "note",
+            "title": "Paint",
+            "content": "Blue sample",
+            "route": "notes",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "update-explicit-target",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "update",
+            "target": "task-a",
+            "fields": {
+              "title": "Send revised estimate"
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send revised estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "close-explicit-task",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "close",
+            "target": "task-a"
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": true
+          },
+          {
+            "id": "task-b",
+            "kind": "task",
+            "title": "Replace filter",
+            "content": "",
+            "route": "home",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "update-note",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "update",
+            "target": "note-a",
+            "fields": {
+              "content": "Blue sample with white trim"
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "note-a",
+            "kind": "note",
+            "title": "Paint",
+            "content": "Blue sample with white trim",
+            "route": "notes",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "interleaved-topics",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "no_action",
+            "target": ""
+          },
+          {
+            "step": 2,
+            "op": "no_action",
+            "target": ""
+          },
+          {
+            "step": 3,
+            "op": "update",
+            "target": "task-a",
+            "fields": {
+              "title": "Send revised estimate"
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send revised estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "task-b",
+            "kind": "task",
+            "title": "Replace filter",
+            "content": "",
+            "route": "home",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ],
+          [
+            "m1",
+            "m2"
+          ],
+          [
+            "m1",
+            "m2",
+            "m3"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "ambiguous-pronoun-review",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "review",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "task-b",
+            "kind": "task",
+            "title": "Replace filter",
+            "content": "",
+            "route": "home",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "negated-closure",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "no_action",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "unrelated-no-action",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "no_action",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "stale-remote-state",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "review",
+            "target": ""
+          }
+        ],
+        "state": [],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "already-closed-state",
+      "split": "development",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "no_action",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": true
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "semantic-duplicate-review",
+      "split": "held_out",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "review",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "history-9-message-boundary",
+      "split": "held_out",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "review",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "h0",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "h7",
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "history-10-message-boundary",
+      "split": "held_out",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "review",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "h0",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "h7",
+            "h8",
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "history-11-message-boundary",
+      "split": "held_out",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "review",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "h7",
+            "h8",
+            "h9",
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "proposed",
+      "case": "unknown-target-review",
+      "split": "held_out",
+      "adapter": "scripted-state-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 10,
+      "model": "scripted",
+      "max_output_tokens": 0,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 0,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "review",
+            "target": ""
+          }
+        ],
+        "state": [
+          {
+            "id": "task-a",
+            "kind": "task",
+            "title": "Send estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    }
+  ],
+  "delivery_checks": []
+}

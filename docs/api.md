@@ -31,6 +31,7 @@ The request must use `multipart/form-data`. It can contain these fields:
 | `client` | Yes | Sender identifier. |
 | `transcription` | No | Text for DeepSeek extraction. |
 | `audio` | No | Audio file for compatibility. Bytes are discarded. |
+| `test` | Test events only | Literal `true`. Requires the test markers below. |
 
 The request can include one `X-Index-Trigger` header. The receiver stores its
 bounded value as metadata. Unknown fields and duplicate fields are rejected.
@@ -38,6 +39,38 @@ bounded value as metadata. Unknown fields and duplicate fields are rejected.
 Audio metadata is retained. The filename and byte count enter the recording
 metadata. A transient digest enters the payload fingerprint. The audio bytes
 are not stored.
+
+### Pebble test events
+
+The Pebble app sends a synthetic request when the user selects **Test Webhook**.
+The receiver requires these markers together:
+
+- Multipart field `test=true`.
+- Exactly one `X-Index-Test: true` header.
+- Exactly one `X-Index-Trigger: test-event` header.
+- `client=ring`, a valid `recordedAt`, and no audio part.
+- Multipart field `transcription=Index webhook test event`.
+
+`X-Index-Webhook-Version` is optional. If present, it must appear once with value
+`1`. Released Pebble versions omit this header. Newer app code sends it.
+
+Authentication, multipart validation, and intake limits still apply. Missing,
+conflicting, or duplicate test markers are rejected. A version header alone
+does not make an ordinary recording a test event.
+
+A valid test returns `200 OK` with `{"state":"test_received"}`. The receiver
+does not create a recording, queue work, or retain evaluation evidence.
+
+This contract follows the public Pebble mobile app at commit
+`d52101ad3d8940c5aa392d6f224e774cb6f5ce84`:
+[request implementation](https://github.com/coredevices/mobileapp/blob/d52101ad3d8940c5aa392d6f224e774cb6f5ce84/experimental/src/commonMain/kotlin/coredevices/ring/external/indexwebhook/IndexWebhookApi.kt)
+and [test payload fixture](https://github.com/coredevices/mobileapp/blob/d52101ad3d8940c5aa392d6f224e774cb6f5ce84/experimental/src/commonTest/kotlin/coredevices/ring/external/indexwebhook/IndexWebhookTestEventPayloadTest.kt).
+The [released 1.11.0.4 implementation](https://github.com/coredevices/mobileapp/blob/46757ae45df86107b0b9fa7d17b0cb99cb8d3657/experimental/src/commonMain/kotlin/coredevices/ring/external/indexwebhook/IndexWebhookApi.kt)
+uses the same test markers without the version header.
+
+Rejected test events log fixed reason codes for invalid fields, headers, triggers,
+versions, clients, or unexpected audio. Logs do not include submitted marker values
+or transcription text.
 
 ### Intake limits
 
@@ -50,6 +83,7 @@ The receiver enforces these limits from `webhook.go`:
 | `recordedAt` field | 20 bytes |
 | `client` field | 128 bytes |
 | `transcription` field | 65536 bytes (64 KiB) |
+| `test` field | 4 bytes |
 | Audio filename | 255 bytes |
 | `X-Index-Trigger` value | 128 bytes |
 | Headers per multipart part | 8 values and 4096 bytes |

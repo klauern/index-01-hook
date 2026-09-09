@@ -1,0 +1,1260 @@
+{
+  "version": 1,
+  "suite": "current",
+  "mode": "offline",
+  "fixture_sha256": "bb314e930e895fad9bda2c8b01ee88bf74b9b1bb3586d5299fc5c49138457ba2",
+  "prompt_schema_source_sha256": "1a6c21c52703708118b5ee121e1f5b9a7b6525b536ef89a82b419bfac12b1a04",
+  "call_budget": 0,
+  "application_cache": "none; each live trial calls Extract",
+  "provider_cache": "not controlled; usage records cache tokens when supplied",
+  "counts": {
+    "error": 0,
+    "fail": 0,
+    "pass": 17,
+    "skip": 0,
+    "unsupported": 0
+  },
+  "results": [
+    {
+      "suite": "current",
+      "case": "task-fallback",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Buy paper",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Buy paper",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "note-fallback",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "note",
+              "title": "Blue paint",
+              "content": "Sample B looks best.",
+              "route": "notes",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "note",
+            "title": "Blue paint",
+            "content": "Sample B looks best.",
+            "route": "notes",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "semantic-work-route",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Send client estimate",
+              "content": "",
+              "route": "work",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Send client estimate",
+            "content": "",
+            "route": "work",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "semantic-home-route",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Replace kitchen filter",
+              "content": "",
+              "route": "home",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Replace kitchen filter",
+            "content": "",
+            "route": "home",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "mixed-items",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Buy rice",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i2",
+            "item": {
+              "id": "s1-i2",
+              "kind": "note",
+              "title": "Blue sample",
+              "content": "The blue sample matches.",
+              "route": "notes",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Buy rice",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i2",
+            "kind": "note",
+            "title": "Blue sample",
+            "content": "The blue sample matches.",
+            "route": "notes",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "relative-date-processing-clock",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Water plants",
+              "content": "",
+              "route": "home",
+              "due": "2026-09-08T00:00:00-05:00",
+              "all_day": true,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Water plants",
+            "content": "",
+            "route": "home",
+            "due": "2026-09-08T00:00:00-05:00",
+            "all_day": true,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "explicit-local-time",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Call supplier",
+              "content": "",
+              "route": "inbox",
+              "due": "2026-09-08T09:00:00-05:00",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Call supplier",
+            "content": "",
+            "route": "inbox",
+            "due": "2026-09-08T09:00:00-05:00",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "vague-date",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Buy lamp",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Buy lamp",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "negation",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [],
+        "state": [],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "unrelated-content",
+      "split": "development",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [],
+        "state": [],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "ambiguous-route",
+      "split": "held_out",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Follow up on estimate",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Follow up on estimate",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "ten-item-boundary",
+      "split": "held_out",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "task",
+              "title": "Item 1",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i2",
+            "item": {
+              "id": "s1-i2",
+              "kind": "task",
+              "title": "Item 2",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i3",
+            "item": {
+              "id": "s1-i3",
+              "kind": "task",
+              "title": "Item 3",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i4",
+            "item": {
+              "id": "s1-i4",
+              "kind": "task",
+              "title": "Item 4",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i5",
+            "item": {
+              "id": "s1-i5",
+              "kind": "task",
+              "title": "Item 5",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i6",
+            "item": {
+              "id": "s1-i6",
+              "kind": "task",
+              "title": "Item 6",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i7",
+            "item": {
+              "id": "s1-i7",
+              "kind": "task",
+              "title": "Item 7",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i8",
+            "item": {
+              "id": "s1-i8",
+              "kind": "task",
+              "title": "Item 8",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i9",
+            "item": {
+              "id": "s1-i9",
+              "kind": "task",
+              "title": "Item 9",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          },
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i10",
+            "item": {
+              "id": "s1-i10",
+              "kind": "task",
+              "title": "Item 10",
+              "content": "",
+              "route": "inbox",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "task",
+            "title": "Item 1",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i2",
+            "kind": "task",
+            "title": "Item 2",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i3",
+            "kind": "task",
+            "title": "Item 3",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i4",
+            "kind": "task",
+            "title": "Item 4",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i5",
+            "kind": "task",
+            "title": "Item 5",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i6",
+            "kind": "task",
+            "title": "Item 6",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i7",
+            "kind": "task",
+            "title": "Item 7",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i8",
+            "kind": "task",
+            "title": "Item 8",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i9",
+            "kind": "task",
+            "title": "Item 9",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          },
+          {
+            "id": "s1-i10",
+            "kind": "task",
+            "title": "Item 10",
+            "content": "",
+            "route": "inbox",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    },
+    {
+      "suite": "current",
+      "case": "note-does-not-inherit-task-route",
+      "split": "held_out",
+      "adapter": "production-v1",
+      "trial": 1,
+      "clock": "2026-09-07T23:30:00-05:00",
+      "time_zone": "America/Chicago",
+      "aliases": [
+        "home",
+        "work"
+      ],
+      "history_limit": 1,
+      "model": "deepseek-v4-flash",
+      "max_output_tokens": 4096,
+      "model_generations": 0,
+      "judge_repetitions": 0,
+      "telemetry": {
+        "calls": 1,
+        "latency_ms": 0,
+        "response_ids": [],
+        "provider_models": [],
+        "usage": []
+      },
+      "observation": {
+        "outcome": "ok",
+        "actions": [
+          {
+            "step": 1,
+            "op": "create",
+            "target": "s1-i1",
+            "item": {
+              "id": "s1-i1",
+              "kind": "note",
+              "title": "Meeting room",
+              "content": "The meeting room is blue.",
+              "route": "notes",
+              "due": "",
+              "all_day": false,
+              "priority": 0,
+              "tags": [],
+              "closed": false
+            }
+          }
+        ],
+        "state": [
+          {
+            "id": "s1-i1",
+            "kind": "note",
+            "title": "Meeting room",
+            "content": "The meeting room is blue.",
+            "route": "notes",
+            "due": "",
+            "all_day": false,
+            "priority": 0,
+            "tags": [],
+            "closed": false
+          }
+        ],
+        "visible": [
+          [
+            "m1"
+          ]
+        ]
+      },
+      "score": {
+        "status": "pass",
+        "actions": "pass",
+        "state": "pass",
+        "history": "pass",
+        "semantic": "unsupported",
+        "failure_count": 0,
+        "diagnostics": []
+      }
+    }
+  ],
+  "delivery_checks": [
+    {
+      "case": "delivery-exact-replay",
+      "adapter": "production-worker-v1",
+      "trial": 1,
+      "clock": "2026-08-12T12:00:00Z",
+      "source": "item_acceptance_test.go",
+      "source_sha256": "39158ce895c15d0c3d998e6b92479955d4da69940a0fea00dfbf07d29965f1bd",
+      "status": "pass"
+    },
+    {
+      "case": "delivery-restart",
+      "adapter": "production-worker-v1",
+      "trial": 1,
+      "clock": "2026-08-12T12:00:00Z",
+      "source": "item_acceptance_test.go",
+      "source_sha256": "39158ce895c15d0c3d998e6b92479955d4da69940a0fea00dfbf07d29965f1bd",
+      "status": "pass"
+    },
+    {
+      "case": "delivery-ambiguous-note",
+      "adapter": "production-worker-v1",
+      "trial": 1,
+      "clock": "2026-08-12T12:00:00Z",
+      "source": "worker_test.go",
+      "source_sha256": "bb016b596c94b7f449370fe9d6a8ac59046c8735f5327c6c1d1893278bea5c01",
+      "status": "pass"
+    },
+    {
+      "case": "delivery-bounded-retry",
+      "adapter": "production-worker-v1",
+      "trial": 1,
+      "clock": "2026-08-12T12:00:00Z",
+      "source": "worker_test.go",
+      "source_sha256": "bb016b596c94b7f449370fe9d6a8ac59046c8735f5327c6c1d1893278bea5c01",
+      "status": "pass"
+    }
+  ]
+}
