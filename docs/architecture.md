@@ -26,6 +26,7 @@ does not create an extraction job.
 The receiver retains `recordedAt`, `client`, the trigger header, transcription,
 audio filename, audio byte count, and a payload fingerprint. The fingerprint
 covers the normalized request fields and the transient SHA-256 audio digest.
+Audio filename changes do not create a new fingerprint.
 The raw audio bytes and the transient digest are not stored as separate data.
 
 Equivalent payloads share one recording. A duplicate receipt increments the
