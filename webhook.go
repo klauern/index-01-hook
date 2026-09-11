@@ -414,7 +414,6 @@ func fingerprintWebhook(payload parsedWebhook) string {
 	} else {
 		writeFingerprintField(digest, "audio-absent")
 	}
-	writeFingerprintField(digest, payload.audioFilename)
 	writeFingerprintField(digest, strconv.FormatInt(payload.audioByteCount, 10))
 	writeFingerprintField(digest, payload.audioDigest)
 	return hex.EncodeToString(digest.Sum(nil))

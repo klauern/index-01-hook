@@ -472,6 +472,42 @@ func TestWebhookDeduplicatesSemanticPayloadAcrossBoundariesAndPartOrder(t *testi
 	}
 }
 
+func TestWebhookDeduplicatesSameAudioDifferentFilename(t *testing.T) {
+	store, handler, _ := newTestApp(t, 1<<20)
+	first := multipartRequest(t, "filename-1", []multipartPart{
+		{name: "recordedAt", value: "1760000003100"},
+		{name: "client", value: "ring"},
+		{name: "transcription", value: "Send backup notes"},
+		{name: "audio", filename: "note-1.m4a", contentType: "audio/mp4", value: "same audio bytes"},
+	})
+	second := multipartRequest(t, "filename-2", []multipartPart{
+		{name: "recordedAt", value: "1760000003100"},
+		{name: "client", value: "ring"},
+		{name: "transcription", value: "Send backup notes"},
+		{name: "audio", filename: "note-2.m4a", contentType: "audio/mp4", value: "same audio bytes"},
+	})
+
+	firstResponse := send(t, handler, first)
+	secondResponse := send(t, handler, second)
+	if firstResponse.Code != http.StatusAccepted || secondResponse.Code != http.StatusOK {
+		t.Fatalf("statuses = (%d, %d), want (202, 200); bodies=(%s, %s)", firstResponse.Code, secondResponse.Code, firstResponse.Body.String(), secondResponse.Body.String())
+	}
+	var firstReceipt, secondReceipt Receipt
+	_ = json.Unmarshal(firstResponse.Body.Bytes(), &firstReceipt)
+	_ = json.Unmarshal(secondResponse.Body.Bytes(), &secondReceipt)
+	if firstReceipt.ID != secondReceipt.ID || !secondReceipt.Duplicate || !secondReceipt.Queued {
+		t.Errorf("receipts = (%+v, %+v), want same ID and duplicate queued second response", firstReceipt, secondReceipt)
+	}
+
+	var recordings, jobs, receiveCount int
+	_ = store.db.QueryRow(`SELECT count(*) FROM recordings`).Scan(&recordings)
+	_ = store.db.QueryRow(`SELECT count(*) FROM extraction_jobs`).Scan(&jobs)
+	_ = store.db.QueryRow(`SELECT receive_count FROM recordings WHERE id = ?`, firstReceipt.ID).Scan(&receiveCount)
+	if recordings != 1 || jobs != 1 || receiveCount != 2 {
+		t.Errorf("counts = recordings:%d jobs:%d receipts:%d, want 1, 1, 2", recordings, jobs, receiveCount)
+	}
+}
+
 func TestWebhookRejectsInvalidRequests(t *testing.T) {
 	var logs bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&logs, nil))
