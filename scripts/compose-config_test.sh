@@ -41,11 +41,20 @@ INDEX01_TICKTICK_PROJECT_ALIASES={}
 INDEX01_MAX_BODY_BYTES=67108864
 INDEX01_WORKER_OWNER=synthetic-worker
 EOF
+
+compose() {
+	env -u INDEX01_IMAGE -u INDEX01_HOST_PORT -u INDEX01_WEBHOOK_TOKEN -u INDEX01_DEEPSEEK_TOKEN \
+		-u INDEX01_TICKTICK_TOKEN -u INDEX01_TICKTICK_DEFAULT_PROJECT_ID \
+		-u INDEX01_TICKTICK_NOTE_PROJECT_ID -u INDEX01_DEEPSEEK_MODEL \
+		-u INDEX01_TIME_ZONE -u INDEX01_TICKTICK_PROJECT_ALIASES \
+		-u INDEX01_MAX_BODY_BYTES -u INDEX01_WORKER_OWNER \
+		docker compose "$@"
+}
 # Keep Compose output in a private temporary file. Never print it or its errors.
-if ! docker compose --profile maintenance --env-file "$env_file" -f "$project_dir/compose.yaml" config >"$config_file" 2>"$error_file"; then
+if ! compose --profile maintenance --env-file "$env_file" -f "$project_dir/compose.yaml" config >"$config_file" 2>"$error_file"; then
 	die "docker compose config rejected synthetic values"
 fi
-if ! docker compose --env-file "$env_file" -f "$project_dir/compose.yaml" config --services >"$default_services_file" 2>"$error_file"; then
+if ! compose --env-file "$env_file" -f "$project_dir/compose.yaml" config --services >"$default_services_file" 2>"$error_file"; then
 	die "docker compose config rejected the default profile"
 fi
 [ "$(cat "$default_services_file")" = index-01-hook ] ||
@@ -86,7 +95,7 @@ contains 'network_mode: none' || die "Compose maintenance network isolation is m
 [ "$(grep -c 'image: index-01-hook:local' "$config_file")" -eq 2 ] || die "Compose services do not share the image"
 production_digest=ghcr.io/example/index-01-hook@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 sed "s#INDEX01_IMAGE=index-01-hook:local#INDEX01_IMAGE=$production_digest#" "$env_file" >"$production_env_file"
-if ! docker compose --profile maintenance --env-file "$production_env_file" -f "$project_dir/compose.yaml" config >"$production_config_file" 2>"$error_file"; then
+if ! compose --profile maintenance --env-file "$production_env_file" -f "$project_dir/compose.yaml" config >"$production_config_file" 2>"$error_file"; then
 	die "docker compose config rejected the production digest"
 fi
 [ "$(grep -c "image: $production_digest" "$production_config_file")" -eq 2 ] ||
