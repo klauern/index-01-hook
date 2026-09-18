@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -303,5 +304,119 @@ func TestMissingEndpointStopsBeforeFirstRequest(t *testing.T) {
 	_, err = execute(runConfig{Model: "m", Token: "secret-token"}, c, p, "hash")
 	if err == nil || !strings.Contains(err.Error(), "no provider endpoint") {
 		t.Fatalf("error=%v, want missing endpoint failure", err)
+	}
+}
+
+// TestRealCasePathMeasuresWithoutGate guards the private real-case path.
+// Weak labels cannot prove the safety limit, so this path reports and never gates.
+func TestRealCasePathMeasuresWithoutGate(t *testing.T) {
+	dir := t.TempDir()
+	casesPath := filepath.Join(dir, "real-cases.json")
+	file := realInputFile{Cases: []realInputCase{
+		{CaseID: "rc-1", Split: "real", Transcript: "buy milk", Candidate: realCandidate{Kind: "task", Title: "Buy milk"}, ObservedStatus: "unchanged", WeakLabel: "supported"},
+		{CaseID: "rc-2", Split: "real", Transcript: "call the bank", Candidate: realCandidate{Kind: "task", Title: "Call the bank"}, ObservedStatus: "missing", WeakLabel: "unsupported"},
+		{CaseID: "rc-3", Split: "real", Transcript: "note this", Candidate: realCandidate{Kind: "note", Title: "Note"}, ObservedStatus: "unclear", WeakLabel: "unknown"},
+	}}
+	encoded, err := json.Marshal(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(casesPath, encoded, 0600); err != nil {
+		t.Fatal(err)
+	}
+	in, err := loadRealCases(casesPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The two designs must be measured apart. The Choice design answers a low
+	// support probability so a mixed measurement is visible.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Questions map[string]question `json:"questions"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			t.Error(err)
+			return
+		}
+		if _, ok := req.Questions["verdict"]; ok {
+			confidence := .9
+			_ = json.NewEncoder(w).Encode(response{Model: "m", Answers: map[string]answer{"verdict": {Type: "choice", Choice: "wrong_field", Confidence: &confidence, Probabilities: map[string]float64{"supported": .1, "wrong_field": .9}}}})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(response{Model: "m", Answers: validNoulAnswers(req.Questions, .95)})
+	}))
+	defer srv.Close()
+
+	cfg := runConfig{Model: "m", Endpoint: srv.URL, Token: "secret-token", CasesPath: casesPath, Design: "both", MaxCalls: 10, ClientHTTP: srv.Client()}
+	caseCfg := cfg
+	caseCfg.RepeatCases = 0
+	caseCfg.RepeatCount = 1
+	p, err := makePlan(realCorpus(in), caseCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := executeReal(cfg, in, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.Cases) != 6 {
+		t.Fatalf("case records=%d, want 6 for two designs over three cases", len(rep.Cases))
+	}
+	if rep.WeakLabelWarning == "" {
+		t.Fatal("the report must state that weak labels cannot prove the safety limit")
+	}
+	blob, err := json.Marshal(rep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(blob), "threshold_grid") || strings.Contains(string(blob), "selected_accept") {
+		t.Fatal("the real-case path must not select thresholds")
+	}
+	supported := rep.Measures["fieldwise"]["weak_label:supported"]
+	if supported.Accepted != 1 {
+		t.Fatalf("supported group=%+v, want one accepted case", supported)
+	}
+	unsupportedGroup := rep.Measures["fieldwise"]["weak_label:unsupported"]
+	if unsupportedGroup.Accepted != 1 {
+		t.Fatalf("unsupported group=%+v, want the unsafe accept counted", unsupportedGroup)
+	}
+	unknownGroup := rep.Measures["fieldwise"]["weak_label:unknown"]
+	if unknownGroup.Accepted != 1 {
+		t.Fatalf("unknown group=%+v", unknownGroup)
+	}
+	missingStatus := rep.Measures["fieldwise"]["status:missing"]
+	if missingStatus.Accepted != 1 {
+		t.Fatalf("missing status group=%+v", missingStatus)
+	}
+	// Each design must be measured on its own records only.
+	choiceSupported := rep.Measures["choice"]["weak_label:supported"]
+	if choiceSupported.Rejected != 1 || choiceSupported.Accepted != 0 {
+		t.Fatalf("choice supported group=%+v, want one rejected case and no accepted case", choiceSupported)
+	}
+	if supported.Rejected != 0 {
+		t.Fatalf("the fieldwise group picked up a choice decision: %+v", supported)
+	}
+	if len(rep.Measures["fieldwise"]["status:unchanged"].ProviderErrors) != 0 {
+		t.Fatal("provider errors must be empty for a clean run")
+	}
+}
+
+// TestRealCasePathRefusesAFileWithoutTranscripts keeps the private path honest.
+func TestRealCasePathRefusesAFileWithoutTranscripts(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "empty-transcripts.json")
+	file := realInputFile{Cases: []realInputCase{{CaseID: "rc-1", Split: "real", Candidate: realCandidate{Kind: "task", Title: "No transcript"}, WeakLabel: "supported"}}}
+	encoded, err := json.Marshal(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(path, encoded, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = loadRealCases(path); err == nil || !strings.Contains(err.Error(), "no case with a transcript") {
+		t.Fatalf("error=%v, want a transcript requirement", err)
+	}
+	if _, err = loadRealCases(filepath.Join(dir, "missing.json")); err == nil {
+		t.Fatal("a missing file must fail")
 	}
 }

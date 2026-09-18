@@ -347,10 +347,65 @@ type reportMeta struct {
 }
 
 type runConfig struct {
-	CorpusPath, Out, Design, Model, Endpoint, Token string
-	RepeatCases, RepeatCount, MaxCalls              int
-	Approve, Live                                   bool
-	ClientHTTP                                      *http.Client
+	CorpusPath, CasesPath, Out, Design, Model, Endpoint, Token string
+	RepeatCases, RepeatCount, MaxCalls                         int
+	Approve, Live                                              bool
+	ClientHTTP                                                 *http.Client
+}
+
+type realCandidate struct {
+	Kind         string   `json:"kind"`
+	Title        string   `json:"title"`
+	Content      string   `json:"content"`
+	Due          string   `json:"due"`
+	AllDay       bool     `json:"all_day"`
+	Priority     int      `json:"priority"`
+	Tags         []string `json:"tags"`
+	ProjectAlias string   `json:"project_alias"`
+}
+type realInputCase struct {
+	CaseID         string        `json:"case_id"`
+	Split          string        `json:"split"`
+	Transcript     string        `json:"transcript"`
+	Candidate      realCandidate `json:"candidate"`
+	ObservedStatus string        `json:"observed_status"`
+	WeakLabel      string        `json:"weak_label"`
+	WeakRouteOK    bool          `json:"weak_route_ok"`
+}
+type realInputFile struct {
+	Cases []realInputCase `json:"cases"`
+}
+type realCaseRecord struct {
+	CaseID         string  `json:"case_id"`
+	Design         string  `json:"design"`
+	ObservedStatus string  `json:"observed_status"`
+	WeakLabel      string  `json:"weak_label"`
+	Score          float64 `json:"score"`
+	Signals        any     `json:"signals"`
+	LatencyMS      int     `json:"latency_ms"`
+	InputTokens    int     `json:"input_tokens"`
+	OutputTokens   int     `json:"output_tokens"`
+	Error          string  `json:"error,omitempty"`
+}
+type realMeasure struct {
+	Accepted       int            `json:"accepted"`
+	Rejected       int            `json:"rejected"`
+	Review         int            `json:"review"`
+	MeanScore      float64        `json:"score_mean"`
+	MinScore       float64        `json:"score_min"`
+	MaxScore       float64        `json:"score_max"`
+	Separation     float64        `json:"separation"`
+	LatencyMeanMS  float64        `json:"latency_mean_ms"`
+	InputTokens    int            `json:"input_tokens"`
+	OutputTokens   int            `json:"output_tokens"`
+	ProviderErrors map[string]int `json:"provider_errors"`
+	Errors         int            `json:"errors"`
+}
+type realReport struct {
+	Meta             reportMeta                        `json:"meta"`
+	Cases            []realCaseRecord                  `json:"cases"`
+	Measures         map[string]map[string]realMeasure `json:"measures"`
+	WeakLabelWarning string                            `json:"weak_label_warning"`
 }
 type plan struct {
 	CorpusPath  string   `json:"corpus_path"`
@@ -632,6 +687,160 @@ func atomicWrite(path string, v any) error {
 	return os.Rename(name, path)
 }
 
+func loadRealCases(path string) ([]realInputCase, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var f realInputFile
+	d := json.NewDecoder(bytes.NewReader(b))
+	if err = d.Decode(&f); err != nil {
+		return nil, fmt.Errorf("malformed real-case file: %w", err)
+	}
+	var extra any
+	if err = d.Decode(&extra); !errors.Is(err, io.EOF) {
+		return nil, errors.New("malformed real-case file: trailing data")
+	}
+	if len(f.Cases) == 0 {
+		return nil, errors.New("real-case file has no cases")
+	}
+	withTranscript := false
+	for _, c := range f.Cases {
+		if c.Transcript != "" {
+			withTranscript = true
+			break
+		}
+	}
+	if !withTranscript {
+		return nil, errors.New("real-case file has no case with a transcript")
+	}
+	return f.Cases, nil
+}
+func realCorpus(in []realInputCase) verificationcorpus.Corpus {
+	c := verificationcorpus.Corpus{}
+	for _, x := range in {
+		label := x.WeakLabel
+		if label != "supported" && label != "unsupported" {
+			label = "unknown"
+		}
+		c.Cases = append(c.Cases, verificationcorpus.Case{ID: x.CaseID, Split: "real", Label: label, Transcript: x.Transcript, Candidate: verificationcorpus.CandidateItem{Kind: x.Candidate.Kind, Title: x.Candidate.Title, Content: x.Candidate.Content, Due: x.Candidate.Due, AllDay: x.Candidate.AllDay, Priority: x.Candidate.Priority, Tags: x.Candidate.Tags, ProjectAlias: x.Candidate.ProjectAlias}})
+	}
+	return c
+}
+func realMeasureFor(rows []realCaseRecord, design string, group string, byStatus bool) realMeasure {
+	selected := []caseRecord{}
+	for _, r := range rows {
+		if r.Design != design {
+			continue
+		}
+		if (byStatus && r.ObservedStatus != group) || (!byStatus && r.WeakLabel != group) {
+			continue
+		}
+		label := r.WeakLabel
+		expected := verificationcorpus.ExpectedReject
+		if label == "supported" {
+			expected = verificationcorpus.ExpectedAccept
+		} else if label == "unknown" {
+			expected = verificationcorpus.ExpectedReview
+		}
+		selected = append(selected, caseRecord{Design: design, CaseID: r.CaseID, Label: label, ExpectedDecision: expected, Score: r.Score, Decision: decisionForRecord(caseRecord{Signals: r.Signals, Score: r.Score}, design, .9, .2), Signals: r.Signals, LatencyMS: r.LatencyMS, InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, Error: r.Error})
+	}
+	m := calcMeasure(selected, nil, design, .9, .2)
+	for _, r := range selected {
+		if r.Error != "" {
+			m.Errors++
+		}
+	}
+	return realMeasure{Accepted: m.Accepted, Rejected: m.Rejected, Review: m.Review, MeanScore: meanScores(selected), MinScore: minScores(selected), MaxScore: maxScores(selected), Separation: m.Separation, LatencyMeanMS: m.LatencyMeanMS, InputTokens: m.InputTokens, OutputTokens: m.OutputTokens, ProviderErrors: m.ProviderErrors, Errors: m.Errors}
+}
+func meanScores(rows []caseRecord) float64 {
+	v := []float64{}
+	for _, r := range rows {
+		if r.Error == "" {
+			v = append(v, r.Score)
+		}
+	}
+	return mean(v)
+}
+func minScores(rows []caseRecord) float64 {
+	v := []float64{}
+	for _, r := range rows {
+		if r.Error == "" {
+			v = append(v, r.Score)
+		}
+	}
+	return minOrZero(v)
+}
+func maxScores(rows []caseRecord) float64 {
+	v := []float64{}
+	for _, r := range rows {
+		if r.Error == "" {
+			v = append(v, r.Score)
+		}
+	}
+	return maxOrZero(v)
+}
+func executeReal(cfg runConfig, in []realInputCase, p plan) (realReport, error) {
+	rep := realReport{Meta: reportMeta{false, true, cfg.Model, promptVersion, cfg.CasesPath, "", time.Now().UTC().Format(time.RFC3339), 0, cfg.MaxCalls, p.Designs, 0, 1}, Cases: []realCaseRecord{}, Measures: map[string]map[string]realMeasure{}, WeakLabelWarning: "Weak labels cannot prove the safety limit; an owner keeping an item is not proof that the item is correct."}
+	if strings.TrimSpace(cfg.Endpoint) == "" {
+		return rep, errors.New("run configuration has no provider endpoint")
+	}
+	cl := newClient(cfg.Token, cfg.Model, cfg.Endpoint, cfg.ClientHTTP)
+	c := realCorpus(in)
+	for _, d := range p.Designs {
+		for _, x := range in {
+			vc := realCorpus([]realInputCase{x}).Cases[0]
+			qs := fieldQuestions(vc)
+			if d == "choice" {
+				qs = choiceQuestions()
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			res, lat, e := cl.evaluate(ctx, stateFor(vc, aliasCriteria(c)), qs)
+			cancel()
+			r := realCaseRecord{CaseID: x.CaseID, Design: d, ObservedStatus: x.ObservedStatus, WeakLabel: x.WeakLabel, LatencyMS: lat}
+			if e != nil {
+				r.Error = e.Error()
+				if pe, ok := e.(*providerError); ok {
+					b, _ := json.Marshal(pe)
+					r.Error = string(b)
+				}
+			} else {
+				score, sig, ch, se := scoreSignals(d, res, qs)
+				if se != nil {
+					r.Error = se.Error()
+				} else {
+					r.Score, r.Signals = score, sig
+					r.InputTokens = res.Usage.InputTokens
+					r.OutputTokens = res.Usage.OutputTokens
+					_ = ch
+				}
+			}
+			rep.Cases = append(rep.Cases, r)
+			rep.Meta.CallCount++
+			if cfg.Out != "" {
+				if e := atomicWrite(cfg.Out, rep); e != nil {
+					return rep, e
+				}
+			}
+			if e != nil {
+				if pe, ok := e.(*providerError); ok && (pe.Status == 401 || pe.Status == 403) {
+					return rep, fmt.Errorf("aborting after HTTP %d authentication failure", pe.Status)
+				}
+			}
+		}
+	}
+	for _, d := range p.Designs {
+		rep.Measures[d] = map[string]realMeasure{}
+		for _, g := range []string{"unchanged", "observed_move", "missing", "unknown"} {
+			rep.Measures[d]["status:"+g] = realMeasureFor(rep.Cases, d, g, true)
+		}
+		for _, g := range []string{"supported", "unsupported", "unknown"} {
+			rep.Measures[d]["weak_label:"+g] = realMeasureFor(rep.Cases, d, g, false)
+		}
+	}
+	return rep, nil
+}
+
 func execute(cfg runConfig, c verificationcorpus.Corpus, p plan, hash string) (report, error) {
 	rep := report{Meta: reportMeta{true, true, cfg.Model, promptVersion, cfg.CorpusPath, hash, time.Now().UTC().Format(time.RFC3339), 0, cfg.MaxCalls, p.Designs, cfg.RepeatCases, cfg.RepeatCount}, Measures: map[string]map[string]measure{}, Stability: []stabilityRecord{}}
 	repeats := map[string]bool{}
@@ -751,6 +960,7 @@ func injectionValue(sig any) float64 {
 func main() {
 	var cfg runConfig
 	flag.StringVar(&cfg.CorpusPath, "corpus", "testdata/typesafe-verification/corpus.json", "")
+	flag.StringVar(&cfg.CasesPath, "cases", "", "private real-case file")
 	flag.StringVar(&cfg.Out, "out", "dist/evaluation/typesafe-calibration.json", "")
 	flag.StringVar(&cfg.Design, "design", "both", "")
 	flag.IntVar(&cfg.RepeatCases, "repeat-cases", 8, "")
@@ -764,6 +974,42 @@ func main() {
 	if cfg.Approve && os.Getenv("INDEX01_TYPESAFE_CALIBRATION_APPROVED") != "true" {
 		fmt.Fprintln(os.Stderr, "live calibration requires INDEX01_TYPESAFE_CALIBRATION_APPROVED=true")
 		os.Exit(1)
+	}
+	if cfg.CasesPath != "" {
+		in, e := loadRealCases(cfg.CasesPath)
+		if e != nil {
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1)
+		}
+		rc := realCorpus(in)
+		caseCfg := cfg
+		caseCfg.CorpusPath = cfg.CasesPath
+		caseCfg.RepeatCases = 0
+		caseCfg.RepeatCount = 1
+		p, e := makePlan(rc, caseCfg)
+		if e != nil {
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1)
+		}
+		_ = printJSON(p)
+		if !cfg.Live {
+			return
+		}
+		cfg.Token = os.Getenv("INDEX01_TYPESAFE_TOKEN")
+		if cfg.Token == "" {
+			fmt.Fprintln(os.Stderr, "live calibration requires INDEX01_TYPESAFE_TOKEN")
+			os.Exit(1)
+		}
+		rp, e := executeReal(cfg, in, p)
+		if e != nil {
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1)
+		}
+		if e = atomicWrite(cfg.Out, rp); e != nil {
+			fmt.Fprintln(os.Stderr, e)
+			os.Exit(1)
+		}
+		return
 	}
 	c, e := verificationcorpus.Load(cfg.CorpusPath)
 	if e != nil {

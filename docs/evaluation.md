@@ -206,6 +206,18 @@ Therefore verification stays disabled, and no production threshold changes.
 Collect more evidence in one of two ways: a shadow run that logs each decision and routes nothing, or a larger held-out corpus.
 A full repeat run costs about 204 requests.
 
+### Real-item transfer check
+
+The real items stay outside the repository. The check keeps scores and counts only.
+The check used the 11 tasks the hook created whose transcript was still retained, together with the owner's later state: 9 kept unchanged and 2 moved to another list.
+The labels are weak. An owner keeping an item is not proof that the item is correct, so the check cannot measure false accepts and does not prove the safety limit.
+
+The field-wise design transfers in ranking. Its mean support score was 0.83 on the real items against 0.82 on the synthetic held-out items, and it rejected no real item.
+The Choice design does not transfer. Its mean score fell to 0.58 from 0.69, and it would have rejected 6 of the 11 real items. Do not adopt the Choice design.
+Review volume does not transfer. At the synthetic-calibrated accept threshold of 0.84, 6 of the 11 real items would reach review. That is 55 percent against a budget of 25 percent.
+Real transcripts are longer, use filler words, and carry several clauses. The synthetic corpus must include that shape before any threshold is trusted.
+Keep the 11 real items as a transfer check for every later calibration run.
+
 ## Maintenance
 
 Use [routing feedback from list moves](routing-feedback.md) to infer preferred destinations under the owner policy, with overrides for exceptions.
