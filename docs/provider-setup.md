@@ -216,8 +216,8 @@ The data path is:
 1. Index 01 sends the selected recording and/or transcription to this receiver.
 2. The receiver sends transcription text to DeepSeek for task and note extraction.
 3. The receiver sends extracted task and note data to TickTick.
-4. SQLite stores processing data and extracted content. Backups can contain it.
-
+4. When verification is enabled, the receiver sends the transcription and one extracted candidate item to TypeSafe.
+5. SQLite stores processing data and extracted content. Backups can contain it.
 Use transcription-only delivery when audio is not required. Protect the webhook
 token, provider tokens, database, and backups. Do not place secrets in logs,
 command history, support reports, or source control.
@@ -233,6 +233,8 @@ keep retries bounded, review ambiguous deliveries, and avoid duplicate manual
 retries. The operator owns provider accounts, billing, rate-limit planning,
 privacy notices, consent, retention, deletion, legal compliance, backups,
 restoration tests, and incident response.
+
+If TypeSafe verification is enabled, review TypeSafe privacy terms, retention, account region, cost, and the fourth data egress before deployment. Keep verification disabled until labeled calibration is complete.
 
 Review provider privacy documents before each material data-flow change:
 [DeepSeek privacy](https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html),

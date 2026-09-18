@@ -54,6 +54,7 @@ type QueueOperationalStatus struct {
 type ProviderOperationalStatus struct {
 	DeepSeek ProviderLatencyStatus `json:"deepseek"`
 	TickTick ProviderLatencyStatus `json:"ticktick"`
+	TypeSafe ProviderLatencyStatus `json:"typesafe"`
 }
 
 type ProviderLatencyStatus struct {
@@ -86,7 +87,10 @@ func (s *Store) WorkerStarted(ctx context.Context, owner string) error {
 			deepseek_last_failed = 0,
 			ticktick_last_latency_ms = NULL,
 			ticktick_last_observed_at = NULL,
-			ticktick_last_failed = 0`, owner, now, now)
+			ticktick_last_failed = 0,
+			typesafe_last_latency_ms = NULL,
+			typesafe_last_observed_at = NULL,
+			typesafe_last_failed = 0`, owner, now, now)
 	if err != nil {
 		return fmt.Errorf("record worker start: %w", err)
 	}
@@ -152,6 +156,10 @@ func (s *Store) RecordProviderLatency(ctx context.Context, owner, provider strin
 		statement = `UPDATE worker_health SET
 			ticktick_last_latency_ms = ?, ticktick_last_observed_at = ?, ticktick_last_failed = ?
 			WHERE singleton = 1 AND owner = ?`
+	case "typesafe":
+		statement = `UPDATE worker_health SET
+			typesafe_last_latency_ms = ?, typesafe_last_observed_at = ?, typesafe_last_failed = ?
+			WHERE singleton = 1 AND owner = ?`
 	default:
 		return fmt.Errorf("provider is invalid")
 	}
@@ -170,18 +178,20 @@ func (s *Store) OperationalStatus(ctx context.Context) (OperationalStatus, error
 	}
 	var startedAt, heartbeatAt, cycleStartedAt, cycleCompletedAt sql.NullString
 	var workerState sql.NullString
-	var cycleFailed, deepSeekFailed, tickTickFailed bool
-	var deepSeekLatency, tickTickLatency sql.NullInt64
-	var deepSeekObservedAt, tickTickObservedAt sql.NullString
+	var cycleFailed, deepSeekFailed, tickTickFailed, typeSafeFailed bool
+	var deepSeekLatency, tickTickLatency, typeSafeLatency sql.NullInt64
+	var deepSeekObservedAt, tickTickObservedAt, typeSafeObservedAt sql.NullString
 	err := s.db.QueryRowContext(ctx, `
 		SELECT state, started_at, heartbeat_at, last_cycle_started_at,
 			last_cycle_completed_at, last_cycle_failed,
 			deepseek_last_latency_ms, deepseek_last_observed_at, deepseek_last_failed,
-			ticktick_last_latency_ms, ticktick_last_observed_at, ticktick_last_failed
+			ticktick_last_latency_ms, ticktick_last_observed_at, ticktick_last_failed,
+			typesafe_last_latency_ms, typesafe_last_observed_at, typesafe_last_failed
 		FROM worker_health WHERE singleton = 1`).Scan(
 		&workerState, &startedAt, &heartbeatAt, &cycleStartedAt, &cycleCompletedAt, &cycleFailed,
 		&deepSeekLatency, &deepSeekObservedAt, &deepSeekFailed,
 		&tickTickLatency, &tickTickObservedAt, &tickTickFailed,
+		&typeSafeLatency, &typeSafeObservedAt, &typeSafeFailed,
 	)
 	if err != nil && !errorsIsNoRows(err) {
 		return OperationalStatus{}, fmt.Errorf("query worker health: %w", err)
@@ -201,6 +211,7 @@ func (s *Store) OperationalStatus(ctx context.Context) (OperationalStatus, error
 	status.Providers.DeepSeek = providerLatencyStatus(deepSeekLatency, deepSeekObservedAt, deepSeekFailed)
 	status.Providers.TickTick = providerLatencyStatus(tickTickLatency, tickTickObservedAt, tickTickFailed)
 
+	status.Providers.TypeSafe = providerLatencyStatus(typeSafeLatency, typeSafeObservedAt, typeSafeFailed)
 	if err := s.db.QueryRowContext(ctx, `
 		SELECT count(*), coalesce(sum(receive_count), 0)
 		FROM recordings`).Scan(
@@ -302,6 +313,9 @@ func healthReasons(status OperationalStatus) []string {
 	}
 	if status.Providers.TickTick.LastLatencyMilliseconds > providerSlowAfter.Milliseconds() {
 		reasons = append(reasons, "ticktick_slow")
+	}
+	if status.Providers.TypeSafe.LastLatencyMilliseconds > providerSlowAfter.Milliseconds() {
+		reasons = append(reasons, "typesafe_slow")
 	}
 	return reasons
 }

@@ -17,21 +17,26 @@ const defaultMaxBodyBytes int64 = 64 << 20
 const minWebhookTokenBytes = 32
 
 type Config struct {
-	AllowLegacyWebhookToken  bool
-	EvaluationRetention      time.Duration
-	EvaluationPollInterval   time.Duration
-	Token                    string
-	DBPath                   string
-	ListenAddr               string
-	MaxBodyBytes             int64
-	DeepSeekToken            string
-	DeepSeekModel            string
-	TimeZone                 string
-	TickTickToken            string
-	TickTickDefaultProjectID string
-	TickTickNoteProjectID    string
-	TickTickProjectAliases   map[string]string
-	WorkerOwner              string
+	AllowLegacyWebhookToken   bool
+	EvaluationRetention       time.Duration
+	EvaluationPollInterval    time.Duration
+	Token                     string
+	DBPath                    string
+	ListenAddr                string
+	MaxBodyBytes              int64
+	DeepSeekToken             string
+	DeepSeekModel             string
+	TypeSafeToken             string
+	TypeSafeModel             string
+	TypeSafeEndpoint          string
+	TypeSafeVerify            bool
+	TimeZone                  string
+	TickTickToken             string
+	TickTickDefaultProjectID  string
+	TickTickNoteProjectID     string
+	TickTickProjectAliases    map[string]string
+	TypeSafeAliasDescriptions map[string]string
+	WorkerOwner               string
 }
 
 func LoadConfig(getenv func(string) string) (Config, error) {
@@ -41,7 +46,10 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		ListenAddr:               getenv("INDEX01_LISTEN_ADDR"),
 		MaxBodyBytes:             defaultMaxBodyBytes,
 		DeepSeekToken:            getenv("INDEX01_DEEPSEEK_TOKEN"),
+		TypeSafeToken:            getenv("INDEX01_TYPESAFE_TOKEN"),
 		DeepSeekModel:            defaultDeepSeekModel,
+		TypeSafeModel:            defaultTypeSafeModel,
+		TypeSafeEndpoint:         typeSafeAPIEndpoint,
 		TimeZone:                 defaultDeepSeekTimeZone,
 		TickTickToken:            getenv("INDEX01_TICKTICK_TOKEN"),
 		TickTickDefaultProjectID: getenv("INDEX01_TICKTICK_DEFAULT_PROJECT_ID"),
@@ -54,6 +62,29 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("INDEX01_ALLOW_LEGACY_WEBHOOK_TOKEN must be a boolean")
 		}
 		cfg.AllowLegacyWebhookToken = legacy
+	}
+	rawVerify := getenv("INDEX01_TYPESAFE_VERIFY")
+	if rawVerify != "" {
+		verify, err := strconv.ParseBool(rawVerify)
+		if err != nil {
+			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_VERIFY must be a boolean")
+		}
+		cfg.TypeSafeVerify = verify
+	}
+	if cfg.TypeSafeVerify && strings.TrimSpace(cfg.TypeSafeToken) == "" {
+		return Config{}, fmt.Errorf("INDEX01_TYPESAFE_TOKEN is required when verification is enabled")
+	}
+	if rawModel := getenv("INDEX01_TYPESAFE_MODEL"); rawModel != "" {
+		if strings.TrimSpace(rawModel) == "" || !safeProviderIdentifier(strings.TrimSpace(rawModel)) {
+			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_MODEL is invalid")
+		}
+		cfg.TypeSafeModel = strings.TrimSpace(rawModel)
+	}
+	if rawEndpoint := getenv("INDEX01_TYPESAFE_ENDPOINT"); rawEndpoint != "" {
+		cfg.TypeSafeEndpoint = strings.TrimSpace(rawEndpoint)
+	}
+	if err := validateTypeSafeEndpoint(cfg.TypeSafeEndpoint); err != nil {
+		return Config{}, fmt.Errorf("INDEX01_TYPESAFE_ENDPOINT is invalid")
 	}
 	if err := validateWebhookTokenWithLegacy(cfg.Token, cfg.AllowLegacyWebhookToken); err != nil {
 		return Config{}, err
@@ -117,6 +148,14 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	cfg.TickTickProjectAliases = aliases
+	descriptions, err := parseAliasDescriptions(getenv("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"), aliases)
+	if err != nil {
+		return Config{}, err
+	}
+	if cfg.TypeSafeVerify && len(aliases) != len(descriptions) {
+		return Config{}, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must describe every configured alias when verification is enabled")
+	}
+	cfg.TypeSafeAliasDescriptions = descriptions
 	cfg.DBPath, err = normalizeDatabasePath(cfg.DBPath)
 	if err != nil {
 		return Config{}, err
@@ -204,6 +243,45 @@ func parseProjectAliases(raw string) (map[string]string, error) {
 			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIASES contains duplicate normalized aliases")
 		}
 		normalized[alias] = projectID
+	}
+	return normalized, nil
+}
+
+func parseAliasDescriptions(raw string, aliases map[string]string) (map[string]string, error) {
+	descriptions := make(map[string]string)
+	if strings.TrimSpace(raw) == "" {
+		return descriptions, nil
+	}
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	if err := decoder.Decode(&descriptions); err != nil || descriptions == nil {
+		return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must be a JSON object")
+	}
+	var trailing any
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must contain one JSON object")
+	}
+	normalized := make(map[string]string, len(descriptions))
+	for rawAlias, rawDescription := range descriptions {
+		alias := strings.ToLower(strings.TrimSpace(rawAlias))
+		description := strings.TrimSpace(rawDescription)
+		if projectID := aliases[alias]; projectID != "" && (strings.EqualFold(alias, projectID) || strings.Contains(strings.ToLower(description), strings.ToLower(projectID))) {
+			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must not contain a project identifier")
+		}
+		if alias == "" || description == "" || len(description) > maxQueuedNotesBytes || strings.ContainsAny(description, "\r\n\x00") {
+			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains a blank or invalid description")
+		}
+		if _, ok := aliases[alias]; !ok {
+			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains an unknown alias")
+		}
+		if _, exists := normalized[alias]; exists {
+			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains duplicate normalized aliases")
+		}
+		normalized[alias] = description
+	}
+	for alias := range aliases {
+		if _, ok := normalized[alias]; !ok {
+			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must describe every configured alias")
+		}
 	}
 	return normalized, nil
 }

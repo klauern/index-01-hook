@@ -20,9 +20,9 @@ type DeliveryProvider interface {
 	CreateNote(context.Context, TickTickNoteInput) (TickTickCreatedTask, error)
 	ReconcileItem(context.Context, TickTickReconciliationInput) (TickTickReconciliationResult, error)
 }
-
 type WorkerConfig struct {
 	EvidenceRouting       *evalcorpus.RoutingConfig
+	Verifier              ExtractionVerifier
 	Owner                 string
 	TimeZone              string
 	LeaseDuration         time.Duration
@@ -144,9 +144,63 @@ func (w *Worker) RunOnce(ctx context.Context) (worked bool, cycleErr error) {
 
 func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) error {
 	started := time.Now()
+	if screener, ok := w.config.Verifier.(ExtractionSecurityScreener); ok {
+		screenStarted := time.Now()
+		injected, screenErr := screener.Screen(ctx, claim.Transcription)
+		w.recordProviderLatency(ctx, "typesafe", time.Since(screenStarted), screenErr != nil)
+		if screenErr != nil {
+			if classifyTypeSafeError(screenErr) == TypeSafeErrorRetryable && claim.CycleAttemptNumber < w.config.ExtractionMaxAttempts {
+				return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
+			}
+			return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview)
+		}
+		if injected {
+			return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview)
+		}
+	}
 	extraction, err := w.extractor.Extract(ctx, claim.Transcription, w.config.ProjectAliases)
 	w.recordProviderLatency(ctx, "deepseek", time.Since(started), err != nil)
 	if err == nil {
+		if w.config.Verifier != nil {
+			accepted := make([]QueuedItem, 0, len(extraction.Items))
+			verifications := make([]TypeSafeVerificationEvidence, 0, len(extraction.Items))
+			needsReview := false
+			for _, item := range extraction.Items {
+				verificationStarted := time.Now()
+				result, verificationErr := w.config.Verifier.Verify(ctx, claim.Transcription, item, w.config.ProjectAliases)
+				w.recordProviderLatency(ctx, "typesafe", time.Since(verificationStarted), verificationErr != nil)
+				if verificationErr != nil {
+					if classifyTypeSafeError(verificationErr) == TypeSafeErrorRetryable {
+						if claim.CycleAttemptNumber >= w.config.ExtractionMaxAttempts {
+							return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable)
+						}
+						return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
+					}
+					return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview)
+				}
+				verifications = append(verifications, result.Evidence)
+				switch result.Decision {
+				case VerificationAccept:
+					accepted = append(accepted, result.Item)
+				case VerificationReview:
+					needsReview = true
+				case VerificationReject:
+				default:
+					needsReview = true
+				}
+			}
+			if err := w.store.SaveExtractionVerification(ctx, claim.RecordingID, w.config.Owner, verifications); err != nil {
+				return err
+			}
+			if needsReview {
+				return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview)
+			}
+			if len(accepted) == 0 {
+				return w.store.CompleteRejectedExtraction(ctx, claim.RecordingID, w.config.Owner)
+			}
+			extraction.Items = accepted
+			extraction.Verifications = verifications
+		}
 		if extraction.Evidence != nil && w.config.EvidenceRouting != nil {
 			routing := *w.config.EvidenceRouting
 			routing.Clock = extraction.Evidence.Clock.Format(time.RFC3339Nano)

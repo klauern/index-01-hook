@@ -16,10 +16,15 @@ Kubernetes set deployment-specific values outside the application settings.
 | `INDEX01_DEEPSEEK_TOKEN` | Yes | None | Non-blank DeepSeek API token. |
 | `INDEX01_DEEPSEEK_MODEL` | No | `deepseek-v4-flash` | Safe provider identifier passed to DeepSeek. |
 | `INDEX01_TIME_ZONE` | No | `UTC` | Valid IANA time zone for date extraction and task delivery. |
+| `INDEX01_TYPESAFE_VERIFY` | No | `false` | Set to `true` to verify each extracted item. Keep disabled until threshold calibration is complete. |
+| `INDEX01_TYPESAFE_TOKEN` | Conditional | None | Server-side TypeSafe API token. Required only when verification is enabled. |
+| `INDEX01_TYPESAFE_MODEL` | No | `jev-1.13.0` | Pinned TypeSafe model identifier. Do not use a moving alias for calibrated thresholds. |
+| `INDEX01_TYPESAFE_ENDPOINT` | No | `https://api.typesafe.ai/v1/systemone` | Fixed HTTPS TypeSafe endpoint. Startup rejects other hosts or paths. |
 | `INDEX01_TICKTICK_TOKEN` | Yes | None | Non-blank TickTick Open API token. |
 | `INDEX01_TICKTICK_DEFAULT_PROJECT_ID` | Yes | None | Writable `TASK` project identifier or `inbox`. |
 | `INDEX01_TICKTICK_NOTE_PROJECT_ID` | Yes | None | Writable `NOTE` project identifier. |
 | `INDEX01_TICKTICK_PROJECT_ALIASES` | No | `{}` | JSON object that maps task aliases to project identifiers. |
+| `INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS` | No | `{}` | JSON object that maps aliases to plain-language descriptions. Descriptions are sent to TypeSafe; project identifiers are not. |
 | `INDEX01_WORKER_OWNER` | No | `index-01-hook` | Durable lease owner. A blank value uses the default. |
 
 Every required value must be present and non-blank. Copied example values must
@@ -39,6 +44,10 @@ letters, digits, and `-_.:/`, with a maximum length of 256 bytes. The service
 does not validate model availability locally. The provider can reject an
 unavailable model during extraction.
 
+`INDEX01_TYPESAFE_VERIFY` is `false` by default. When enabled, the service sends the transcription and one candidate item per request to TypeSafe. TypeSafe receives no TickTick project identifier. Transport failures retry within the extraction limit; uncertain judgments enter `needs_review`; rejected items create no delivery task.
+
+`INDEX01_TYPESAFE_TOKEN` stays server-side and never appears in logs. Startup validates the token, pinned model, and fixed endpoint before the HTTP server listens. Live calls require explicit approval.
+
 `INDEX01_TIME_ZONE` must be an available IANA time zone, such as `UTC` or
 `America/New_York`. `Local` is rejected. The default is `UTC`.
 
@@ -53,8 +62,7 @@ closed state, and write access.
 
 Set aliases as one JSON object. Each key is a case-insensitive task alias of at
 most 100 bytes. Each value is a TickTick project identifier. The worker gives
-only configured alias names to DeepSeek. DeepSeek cannot choose an arbitrary provider project ID.
-
+only configured alias names to DeepSeek. DeepSeek cannot choose an arbitrary provider project ID. When TypeSafe verification is enabled, provide matching plain-language descriptions in `INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS`. TypeSafe receives alias names and descriptions only; the TickTick project IDs remain in the server.
 Use a safe example with generic identifiers:
 
 ```dotenv

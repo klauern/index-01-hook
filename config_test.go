@@ -71,6 +71,19 @@ func TestLoadConfigReadsOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadConfigReadsAliasDescriptions(t *testing.T) {
+	env := validConfigEnv()
+	env["INDEX01_TICKTICK_PROJECT_ALIASES"] = `{"Work":"project-work"}`
+	env["INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"] = `{"WORK":"employment tasks"}`
+	cfg, err := LoadConfig(func(key string) string { return env[key] })
+	if err != nil || cfg.TypeSafeAliasDescriptions["work"] != "employment tasks" {
+		t.Fatalf("LoadConfig() = %+v, %v", cfg, err)
+	}
+	env["INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"] = `{"work":" "}`
+	if _, err := LoadConfig(func(key string) string { return env[key] }); err == nil {
+		t.Fatal("accepted a blank alias description")
+	}
+}
 func TestLoadConfigRejectsInvalidValues(t *testing.T) {
 	tests := []struct {
 		name string

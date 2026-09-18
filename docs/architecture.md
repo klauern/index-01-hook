@@ -12,11 +12,13 @@ runs the HTTP receiver and the worker. The worker uses durable SQLite queues.
 5. A transcription creates one extraction job.
 6. The worker claims the job with a durable lease.
 7. DeepSeek extracts zero to ten independent tasks or notes.
-8. SQLite freezes the validated extraction before delivery starts.
-9. The worker claims each delivery task separately.
-10. TickTick creates each task or note.
-11. The worker records the provider identifier and delivery result.
-12. A terminal retention operation purges eligible old recordings.
+8. When enabled, TypeSafe verifies each extracted item with narrow questions.
+9. Go applies the verification thresholds and freezes only accepted items.
+10. An uncertain item enters `needs_review`; a rejected item creates no delivery task.
+11. The worker claims each accepted delivery task separately.
+12. TickTick creates each task or note.
+13. The worker records the provider identifier and delivery result.
+14. A terminal retention operation purges eligible old recordings.
 
 A request without transcription can be retained as an audio-only receipt. It
 does not create an extraction job.
@@ -67,6 +69,12 @@ The service stores the provider name, configured model, and optional provider
 response identifier with the frozen extraction. Frozen output is immutable.
 A later retry does not replace a successful frozen extraction.
 
+## TypeSafe verification
+
+Verification is disabled at startup. After calibration and explicit approval, the worker sends one request per extracted item. The request contains the transcription, the candidate fields, and alias descriptions. It does not contain TickTick project identifiers.
+
+The request asks narrow questions for injection, item presence, kind, title, content, date, priority, tags, and route. Go owns the accept, review, and reject ladder. TypeSafe probabilities remain in private evaluation evidence. Transport failures retry. Uncertain items enter `needs_review`. TypeSafe never sends an item directly to TickTick.
+
 ## TickTick delivery
 
 The worker sends each frozen item independently to TickTick. A task request
@@ -86,11 +94,9 @@ compares the returned kind, marker, title, and content with frozen data. It does
 not send the source transcription.
 
 ## Failure and retry states
+DeepSeek authentication failures enter `blocked_auth`. Refusals enter `needs_review`. Malformed or terminal responses enter `dead_letter`. Retryable responses use bounded exponential retry and then enter `dead_letter` after the configured attempt limit.
 
-DeepSeek authentication failures enter `blocked_auth`. Refusals enter
-`needs_review`. Malformed or terminal responses enter `dead_letter`. Retryable
-responses use bounded exponential retry and then enter `dead_letter` after the
-configured attempt limit.
+When enabled, TypeSafe transport failures use bounded extraction retries. Authentication, malformed, and terminal TypeSafe responses enter `needs_review`; semantic uncertainty also enters `needs_review`. TypeSafe semantic judgments never enter `dead_letter`.
 
 TickTick authentication failures enter `blocked_auth`. Configuration failures
 enter `needs_review`. Malformed create responses enter `dead_letter`.
@@ -124,8 +130,7 @@ become eligible. Review unresolved terminal work before purge.
 `/healthz` checks a live SQLite query. `/statusz` and `/readyz` report aggregate
 worker, queue, intake, and provider data. A missing, stopped, stale, or failed
 worker can make the report degraded. A queue older than 15 minutes, blocked
-work, review work, dead-letter work, or provider latency above 25 seconds can
-also make the report degraded.
+work, review work, dead-letter work, or provider latency above 25 seconds can also make the report degraded. `/statusz` includes the latest TypeSafe latency and failure observation.
 
 A provider `last_failed` flag alone does not necessarily degrade readiness.
 Provider latency and queue or worker conditions determine the health reasons.
