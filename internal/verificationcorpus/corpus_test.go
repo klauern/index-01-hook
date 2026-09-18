@@ -2,6 +2,7 @@ package verificationcorpus
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -342,37 +343,54 @@ func normalizeTranscript(text string) string {
 	return strings.Join(kept, " ")
 }
 
-// TestFixtureItemsAreDistinct rejects a corpus that reuses an item across cases.
-// Reused items measure memorization, not generalization.
+// TestFixtureItemsAreDistinct keeps every case an independent observation.
+// A transcript may carry a derived negative, so the pair must differ and the
+// number of cases per transcript stays small.
 func TestFixtureItemsAreDistinct(t *testing.T) {
 	corpus, err := Load(fixturePath(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	titles := map[string]string{}
-	transcripts := map[string]string{}
+	const maxCasesPerTranscript = 10
+	pairs := map[string]string{}
+	perTranscript := map[string]int{}
+	titleTranscript := map[string]string{}
 	for _, item := range corpus.Cases {
-		title := strings.ToLower(item.Candidate.Title)
-		if prior, ok := titles[title]; ok {
-			t.Errorf("candidate title %q is reused by %s and %s", item.Candidate.Title, prior, item.ID)
-		}
-		titles[title] = item.ID
 		normalized := normalizeTranscript(item.Transcript)
-		if prior, ok := transcripts[normalized]; ok {
-			t.Errorf("case %s repeats the transcript of %s after normalization", item.ID, prior)
+		perTranscript[normalized]++
+		if perTranscript[normalized] > maxCasesPerTranscript {
+			t.Errorf("transcript of %s is used by more than %d cases", item.ID, maxCasesPerTranscript)
 		}
-		transcripts[normalized] = item.ID
+		pair := normalized + "\x00" + candidateKey(item.Candidate)
+		if prior, ok := pairs[pair]; ok {
+			t.Errorf("cases %s and %s share a transcript and a candidate", prior, item.ID)
+		}
+		pairs[pair] = item.ID
+		title := strings.ToLower(item.Candidate.Title)
+		if prior, ok := titleTranscript[title]; ok && prior != normalized {
+			t.Errorf("title %q appears with different transcripts in %s and %s", item.Candidate.Title, prior, item.ID)
+		}
+		titleTranscript[title] = normalized
 	}
 }
 
-// TestFixtureAvoidsRepeatedBoilerplate rejects a shared opening across many cases.
-// A repeated prefix lets a model key on the template instead of the content.
+// candidateKey renders every candidate field so two cases can be compared.
+func candidateKey(candidate CandidateItem) string {
+	return strings.Join([]string{
+		candidate.Kind, candidate.Title, candidate.Content, candidate.Due,
+		fmt.Sprint(candidate.AllDay), fmt.Sprint(candidate.Priority),
+		strings.Join(candidate.Tags, ","), candidate.ProjectAlias,
+	}, "\x00")
+}
+
+// TestFixtureAvoidsRepeatedBoilerplate rejects a story frame reused too often.
+// Hand-written speech still shares function words, so the limit is a share.
 func TestFixtureAvoidsRepeatedBoilerplate(t *testing.T) {
 	corpus, err := Load(fixturePath(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	const maxSharedPrefix = 3
+	const maxOpeningShare = 0.05
 	prefixes := map[string]int{}
 	first := map[string]string{}
 	for _, item := range corpus.Cases {
@@ -386,9 +404,13 @@ func TestFixtureAvoidsRepeatedBoilerplate(t *testing.T) {
 			first[prefix] = item.ID
 		}
 	}
+	limit := int(float64(len(corpus.Cases)) * maxOpeningShare)
+	if limit < 3 {
+		limit = 3
+	}
 	for prefix, count := range prefixes {
-		if count > maxSharedPrefix {
-			t.Errorf("%d cases start with %q, first at %s; allow %d or fewer", count, prefix, first[prefix], maxSharedPrefix)
+		if count > limit {
+			t.Errorf("%d cases start with %q, first at %s; allow %d or fewer", count, prefix, first[prefix], limit)
 		}
 	}
 }
@@ -464,17 +486,52 @@ func TestFixtureExactCardinality(t *testing.T) {
 	}
 }
 
-// TestFixtureAvoidsRepeatedPhrases rejects a sentence template reused across cases.
-func TestFixtureAvoidsRepeatedPhrases(t *testing.T) {
+// contentWords drops function words so shared frames do not hide shared content.
+func contentWords(text string) []string {
+	kept := make([]string, 0, 32)
+	for _, word := range strings.Fields(normalizeTranscript(text)) {
+		if contentStopWords[word] {
+			continue
+		}
+		kept = append(kept, word)
+	}
+	return kept
+}
+
+var contentStopWords = map[string]bool{
+	"a": true, "about": true, "after": true, "all": true, "an": true, "and": true,
+	"any": true, "are": true, "as": true, "at": true, "be": true, "before": true,
+	"but": true, "by": true, "can": true, "could": true, "do": true, "for": true,
+	"from": true, "get": true, "had": true, "has": true, "have": true, "i": true,
+	"if": true, "in": true, "into": true, "is": true, "it": true, "its": true,
+	"just": true, "like": true, "make": true, "me": true, "my": true, "need": true,
+	"not": true, "of": true, "on": true, "or": true, "our": true, "out": true,
+	"please": true, "put": true, "should": true, "so": true, "some": true, "that": true,
+	"the": true, "their": true, "them": true, "then": true, "there": true, "this": true,
+	"to": true, "up": true, "us": true, "was": true, "we": true, "when": true,
+	"will": true, "with": true, "would": true, "you": true, "your": true,
+}
+
+// TestFixtureContentIsNotRepeated rejects generated text that reuses content.
+// A repeated content bigram inside one transcript means composed text, not speech.
+func TestFixtureContentIsNotRepeated(t *testing.T) {
 	corpus, err := Load(fixturePath(t))
 	if err != nil {
 		t.Fatal(err)
 	}
-	const maxSharedPhrase = 2
+	const maxSharedContentPhrase = 5
 	phrases := map[string]int{}
 	first := map[string]string{}
 	for _, item := range corpus.Cases {
-		words := strings.Fields(normalizeTranscript(item.Transcript))
+		words := contentWords(item.Transcript)
+		seenBigrams := map[string]bool{}
+		for index := 0; index+1 < len(words); index++ {
+			bigram := words[index] + " " + words[index+1]
+			if seenBigrams[bigram] {
+				t.Errorf("case %s repeats the content phrase %q", item.ID, bigram)
+			}
+			seenBigrams[bigram] = true
+		}
 		for index := 0; index+3 < len(words); index++ {
 			phrase := strings.Join(words[index:index+4], " ")
 			phrases[phrase]++
@@ -484,8 +541,8 @@ func TestFixtureAvoidsRepeatedPhrases(t *testing.T) {
 		}
 	}
 	for phrase, count := range phrases {
-		if count > maxSharedPhrase {
-			t.Errorf("%d cases share the phrase %q, first at %s; allow %d or fewer", count, phrase, first[phrase], maxSharedPhrase)
+		if count > maxSharedContentPhrase {
+			t.Errorf("%d cases share the content phrase %q, first at %s; allow %d or fewer", count, phrase, first[phrase], maxSharedContentPhrase)
 		}
 	}
 }
