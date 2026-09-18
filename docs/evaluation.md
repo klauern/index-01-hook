@@ -157,8 +157,54 @@ Temperature and other unconfigured provider settings retain provider defaults; t
 The source hash covers `deepseek.go`, including the prompt, schema, model default, and decoding logic.
 Judge repetitions stay zero and are separate from model generations.
 
+## TypeSafe verification calibration
+
+The TypeSafe spike uses only `testdata/evaluation/scenarios.json`, `testdata/evaluation/feedback-corpus.json`, and fabricated title or content negatives. The data is synthetic and small. The spike report records supported and fabricated unsupported probabilities, separation, review volume, latency, and token usage.
+
+The spike is a provisional signal. It does not set production thresholds. Thresholds must come from the labeled evidence in `index-01-hook-9bj` and must report agreement, false-accept rate, and review rate. Cookbook values are illustrative and are not approved defaults. Use the pinned model identifier in the report. Repeat the run after a model change.
+
+The recorded trial is `docs/evaluation-baseline/typesafe-spike.json`. It used 58 candidates, including 29 fabricated negatives. The mean unsupported probability was 0.508 for supported items and 0.792 for fabricated items. Separation was 0.284, but review volume was 82.8%. This exceeds the operable review volume. Do not enable the verification stage.
 Use saved outputs when comparing reporting frameworks. Use new model generations when comparing model or prompt behavior.
 Do not use repeated scoring of the same output as evidence of model stability.
+
+### Labeled calibration corpus
+
+The corpus path is `testdata/typesafe-verification/corpus.json`.
+The corpus holds 86 cases: 43 development and 43 held-out, 19 supported cases per split, and 3 cases per failure type per split.
+Each case uses the `supported` or `unsupported` label.
+Each case lists `grounded_fields`. These are the candidate fields that the transcript states or directly implies.
+The loader enforces the label rules. It does not judge meaning. A human reviewer must confirm that each grounded field is truly stated.
+Supported cases ground every information-bearing field. A field-specific negative leaves exactly one named failure field ungrounded. `absent_item` grounds no fields.
+The loader rejects a grounded field that the candidate does not carry. It also rejects a note that carries task fields, a priority outside 0, 1, 3, and 5, an all-day task without a due date, a malformed due date, and repeated or empty tags.
+Prompt-injection cases keep all candidate fields grounded. Route them to review. Never route them to automatic acceptance.
+`ExpectedDecision` in package `verificationcorpus` reports accept, review, or reject for a case. The calibration runner and the threshold selector must use it.
+Development and held-out cases use distinct items, distinct transcripts, and different wording. No transcript or transcript-title pair appears in both splits.
+Case identifiers are opaque. They do not name the split, the label, or the failure type.
+The corpus is synthetic only. It contains no real recording, no credential, and no TickTick project identifier.
+
+### Recorded calibration
+
+The recorded calibration is `docs/evaluation-baseline/typesafe-calibration.json`.
+It used 86 synthetic cases and 204 live requests to model `jev-1.13.0` with prompt version `verification-calibration-v1`.
+The run made no provider error, and the mean latency was about 190 milliseconds per request.
+Both designs separated supported items from unsupported items on the held-out split of 43 cases.
+The field-wise design accepted 14 items with no unsafe accept and rejected 21, at accept 0.84 and reject 0.58. Review volume was 18.6 percent.
+The Choice design accepted 17 items with no unsafe accept and rejected 22, at accept 0.62 and reject 0.58. Review volume was 9.3 percent.
+Injected items scored 0.98 on the injection question. The highest score on a normal case was 0.80.
+Repeated cases were stable. The largest score spread was 0.12, and seven of eight cases stayed within 0.05.
+The selected thresholds are in `docs/evaluation-baseline/typesafe-thresholds.json`.
+
+### Decision: defer
+
+The held-out sample cannot prove the approved limits.
+No unsafe item was accepted, but only 14 items were accepted by the field-wise design and 17 by the Choice design.
+With no error, those counts bound the true false-accept rate at 19 percent and 16 percent with 95 percent confidence.
+The approved limit is 2 percent.
+The review-volume limit is also unproven: the field-wise bound is 31 percent against a limit of 25 percent.
+About 148 accepted held-out items with no error are needed to bound the false-accept rate at 2 percent.
+Therefore verification stays disabled, and no production threshold changes.
+Collect more evidence in one of two ways: a shadow run that logs each decision and routes nothing, or a larger held-out corpus.
+A full repeat run costs about 204 requests.
 
 ## Maintenance
 
