@@ -70,7 +70,9 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		if err != nil {
 			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_VERIFY must be a boolean")
 		}
-		cfg.TypeSafeVerify = verify
+		if verify {
+			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_VERIFY is not approved; use INDEX01_TYPESAFE_SHADOW")
+		}
 	}
 	rawShadow := getenv("INDEX01_TYPESAFE_SHADOW")
 	if rawShadow != "" {
@@ -79,9 +81,6 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_SHADOW must be a boolean")
 		}
 		cfg.TypeSafeShadow = shadow
-	}
-	if cfg.TypeSafeVerify && cfg.TypeSafeShadow {
-		return Config{}, fmt.Errorf("INDEX01_TYPESAFE_VERIFY and INDEX01_TYPESAFE_SHADOW are mutually exclusive")
 	}
 	if (cfg.TypeSafeVerify || cfg.TypeSafeShadow) && strings.TrimSpace(cfg.TypeSafeToken) == "" {
 		return Config{}, fmt.Errorf("INDEX01_TYPESAFE_TOKEN is required when verification is enabled")
@@ -163,7 +162,12 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	cfg.TickTickProjectAliases = aliases
-	descriptions, err := parseAliasDescriptions(getenv("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"), aliases)
+	descriptions, err := parseAliasDescriptions(
+		getenv("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"),
+		aliases,
+		cfg.TickTickDefaultProjectID,
+		cfg.TickTickNoteProjectID,
+	)
 	if err != nil {
 		return Config{}, err
 	}
@@ -262,7 +266,7 @@ func parseProjectAliases(raw string) (map[string]string, error) {
 	return normalized, nil
 }
 
-func parseAliasDescriptions(raw string, aliases map[string]string) (map[string]string, error) {
+func parseAliasDescriptions(raw string, aliases map[string]string, additionalProjectIDs ...string) (map[string]string, error) {
 	descriptions := make(map[string]string)
 	if strings.TrimSpace(raw) == "" {
 		return descriptions, nil
@@ -275,12 +279,21 @@ func parseAliasDescriptions(raw string, aliases map[string]string) (map[string]s
 	if err := decoder.Decode(&trailing); err != io.EOF {
 		return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must contain one JSON object")
 	}
+	projectIDs := make([]string, 0, len(aliases)+len(additionalProjectIDs))
+	for _, projectID := range aliases {
+		projectIDs = append(projectIDs, strings.TrimSpace(projectID))
+	}
+	for _, projectID := range additionalProjectIDs {
+		projectIDs = append(projectIDs, strings.TrimSpace(projectID))
+	}
 	normalized := make(map[string]string, len(descriptions))
 	for rawAlias, rawDescription := range descriptions {
 		alias := strings.ToLower(strings.TrimSpace(rawAlias))
 		description := strings.TrimSpace(rawDescription)
-		if projectID := aliases[alias]; projectID != "" && (strings.EqualFold(alias, projectID) || strings.Contains(strings.ToLower(description), strings.ToLower(projectID))) {
-			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must not contain a project identifier")
+		for _, projectID := range projectIDs {
+			if projectID != "" && (strings.EqualFold(alias, projectID) || strings.Contains(strings.ToLower(description), strings.ToLower(projectID))) {
+				return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must not contain a project identifier")
+			}
 		}
 		if alias == "" || description == "" || len(description) > maxQueuedNotesBytes || strings.ContainsAny(description, "\r\n\x00") {
 			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains a blank or invalid description")

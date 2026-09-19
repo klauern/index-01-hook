@@ -338,14 +338,43 @@ func (s *Store) SaveExtractionVerification(ctx context.Context, recordingID int6
 }
 
 func (s *Store) CompleteRejectedExtraction(ctx context.Context, recordingID int64, owner string) error {
-	if err := s.finishExtractionAttempt(ctx, recordingID, owner, OutcomeReview, "completed", "complete", s.now()); err != nil {
-		return err
-	}
-	result, err := s.db.ExecContext(ctx, `UPDATE extraction_jobs SET completed_at = ? WHERE recording_id = ? AND state = 'completed' AND workflow_state = 'complete'`, timestamp(s.now()), recordingID)
+	now := s.now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("record rejected extraction completion: %w", err)
+		return fmt.Errorf("begin rejected extraction completion: %w", err)
 	}
-	return requireOneRow(result)
+	defer func() { _ = tx.Rollback() }()
+	var attempt int
+	err = tx.QueryRowContext(ctx, `
+		SELECT attempt_count FROM extraction_jobs
+		WHERE recording_id = ? AND state = 'leased' AND lease_owner = ?
+			AND lease_expires_at_ms > ?`, recordingID, strings.TrimSpace(owner), now.UnixMilli()).Scan(&attempt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrLeaseLost
+	}
+	if err != nil {
+		return fmt.Errorf("verify rejected extraction lease: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO extraction_attempts (recording_id, attempt_number, classification, created_at)
+		VALUES (?, ?, ?, ?)`, recordingID, attempt, OutcomeReview, timestamp(now)); err != nil {
+		return fmt.Errorf("record rejected extraction outcome: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE recordings SET transcription = '' WHERE id = ?`, recordingID); err != nil {
+		return fmt.Errorf("erase rejected transcription: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE extraction_jobs
+		SET state = 'completed', workflow_state = 'complete', next_attempt_at_ms = ?,
+			lease_owner = NULL, lease_expires_at_ms = NULL, last_classification = ?,
+			updated_at = ?, completed_at = ?
+		WHERE recording_id = ?`, now.UnixMilli(), OutcomeReview, timestamp(now), timestamp(now), recordingID); err != nil {
+		return fmt.Errorf("complete rejected extraction: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit rejected extraction completion: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) finishExtractionAttempt(ctx context.Context, recordingID int64, owner string, classification OutcomeClassification, state, workflowState string, retryAt time.Time) error {

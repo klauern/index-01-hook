@@ -366,6 +366,29 @@ func TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem(t *testing.T) 
 	}
 }
 
+func TestCompleteRejectedExtractionClearsTranscript(t *testing.T) {
+	store, _ := newQueueStore(t)
+	receipt := saveQueueRecording(t, store, "private rejected transcript")
+	claim, err := store.ClaimExtraction(context.Background(), "worker", time.Minute)
+	if err != nil || claim == nil {
+		t.Fatalf("claim = %+v, %v", claim, err)
+	}
+	if err := store.CompleteRejectedExtraction(context.Background(), receipt.ID, "worker"); err != nil {
+		t.Fatal(err)
+	}
+	var transcript, state, workflowState string
+	var completedAt sql.NullString
+	if err := store.db.QueryRow(`
+		SELECT r.transcription, j.state, j.workflow_state, j.completed_at
+		FROM recordings r JOIN extraction_jobs j ON j.recording_id = r.id
+		WHERE r.id = ?`, receipt.ID).Scan(&transcript, &state, &workflowState, &completedAt); err != nil {
+		t.Fatal(err)
+	}
+	if transcript != "" || state != "completed" || workflowState != "complete" || !completedAt.Valid {
+		t.Fatalf("rejected completion = transcript:%q state:%q workflow:%q completed:%v", transcript, state, workflowState, completedAt)
+	}
+}
+
 func TestExtractionLeaseRejectsActiveAndPermitsExpiredClaim(t *testing.T) {
 	store, clock := newQueueStore(t)
 	saveQueueRecording(t, store, "private transcript")

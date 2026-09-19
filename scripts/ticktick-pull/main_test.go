@@ -56,6 +56,37 @@ func TestJoinAndPrivatePath(t *testing.T) {
 	if err := privatePath("."); err == nil {
 		t.Fatal("repository path accepted")
 	}
+	linkedWorktree := filepath.Join(d, "linked-worktree")
+	if err := os.Mkdir(linkedWorktree, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(linkedWorktree, ".git"), []byte("gitdir: elsewhere"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := privatePath(filepath.Join(linkedWorktree, "private.json")); err == nil {
+		t.Fatal("linked worktree path accepted")
+	}
+	repositoryLink := filepath.Join(d, "repository-link")
+	if err := os.Symlink(linkedWorktree, repositoryLink); err != nil {
+		t.Fatal(err)
+	}
+	if err := privatePath(filepath.Join(repositoryLink, "private.json")); err == nil {
+		t.Fatal("symlinked repository path accepted")
+	}
+	target := filepath.Join(d, "target.json")
+	if err := os.WriteFile(target, []byte("preserve"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	outputLink := filepath.Join(d, "output-link.json")
+	if err := os.Symlink(target, outputLink); err != nil {
+		t.Fatal(err)
+	}
+	if err := write0600(outputLink, map[string]string{"private": "content"}); err == nil {
+		t.Fatal("symlink output path accepted")
+	}
+	if preserved, err := os.ReadFile(target); err != nil || string(preserved) != "preserve" {
+		t.Fatalf("symlink target changed: %q, %v", preserved, err)
+	}
 }
 
 // TestPullWritesPrivateSnapshotAndKeepsTokenSecret guards the live pull path.

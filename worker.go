@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/klauern/index-01-hook/internal/evalcorpus"
@@ -43,6 +44,7 @@ type Worker struct {
 	extractor ExtractionProvider
 	deliverer DeliveryProvider
 	config    WorkerConfig
+	shadow    sync.WaitGroup
 }
 
 func NewWorker(store *Store, extractor ExtractionProvider, deliverer DeliveryProvider, config WorkerConfig) (*Worker, error) {
@@ -217,7 +219,13 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 			return err
 		}
 		if w.config.ShadowVerifier != nil {
-			w.runShadowVerification(ctx, claim, shadowItems)
+			recordingID := claim.RecordingID
+			transcription := claim.Transcription
+			w.shadow.Add(1)
+			go func() {
+				defer w.shadow.Done()
+				w.runShadowVerification(ctx, recordingID, transcription, shadowItems)
+			}()
 		}
 		return nil
 	}
@@ -240,16 +248,18 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 	}
 }
 
-func (w *Worker) runShadowVerification(ctx context.Context, claim *ExtractionClaim, items []QueuedItem) {
+func (w *Worker) WaitForShadow() {
+	w.shadow.Wait()
+}
+
+func (w *Worker) runShadowVerification(ctx context.Context, recordingID int64, transcription string, items []QueuedItem) {
 	results := make([]ShadowVerification, 0, len(items))
 	shadowModel := ""
 	if modelProvider, ok := w.config.ShadowVerifier.(VerificationModelProvider); ok {
 		shadowModel = modelProvider.VerificationModel()
 	}
 	for index, item := range items {
-		verificationStarted := time.Now()
-		result, verificationErr := w.config.ShadowVerifier.Verify(ctx, claim.Transcription, item, w.config.ProjectAliases)
-		w.recordProviderLatency(ctx, "typesafe", time.Since(verificationStarted), verificationErr != nil)
+		result, verificationErr := w.config.ShadowVerifier.Verify(ctx, transcription, item, w.config.ProjectAliases)
 		shadow := ShadowVerification{ItemIndex: index, Model: shadowModel, PromptVersion: typeSafeVerificationPromptVersion, Outcome: "queued"}
 		if verificationErr != nil {
 			shadow.Decision = "error"
@@ -269,8 +279,8 @@ func (w *Worker) runShadowVerification(ctx context.Context, claim *ExtractionCla
 		}
 		results = append(results, shadow)
 	}
-	if err := w.store.SaveShadowVerifications(ctx, claim.RecordingID, results); err != nil {
-		w.config.Logger.Warn("typesafe shadow evidence persistence failed", "recording_id", claim.RecordingID)
+	if err := w.store.SaveShadowVerifications(ctx, recordingID, results); err != nil {
+		w.config.Logger.Warn("typesafe shadow evidence persistence failed", "recording_id", recordingID)
 	}
 }
 

@@ -97,16 +97,39 @@ func TestTypeSafeVerificationDoesNotSendProjectIdentifier(t *testing.T) {
 	}
 }
 
+func TestTypeSafeVerificationRejectTakesPrecedenceOverRouteReview(t *testing.T) {
+	client, err := NewTypeSafeClient("typesafe-secret", roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return fixtureResponse(http.StatusOK, verificationFixtureResponseWith(0.10, 0.79)), nil
+	}), TypeSafeClientConfig{Model: "jev-1.13.0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifier := typeSafeVerifier{client: client, enabled: true, aliasDescriptions: map[string]string{"work": "employment tasks"}}
+	result, err := verifier.Verify(context.Background(), "Prepare the report", QueuedItem{Kind: ItemKindTask, Title: "Invented content"}, []string{"work"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Decision != VerificationReject || result.Evidence.Reason != "content_supported_unsupported" {
+		t.Fatalf("Verify() = %+v, want content rejection", result)
+	}
+}
+
 func verificationFixtureResponse() string {
+	return verificationFixtureResponseWith(0.99, 0.99)
+}
+
+func verificationFixtureResponseWith(contentSupport, aliasConfidence float64) string {
 	answers := map[string]any{}
 	for _, key := range []string{"injection_detected", "item_present", "kind_supported", "title_supported", "content_supported", "date_supported", "priority_supported", "tags_supported", "route_supported"} {
 		value := 0.99
 		if key == "injection_detected" {
 			value = 0.01
+		} else if key == "content_supported" {
+			value = contentSupport
 		}
 		answers[key] = map[string]any{"type": "noul", "noul": value}
 	}
-	answers["route_alias"] = map[string]any{"type": "choice", "choice": "work", "probabilities": map[string]float64{"work": 0.99, "no_match": 0.01}, "confidence": 0.99}
+	answers["route_alias"] = map[string]any{"type": "choice", "choice": "work", "probabilities": map[string]float64{"work": aliasConfidence, "no_match": 1 - aliasConfidence}, "confidence": aliasConfidence}
 	body, _ := json.Marshal(map[string]any{"model": "jev-1.13.0", "answers": answers, "usage": map[string]int{"input_tokens": 1, "output_tokens": 1}})
 	return string(body)
 }

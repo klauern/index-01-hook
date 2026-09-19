@@ -98,7 +98,7 @@ func TestLoadConfigRejectsUnsafeTypeSafeModes(t *testing.T) {
 		env  map[string]string
 		want string
 	}{
-		{name: "simultaneous modes", env: map[string]string{"INDEX01_TYPESAFE_VERIFY": "true", "INDEX01_TYPESAFE_SHADOW": "true", "INDEX01_TYPESAFE_TOKEN": "secret"}, want: "mutually exclusive"},
+		{name: "active verification not approved", env: map[string]string{"INDEX01_TYPESAFE_VERIFY": "true", "INDEX01_TYPESAFE_TOKEN": "secret"}, want: "not approved"},
 		{name: "shadow without retention", env: map[string]string{"INDEX01_TYPESAFE_SHADOW": "true", "INDEX01_TYPESAFE_TOKEN": "secret"}, want: "INDEX01_EVALUATION_RETENTION_DAYS"},
 	}
 	for _, test := range tests {
@@ -125,6 +125,19 @@ func TestLoadConfigReadsAliasDescriptions(t *testing.T) {
 	env["INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"] = `{"work":" "}`
 	if _, err := LoadConfig(func(key string) string { return env[key] }); err == nil {
 		t.Fatal("accepted a blank alias description")
+	}
+	env["INDEX01_TICKTICK_PROJECT_ALIASES"] = `{"work":"project-work","home":"project-home"}`
+	for name, descriptions := range map[string]string{
+		"other alias project": `{"work":"tasks for project-home","home":"household tasks"}`,
+		"default project":     `{"work":"tasks for project-default","home":"household tasks"}`,
+		"note project":        `{"work":"tasks for project-notes","home":"household tasks"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			env["INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"] = descriptions
+			if _, err := LoadConfig(func(key string) string { return env[key] }); err == nil || !strings.Contains(err.Error(), "project identifier") {
+				t.Fatalf("project identifier description error = %v", err)
+			}
+		})
 	}
 }
 func TestLoadConfigRejectsInvalidValues(t *testing.T) {

@@ -187,13 +187,17 @@ func (v typeSafeVerifier) Verify(ctx context.Context, transcript string, item Qu
 		if !allowed[strings.ToLower(answer.Choice)] {
 			return VerificationResult{}, typeSafeMalformed("verify extraction", "route choice is invalid")
 		}
-		if answer.Choice == "no_match" {
-			result.Item.ProjectAlias = ""
-		} else if *answer.Confidence < thresholds.AliasConfidence {
-			result.Decision = VerificationReview
-			result.Evidence.Reason = "route_uncertain"
-		} else {
-			result.Item.ProjectAlias = strings.ToLower(answer.Choice)
+		if result.Decision != VerificationReject {
+			if answer.Choice == "no_match" {
+				result.Item.ProjectAlias = ""
+			} else if *answer.Confidence < thresholds.AliasConfidence {
+				if result.Decision == VerificationAccept {
+					result.Decision = VerificationReview
+					result.Evidence.Reason = "route_uncertain"
+				}
+			} else {
+				result.Item.ProjectAlias = strings.ToLower(answer.Choice)
+			}
 		}
 	}
 	result.Evidence.Decision = result.Decision

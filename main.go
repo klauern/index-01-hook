@@ -70,20 +70,15 @@ func runWithEnvironment(logger *slog.Logger, getenv func(string) string) error {
 	for alias := range cfg.TickTickProjectAliases {
 		aliases = append(aliases, alias)
 	}
-	var verifier, shadowVerifier ExtractionVerifier
-	if cfg.TypeSafeVerify || cfg.TypeSafeShadow {
+	var shadowVerifier ExtractionVerifier
+	if cfg.TypeSafeShadow {
 		configuredVerifier := typeSafeVerifier{client: typeSafe, enabled: true, aliasDescriptions: cfg.TypeSafeAliasDescriptions}
-		if cfg.TypeSafeVerify {
-			verifier = configuredVerifier
-		}
-		if cfg.TypeSafeShadow {
-			shadowVerifier = configuredVerifier
-		}
+		shadowVerifier = configuredVerifier
 	}
 	worker, err := NewWorker(store, deepSeek, router, WorkerConfig{
 		EvidenceRouting: &evalcorpus.RoutingConfig{TimeZone: cfg.TimeZone, Aliases: cfg.TickTickProjectAliases, DefaultProjectID: router.defaultProjectID, NoteProjectID: router.noteProjectID},
-		Verifier:        verifier, ShadowVerifier: shadowVerifier,
-		Owner: cfg.WorkerOwner, TimeZone: cfg.TimeZone,
+		ShadowVerifier:  shadowVerifier,
+		Owner:           cfg.WorkerOwner, TimeZone: cfg.TimeZone,
 		LeaseDuration: 2 * time.Minute, PollInterval: time.Second,
 		RetryBase: 30 * time.Second, RetryMaximum: 30 * time.Minute,
 		ExtractionMaxAttempts: 5, DeliveryMaxAttempts: 5, ReconcileMaxAttempts: 3,
@@ -96,6 +91,7 @@ func runWithEnvironment(logger *slog.Logger, getenv func(string) string) error {
 	defer func() {
 		stop()
 		background.Wait()
+		worker.WaitForShadow()
 	}()
 	background.Add(2)
 	go func() {

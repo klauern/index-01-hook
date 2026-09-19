@@ -106,16 +106,63 @@ func writable(raw json.RawMessage) bool {
 	return json.Unmarshal(raw, &s) == nil && strings.EqualFold(s, "write")
 }
 func privatePath(path string) error {
+	_, err := resolvedPrivatePath(path)
+	return err
+}
+
+func resolvedPrivatePath(path string) (string, error) {
 	if strings.TrimSpace(path) == "" || path == "-" {
-		return errors.New("output requires a private file path")
+		return "", errors.New("output requires a private file path")
 	}
 	p, err := filepath.Abs(path)
 	if err != nil {
-		return err
+		return "", err
 	}
+	parent := filepath.Dir(p)
+	missing := []string{}
 	for {
-		if st, e := os.Stat(filepath.Join(p, ".git")); e == nil && st.IsDir() {
-			return fmt.Errorf("refusing path inside repository: %s", path)
+		st, statErr := os.Stat(parent)
+		if statErr == nil {
+			if !st.IsDir() {
+				return "", fmt.Errorf("output parent is not a directory: %s", path)
+			}
+			break
+		}
+		if !os.IsNotExist(statErr) {
+			return "", statErr
+		}
+		next := filepath.Dir(parent)
+		if next == parent {
+			return "", statErr
+		}
+		missing = append(missing, filepath.Base(parent))
+		parent = next
+	}
+	parent, err = filepath.EvalSymlinks(parent)
+	if err != nil {
+		return "", err
+	}
+	for index := len(missing) - 1; index >= 0; index-- {
+		parent = filepath.Join(parent, missing[index])
+	}
+	resolved := filepath.Join(parent, filepath.Base(p))
+	walkRoot := parent
+	if st, statErr := os.Lstat(resolved); statErr == nil {
+		if st.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("refusing symlink output path: %s", path)
+		}
+		if st.IsDir() {
+			walkRoot = resolved
+		}
+	} else if !os.IsNotExist(statErr) {
+		return "", statErr
+	}
+	p = walkRoot
+	for {
+		if _, statErr := os.Lstat(filepath.Join(p, ".git")); statErr == nil {
+			return "", fmt.Errorf("refusing path inside repository: %s", path)
+		} else if !os.IsNotExist(statErr) {
+			return "", statErr
 		}
 		n := filepath.Dir(p)
 		if n == p {
@@ -123,28 +170,38 @@ func privatePath(path string) error {
 		}
 		p = n
 	}
-	return nil
+	return resolved, nil
 }
 func write0600(path string, v any) error {
-	if err := privatePath(path); err != nil {
+	resolved, err := resolvedPrivatePath(path)
+	if err != nil {
 		return err
 	}
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
-	if err = os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+	parent := filepath.Dir(resolved)
+	if err = os.MkdirAll(parent, 0700); err != nil {
 		return err
 	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := os.CreateTemp(parent, "."+filepath.Base(resolved)+".tmp-")
 	if err != nil {
 		return err
 	}
+	temporary := f.Name()
+	defer func() { _ = os.Remove(temporary) }()
 	if err = f.Chmod(0600); err == nil {
 		_, err = f.Write(b)
 	}
+	if err == nil {
+		err = f.Sync()
+	}
 	if e := f.Close(); err == nil {
 		err = e
+	}
+	if err == nil {
+		err = os.Rename(temporary, resolved)
 	}
 	return err
 }

@@ -12,13 +12,12 @@ runs the HTTP receiver and the worker. The worker uses durable SQLite queues.
 5. A transcription creates one extraction job.
 6. The worker claims the job with a durable lease.
 7. DeepSeek extracts zero to ten independent tasks or notes.
-8. When enabled, TypeSafe verifies each extracted item with narrow questions.
-9. Go applies the verification thresholds and freezes only accepted items.
-10. An uncertain item enters `needs_review`; a rejected item creates no delivery task.
-11. The worker claims each accepted delivery task separately.
-12. TickTick creates each task or note.
-13. The worker records the provider identifier and delivery result.
-14. A terminal retention operation purges eligible old recordings.
+8. The worker freezes the extracted items as delivery tasks.
+9. When shadow mode is enabled, TypeSafe evaluates frozen items outside the delivery worker cycle.
+10. The worker claims each delivery task separately.
+11. TickTick creates each task or note.
+12. The worker records the provider identifier and delivery result.
+13. A terminal retention operation purges eligible old recordings.
 
 A request without transcription can be retained as an audio-only receipt. It
 does not create an extraction job.
@@ -71,9 +70,9 @@ A later retry does not replace a successful frozen extraction.
 
 ## TypeSafe verification
 
-Verification is disabled at startup. After calibration and explicit approval, the worker sends one request per extracted item. The request contains the transcription, the candidate fields, and alias descriptions. It does not contain TickTick project identifiers.
+Active verification is not approved. Startup rejects `INDEX01_TYPESAFE_VERIFY=true`. Shadow mode sends one request per frozen item. The request contains the transcription, the candidate fields, and alias descriptions. It does not contain TickTick project identifiers.
 
-The request asks narrow questions for injection, item presence, kind, title, content, date, priority, tags, and route. Go owns the accept, review, and reject ladder. TypeSafe probabilities remain in private evaluation evidence. Transport failures retry. Uncertain items enter `needs_review`. TypeSafe never sends an item directly to TickTick.
+The request asks narrow questions for injection, item presence, kind, title, content, date, priority, tags, and route. Go records the shadow decision and scores in private evaluation evidence. The shadow request runs asynchronously after freeze. A failure cannot change, retry, or delay a delivery task. TypeSafe never sends an item directly to TickTick.
 
 ## TickTick delivery
 
