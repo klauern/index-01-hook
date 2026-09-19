@@ -18,7 +18,7 @@ func validateProvidersWithTypeSafe(ctx context.Context, cfg Config, transport ht
 		return nil, nil, nil, nil, fmt.Errorf("model client configuration is invalid")
 	}
 	var typeSafe *TypeSafeClient
-	if cfg.TypeSafeVerify {
+	if cfg.TypeSafeVerify || cfg.TypeSafeShadow {
 		typeSafe, err = NewTypeSafeClient(cfg.TypeSafeToken, transport, TypeSafeClientConfig{Model: cfg.TypeSafeModel, Endpoint: cfg.TypeSafeEndpoint})
 		if err != nil {
 			return nil, nil, nil, nil, fmt.Errorf("TypeSafe client configuration is invalid")

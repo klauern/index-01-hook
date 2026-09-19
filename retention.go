@@ -9,7 +9,8 @@ import (
 const terminalRecordRetention = 30 * 24 * time.Hour
 
 func (s *Store) PurgeExpiredEvaluationEvidence(ctx context.Context) (int64, error) {
-	result, err := s.db.ExecContext(ctx, `DELETE FROM evaluation_evidence WHERE expires_at_ms <= ?`, s.now().UTC().UnixMilli())
+	now := s.now().UTC().UnixMilli()
+	result, err := s.db.ExecContext(ctx, `DELETE FROM evaluation_evidence WHERE expires_at_ms <= ?`, now)
 	if err != nil {
 		return 0, fmt.Errorf("purge expired evaluation evidence: %w", err)
 	}

@@ -32,14 +32,29 @@ var defaultVerificationThresholds = VerificationThresholds{
 	AliasConfidence: 0.80,
 }
 
+const typeSafeVerificationPromptVersion = "verification-calibration-v1"
+
 type TypeSafeVerificationEvidence struct {
-	Model        string                      `json:"model"`
-	Questions    map[string]TypeSafeQuestion `json:"questions"`
-	Answers      map[string]TypeSafeAnswer   `json:"answers"`
-	InputTokens  int                         `json:"input_tokens"`
-	OutputTokens int                         `json:"output_tokens"`
-	Decision     VerificationDecision        `json:"decision"`
-	Reason       string                      `json:"reason,omitempty"`
+	Model         string                      `json:"model"`
+	PromptVersion string                      `json:"prompt_version,omitempty"`
+	Questions     map[string]TypeSafeQuestion `json:"questions"`
+	Answers       map[string]TypeSafeAnswer   `json:"answers"`
+	InputTokens   int                         `json:"input_tokens"`
+	OutputTokens  int                         `json:"output_tokens"`
+	Decision      VerificationDecision        `json:"decision"`
+	Reason        string                      `json:"reason,omitempty"`
+}
+
+type ShadowVerification struct {
+	ItemIndex     int                           `json:"item_index"`
+	Evidence      *TypeSafeVerificationEvidence `json:"evidence,omitempty"`
+	Decision      string                        `json:"decision"`
+	Model         string                        `json:"model,omitempty"`
+	PromptVersion string                        `json:"prompt_version"`
+	Scores        map[string]float64            `json:"scores,omitempty"`
+	Outcome       string                        `json:"outcome"`
+	Error         string                        `json:"error,omitempty"`
+	ErrorKind     TypeSafeErrorKind             `json:"error_kind,omitempty"`
 }
 
 type VerificationResult struct {
@@ -56,11 +71,22 @@ type ExtractionSecurityScreener interface {
 	Screen(context.Context, string) (bool, error)
 }
 
+type VerificationModelProvider interface {
+	VerificationModel() string
+}
+
 type typeSafeVerifier struct {
 	client            *TypeSafeClient
 	enabled           bool
 	aliasDescriptions map[string]string
 	thresholds        VerificationThresholds
+}
+
+func (v typeSafeVerifier) VerificationModel() string {
+	if v.client == nil {
+		return ""
+	}
+	return v.client.model
 }
 
 func (v typeSafeVerifier) Screen(ctx context.Context, transcript string) (bool, error) {
@@ -110,7 +136,8 @@ func (v typeSafeVerifier) Verify(ctx context.Context, transcript string, item Qu
 		return VerificationResult{}, err
 	}
 	evidence := TypeSafeVerificationEvidence{
-		Model: response.Model, Questions: questions, Answers: response.Answers,
+		Model: response.Model, PromptVersion: typeSafeVerificationPromptVersion,
+		Questions: questions, Answers: response.Answers,
 		InputTokens: response.Usage.InputTokens, OutputTokens: response.Usage.OutputTokens,
 	}
 	thresholds := v.thresholds
@@ -171,6 +198,21 @@ func (v typeSafeVerifier) Verify(ctx context.Context, transcript string, item Qu
 	}
 	result.Evidence.Decision = result.Decision
 	return result, nil
+}
+
+func typeSafeAnswerScores(answers map[string]TypeSafeAnswer) map[string]float64 {
+	scores := make(map[string]float64, len(answers))
+	for key, answer := range answers {
+		switch {
+		case answer.Score != nil:
+			scores[key] = *answer.Score
+		case answer.Noul != nil:
+			scores[key] = *answer.Noul
+		case answer.Confidence != nil:
+			scores[key] = *answer.Confidence
+		}
+	}
+	return scores
 }
 
 func verificationQuestions(aliases []map[string]string) map[string]TypeSafeQuestion {

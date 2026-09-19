@@ -30,6 +30,7 @@ type Config struct {
 	TypeSafeModel             string
 	TypeSafeEndpoint          string
 	TypeSafeVerify            bool
+	TypeSafeShadow            bool
 	TimeZone                  string
 	TickTickToken             string
 	TickTickDefaultProjectID  string
@@ -71,7 +72,18 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		}
 		cfg.TypeSafeVerify = verify
 	}
-	if cfg.TypeSafeVerify && strings.TrimSpace(cfg.TypeSafeToken) == "" {
+	rawShadow := getenv("INDEX01_TYPESAFE_SHADOW")
+	if rawShadow != "" {
+		shadow, err := strconv.ParseBool(rawShadow)
+		if err != nil {
+			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_SHADOW must be a boolean")
+		}
+		cfg.TypeSafeShadow = shadow
+	}
+	if cfg.TypeSafeVerify && cfg.TypeSafeShadow {
+		return Config{}, fmt.Errorf("INDEX01_TYPESAFE_VERIFY and INDEX01_TYPESAFE_SHADOW are mutually exclusive")
+	}
+	if (cfg.TypeSafeVerify || cfg.TypeSafeShadow) && strings.TrimSpace(cfg.TypeSafeToken) == "" {
 		return Config{}, fmt.Errorf("INDEX01_TYPESAFE_TOKEN is required when verification is enabled")
 	}
 	if rawModel := getenv("INDEX01_TYPESAFE_MODEL"); rawModel != "" {
@@ -121,6 +133,9 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		}
 		cfg.EvaluationRetention = time.Duration(days) * 24 * time.Hour
 	}
+	if cfg.TypeSafeShadow && cfg.EvaluationRetention == 0 {
+		return Config{}, fmt.Errorf("INDEX01_EVALUATION_RETENTION_DAYS must be nonzero when INDEX01_TYPESAFE_SHADOW is enabled")
+	}
 	if cfg.EvaluationRetention > 0 {
 		cfg.EvaluationPollInterval = 6 * time.Hour
 	}
@@ -152,7 +167,7 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	if cfg.TypeSafeVerify && len(aliases) != len(descriptions) {
+	if (cfg.TypeSafeVerify || cfg.TypeSafeShadow) && len(aliases) != len(descriptions) {
 		return Config{}, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must describe every configured alias when verification is enabled")
 	}
 	cfg.TypeSafeAliasDescriptions = descriptions

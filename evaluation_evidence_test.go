@@ -57,6 +57,42 @@ func TestEvaluationEvidenceCaptureDisabledAndRetentionValidation(t *testing.T) {
 	}
 }
 
+func TestShadowVerificationBindsAfterFreezeAndPreservesDeliveryOutcome(t *testing.T) {
+	ctx := context.Background()
+	store, clock := configureEvidenceStore(t, 24*time.Hour)
+	receipt := saveQueueRecording(t, store, "Shadow input")
+	freezeQueueItems(t, store, "worker", []QueuedItem{{Kind: ItemKindTask, Title: "Task"}})
+	score := 0.87
+	result := ShadowVerification{ItemIndex: 0, Decision: "accept", Model: "shadow-model", PromptVersion: typeSafeVerificationPromptVersion, Outcome: "shadow_error", Scores: map[string]float64{"support": score}, Evidence: &TypeSafeVerificationEvidence{Model: "shadow-model", PromptVersion: typeSafeVerificationPromptVersion, Answers: map[string]TypeSafeAnswer{"support": {Type: "score", Score: &score}}}}
+	if err := store.SaveShadowVerifications(ctx, receipt.ID, []ShadowVerification{result}); err != nil {
+		t.Fatal(err)
+	}
+	got := readEvidence(t, store)
+	if len(got) != 1 || len(got[0].ShadowVerifications) != 1 || got[0].ShadowVerifications[0].Outcome != "queued" || got[0].ShadowVerifications[0].Scores["support"] != score {
+		t.Fatalf("queued shadow evidence = %+v", got)
+	}
+	completeEvidenceDelivery(t, store)
+	got = readEvidence(t, store)
+	if got[0].ShadowVerifications[0].Outcome != string(OutcomeCreated) || got[0].Deliveries[0].Shadow == nil {
+		t.Fatalf("delivered shadow evidence = %+v", got[0])
+	}
+	result.Decision, result.Outcome = "reject", "queued"
+	if err := store.SaveShadowVerifications(ctx, receipt.ID, []ShadowVerification{result}); err != nil {
+		t.Fatal(err)
+	}
+	if got = readEvidence(t, store); got[0].ShadowVerifications[0].Outcome != string(OutcomeCreated) {
+		t.Fatalf("terminal shadow outcome was overwritten: %+v", got[0].ShadowVerifications[0])
+	}
+	clock.Advance(24 * time.Hour)
+	if _, err := store.PurgeExpiredEvaluationEvidence(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var shadowRows int
+	if err := store.db.QueryRow(`SELECT count(*) FROM typesafe_shadow_verifications`).Scan(&shadowRows); err != nil || shadowRows != 0 {
+		t.Fatalf("expired shadow rows = %d, %v", shadowRows, err)
+	}
+}
+
 func TestEvaluationEvidenceSurvivesCompletionAndQueueRetention(t *testing.T) {
 	ctx := context.Background()
 	store, clock := configureEvidenceStore(t, 90*24*time.Hour)

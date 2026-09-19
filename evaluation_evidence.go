@@ -5,19 +5,21 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
 const maxEvaluationRetention = 365 * 24 * time.Hour
 
 type EvaluationEvidence struct {
-	Fingerprint      string               `json:"recording_fingerprint"`
-	Transcript       string               `json:"transcript"`
-	RecordedAtMillis int64                `json:"recorded_at_ms"`
-	CapturedAt       time.Time            `json:"captured_at"`
-	ExpiresAt        time.Time            `json:"expires_at"`
-	Extraction       *FrozenExtraction    `json:"extraction,omitempty"`
-	Deliveries       []EvaluationDelivery `json:"deliveries"`
+	Fingerprint         string               `json:"recording_fingerprint"`
+	Transcript          string               `json:"transcript"`
+	RecordedAtMillis    int64                `json:"recorded_at_ms"`
+	CapturedAt          time.Time            `json:"captured_at"`
+	ExpiresAt           time.Time            `json:"expires_at"`
+	Extraction          *FrozenExtraction    `json:"extraction,omitempty"`
+	ShadowVerifications []ShadowVerification `json:"typesafe_shadow_verifications,omitempty"`
+	Deliveries          []EvaluationDelivery `json:"deliveries"`
 }
 
 type EvaluationDelivery struct {
@@ -26,6 +28,7 @@ type EvaluationDelivery struct {
 	ProjectID   string                 `json:"project_id"`
 	Kind        ItemKind               `json:"kind"`
 	Title       string                 `json:"title"`
+	Shadow      *ShadowVerification    `json:"typesafe_shadow,omitempty"`
 	Observation *EvaluationObservation `json:"observation,omitempty"`
 }
 
@@ -110,6 +113,85 @@ func (s *Store) captureEvaluationExtraction(ctx context.Context, tx *sql.Tx, rec
 	return nil
 }
 
+// SaveShadowVerifications stores private shadow results against retained evaluation evidence.
+// It does not require an extraction lease because FreezeExtraction releases that lease first.
+func (s *Store) SaveShadowVerifications(ctx context.Context, recordingID int64, results []ShadowVerification) error {
+	if len(results) == 0 || s.evaluationRetention.Load() == 0 {
+		return nil
+	}
+	now := s.now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin shadow verification: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	var fingerprint string
+	var expires int64
+	if err := tx.QueryRowContext(ctx, `SELECT r.payload_fingerprint, e.expires_at_ms
+		FROM recordings r JOIN evaluation_evidence e ON e.recording_fingerprint = r.payload_fingerprint
+		WHERE r.id = ? AND e.expires_at_ms > ?`, recordingID, now.UnixMilli()).Scan(&fingerprint, &expires); err != nil {
+		if err == sql.ErrNoRows {
+			return nil
+		}
+		return fmt.Errorf("find retained evaluation evidence: %w", err)
+	}
+	for _, result := range results {
+		if result.ItemIndex < 0 || strings.TrimSpace(result.Decision) == "" || strings.TrimSpace(result.PromptVersion) == "" {
+			return fmt.Errorf("shadow verification metadata is invalid")
+		}
+		outcome := "queued"
+		var deliveryState string
+		var deliveryClassification sql.NullString
+		if err := tx.QueryRowContext(ctx, `SELECT state, last_classification
+			FROM delivery_tasks WHERE recording_id = ? AND task_index = ?`, recordingID, result.ItemIndex).Scan(&deliveryState, &deliveryClassification); err != nil {
+			return fmt.Errorf("read shadow delivery outcome: %w", err)
+		}
+		if deliveryState == "completed" {
+			outcome = deliveryClassification.String
+			if outcome == "" {
+				outcome = "completed"
+			}
+		} else if deliveryState == "review" {
+			outcome = deliveryClassification.String
+			if outcome == "" {
+				outcome = "review"
+			}
+		}
+		var evidenceJSON, scoresJSON any
+		if result.Evidence != nil {
+			encoded, marshalErr := json.Marshal(result.Evidence)
+			if marshalErr != nil {
+				return fmt.Errorf("encode shadow verification: %w", marshalErr)
+			}
+			evidenceJSON = string(encoded)
+		}
+		if result.Scores != nil {
+			encoded, marshalErr := json.Marshal(result.Scores)
+			if marshalErr != nil {
+				return fmt.Errorf("encode shadow verification scores: %w", marshalErr)
+			}
+			scoresJSON = string(encoded)
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO typesafe_shadow_verifications
+			(recording_fingerprint, item_index, evidence_json, scores_json, decision, model, prompt_version, outcome, error, error_kind, created_at_ms, expires_at_ms)
+			VALUES (?, ?, ?, ?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?)
+			ON CONFLICT(recording_fingerprint, item_index) DO UPDATE SET
+			 evidence_json = excluded.evidence_json, scores_json = excluded.scores_json, decision = excluded.decision, model = excluded.model,
+			prompt_version = excluded.prompt_version,
+			outcome = CASE WHEN typesafe_shadow_verifications.outcome IN ('created', 'reconciled', 'completed')
+				THEN typesafe_shadow_verifications.outcome ELSE excluded.outcome END,
+			 error = excluded.error, error_kind = excluded.error_kind`,
+			fingerprint, result.ItemIndex, evidenceJSON, scoresJSON, result.Decision, result.Model, result.PromptVersion,
+			outcome, result.Error, string(result.ErrorKind), now.UnixMilli(), expires); err != nil {
+			return fmt.Errorf("save shadow verification: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit shadow verification: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) captureEvaluationDelivery(ctx context.Context, tx *sql.Tx, taskID int64, now time.Time) error {
 	if s.evaluationRetention.Load() == 0 {
 		return nil
@@ -143,8 +225,9 @@ func (s *Store) ListEvaluationEvidence(ctx context.Context) ([]EvaluationEvidenc
 	defer rows.Close()
 	evidence := []EvaluationEvidence{}
 	positions := map[string]int{}
+	shadowByItem := map[string]*ShadowVerification{}
 	for rows.Next() {
-		entry := EvaluationEvidence{Deliveries: []EvaluationDelivery{}}
+		entry := EvaluationEvidence{Deliveries: []EvaluationDelivery{}, ShadowVerifications: []ShadowVerification{}}
 		var captured, expires int64
 		var extraction sql.NullString
 		if err := rows.Scan(&entry.Fingerprint, &entry.Transcript, &entry.RecordedAtMillis, &captured, &expires, &extraction); err != nil {
@@ -164,6 +247,50 @@ func (s *Store) ListEvaluationEvidence(ctx context.Context) ([]EvaluationEvidenc
 	}
 	if err := rows.Close(); err != nil {
 		return nil, fmt.Errorf("close evaluation evidence rows: %w", err)
+	}
+	shadowRows, err := tx.QueryContext(ctx, `SELECT recording_fingerprint, item_index, evidence_json, scores_json, decision,
+		COALESCE(model, ''), prompt_version, outcome, COALESCE(error, ''), COALESCE(error_kind, '')
+		FROM typesafe_shadow_verifications WHERE expires_at_ms > ? ORDER BY recording_fingerprint, item_index`, now)
+	if err != nil {
+		return nil, fmt.Errorf("read shadow verifications: %w", err)
+	}
+	for shadowRows.Next() {
+		var fingerprint, decision, model, promptVersion, outcome, detail, errorKind string
+		var evidenceJSON, scoresJSON sql.NullString
+		var itemIndex int
+		if err := shadowRows.Scan(&fingerprint, &itemIndex, &evidenceJSON, &scoresJSON, &decision, &model, &promptVersion, &outcome, &detail, &errorKind); err != nil {
+			shadowRows.Close()
+			return nil, fmt.Errorf("scan shadow verification: %w", err)
+		}
+		position, ok := positions[fingerprint]
+		if !ok {
+			shadowRows.Close()
+			return nil, fmt.Errorf("shadow verification has no evidence")
+		}
+		shadow := ShadowVerification{ItemIndex: itemIndex, Decision: decision, Model: model, PromptVersion: promptVersion, Outcome: outcome, Error: detail, ErrorKind: TypeSafeErrorKind(errorKind)}
+		if evidenceJSON.Valid && evidenceJSON.String != "" {
+			shadow.Evidence = &TypeSafeVerificationEvidence{}
+			if err := json.Unmarshal([]byte(evidenceJSON.String), shadow.Evidence); err != nil {
+				shadowRows.Close()
+				return nil, fmt.Errorf("decode shadow verification: %w", err)
+			}
+		}
+		if scoresJSON.Valid && scoresJSON.String != "" {
+			if err := json.Unmarshal([]byte(scoresJSON.String), &shadow.Scores); err != nil {
+				shadowRows.Close()
+				return nil, fmt.Errorf("decode shadow verification scores: %w", err)
+			}
+		}
+		evidence[position].ShadowVerifications = append(evidence[position].ShadowVerifications, shadow)
+		shadowCopy := shadow
+		shadowByItem[fingerprint+":"+fmt.Sprint(itemIndex)] = &shadowCopy
+	}
+	if err := shadowRows.Err(); err != nil {
+		shadowRows.Close()
+		return nil, fmt.Errorf("read shadow verifications: %w", err)
+	}
+	if err := shadowRows.Close(); err != nil {
+		return nil, fmt.Errorf("close shadow verifications: %w", err)
 	}
 	deliveries, err := tx.QueryContext(ctx, `SELECT d.recording_fingerprint, d.item_index, d.task_id, d.project_id, d.item_kind, d.title,
 		o.observation_json
@@ -186,6 +313,7 @@ func (s *Store) ListEvaluationEvidence(ctx context.Context) ([]EvaluationEvidenc
 				return nil, fmt.Errorf("decode evaluation observation: %w", err)
 			}
 		}
+		delivery.Shadow = shadowByItem[fingerprint+":"+fmt.Sprint(delivery.ItemIndex)]
 		position, ok := positions[fingerprint]
 		if !ok {
 			return nil, fmt.Errorf("evaluation delivery has no evidence")

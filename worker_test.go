@@ -119,6 +119,59 @@ func runWorkerOnce(t *testing.T, worker *Worker) bool {
 	return worked
 }
 
+type scriptedShadowVerifier struct {
+	decisions []VerificationDecision
+	errors    []error
+	items     []QueuedItem
+}
+
+func (v *scriptedShadowVerifier) Verify(_ context.Context, _ string, item QueuedItem, _ []string) (VerificationResult, error) {
+	index := len(v.items)
+	v.items = append(v.items, item)
+	if index < len(v.errors) && v.errors[index] != nil {
+		return VerificationResult{}, v.errors[index]
+	}
+	decision := VerificationAccept
+	if index < len(v.decisions) {
+		decision = v.decisions[index]
+	}
+	return VerificationResult{Decision: decision, Item: QueuedItem{Kind: ItemKindNote, Title: "shadow must not mutate"}, Evidence: TypeSafeVerificationEvidence{Model: "shadow-model", Decision: decision, PromptVersion: typeSafeVerificationPromptVersion}}, nil
+}
+
+func TestWorkerShadowIsolatedFromDeliveryAndPersistsOutcomes(t *testing.T) {
+	store, _ := newQueueStore(t)
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	saveQueueRecording(t, store, "shadow transcript")
+	due := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
+	items := []QueuedItem{{Kind: ItemKindTask, Title: "keep task", Content: "content", Due: &due, Tags: []string{"tag"}}, {Kind: ItemKindNote, Title: "keep note", Content: "note"}, {Kind: ItemKindTask, Title: "keep rejected-looking", Content: "still delivered"}}
+	extractor := &fakeExtractor{results: []extractionResult{{value: FrozenExtraction{Provider: "deepseek", Model: "deepseek-model", Items: items}}}}
+	shadow := &scriptedShadowVerifier{decisions: []VerificationDecision{VerificationAccept, VerificationReview, VerificationReject}, errors: []error{nil, typeSafeMalformed("shadow", "fixture failure"), nil}}
+	deliverer := &fakeDeliverer{createResults: []deliveryResult{{created: TickTickCreatedTask{ID: "created", ProjectID: "project"}}}, noteResults: []deliveryResult{{created: TickTickCreatedTask{ID: "note", ProjectID: "project"}}}}
+	worker := newTestWorker(t, store, extractor, deliverer)
+	worker.config.ShadowVerifier = shadow
+	runWorkerOnce(t, worker)
+	for range items {
+		runWorkerOnce(t, worker)
+	}
+	if len(shadow.items) != len(items) || len(deliverer.createCalls) != 2 || len(deliverer.noteCalls) != 1 {
+		t.Fatalf("shadow calls or deliveries = %d, %d, %d", len(shadow.items), len(deliverer.createCalls), len(deliverer.noteCalls))
+	}
+	if deliverer.taskInputs[0].Title != items[0].Title || deliverer.noteInputs[0].Title != items[1].Title || deliverer.taskInputs[1].Title != items[2].Title {
+		t.Fatalf("shadow changed delivered items: tasks=%+v notes=%+v", deliverer.taskInputs, deliverer.noteInputs)
+	}
+	evidence, err := store.ListEvaluationEvidence(context.Background())
+	if err != nil || len(evidence) != 1 || len(evidence[0].ShadowVerifications) != len(items) {
+		t.Fatalf("shadow evidence = %+v, error = %v", evidence, err)
+	}
+	for _, result := range evidence[0].ShadowVerifications {
+		if result.PromptVersion != typeSafeVerificationPromptVersion || result.Outcome != string(OutcomeCreated) {
+			t.Errorf("shadow result = %+v", result)
+		}
+	}
+}
+
 func TestNewWorkerValidatesTimeZone(t *testing.T) {
 	tests := []struct {
 		name       string

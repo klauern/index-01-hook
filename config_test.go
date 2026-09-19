@@ -71,6 +71,49 @@ func TestLoadConfigReadsOverrides(t *testing.T) {
 	}
 }
 
+func TestLoadConfigReadsShadowMode(t *testing.T) {
+	env := validConfigEnv()
+	env["INDEX01_TYPESAFE_SHADOW"] = "true"
+	env["INDEX01_EVALUATION_RETENTION_DAYS"] = "30"
+	if _, err := LoadConfig(func(key string) string { return env[key] }); err == nil || !strings.Contains(err.Error(), "INDEX01_TYPESAFE_TOKEN") {
+		t.Fatalf("shadow-only config without token error = %v", err)
+	}
+	env["INDEX01_TYPESAFE_TOKEN"] = "typesafe-secret"
+	if _, err := LoadConfig(func(key string) string { return env[key] }); err != nil {
+		t.Fatalf("shadow-only config with token rejected: %v", err)
+	}
+	env["INDEX01_TICKTICK_PROJECT_ALIASES"] = `{"work":"project-work"}`
+	if _, err := LoadConfig(func(key string) string { return env[key] }); err == nil {
+		t.Fatal("shadow mode accepted aliases without descriptions")
+	}
+	env["INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"] = `{"work":"employment tasks"}`
+	if _, err := LoadConfig(func(key string) string { return env[key] }); err != nil {
+		t.Fatalf("shadow mode with descriptions rejected: %v", err)
+	}
+}
+
+func TestLoadConfigRejectsUnsafeTypeSafeModes(t *testing.T) {
+	tests := []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{name: "simultaneous modes", env: map[string]string{"INDEX01_TYPESAFE_VERIFY": "true", "INDEX01_TYPESAFE_SHADOW": "true", "INDEX01_TYPESAFE_TOKEN": "secret"}, want: "mutually exclusive"},
+		{name: "shadow without retention", env: map[string]string{"INDEX01_TYPESAFE_SHADOW": "true", "INDEX01_TYPESAFE_TOKEN": "secret"}, want: "INDEX01_EVALUATION_RETENTION_DAYS"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := validConfigEnv()
+			for key, value := range test.env {
+				env[key] = value
+			}
+			if _, err := LoadConfig(func(key string) string { return env[key] }); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("LoadConfig() error = %v, want %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestLoadConfigReadsAliasDescriptions(t *testing.T) {
 	env := validConfigEnv()
 	env["INDEX01_TICKTICK_PROJECT_ALIASES"] = `{"Work":"project-work"}`

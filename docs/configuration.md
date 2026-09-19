@@ -16,7 +16,8 @@ Kubernetes set deployment-specific values outside the application settings.
 | `INDEX01_DEEPSEEK_TOKEN` | Yes | None | Non-blank DeepSeek API token. |
 | `INDEX01_DEEPSEEK_MODEL` | No | `deepseek-v4-flash` | Safe provider identifier passed to DeepSeek. |
 | `INDEX01_TIME_ZONE` | No | `UTC` | Valid IANA time zone for date extraction and task delivery. |
-| `INDEX01_TYPESAFE_VERIFY` | No | `false` | Set to `true` to verify each extracted item. Keep disabled until threshold calibration is complete. |
+| `INDEX01_TYPESAFE_VERIFY` | No | `false` | Set to `true` to verify each extracted item and apply active routing decisions. |
+| `INDEX01_TYPESAFE_SHADOW` | No | `false` | Set to `true` to evaluate every extracted item without changing extraction or TickTick delivery. Results are private retention-bound evidence. Requires nonzero evaluation retention. |
 | `INDEX01_TYPESAFE_TOKEN` | Conditional | None | Server-side TypeSafe API token. Required only when verification is enabled. |
 | `INDEX01_TYPESAFE_MODEL` | No | `jev-1.13.0` | Pinned TypeSafe model identifier. Do not use a moving alias for calibrated thresholds. |
 | `INDEX01_TYPESAFE_ENDPOINT` | No | `https://api.typesafe.ai/v1/systemone` | Fixed HTTPS TypeSafe endpoint. Startup rejects other hosts or paths. |
@@ -44,7 +45,7 @@ letters, digits, and `-_.:/`, with a maximum length of 256 bytes. The service
 does not validate model availability locally. The provider can reject an
 unavailable model during extraction.
 
-`INDEX01_TYPESAFE_VERIFY` is `false` by default. When enabled, the service sends the transcription and one candidate item per request to TypeSafe. TypeSafe receives no TickTick project identifier. Transport failures retry within the extraction limit; uncertain judgments enter `needs_review`; rejected items create no delivery task.
+`INDEX01_TYPESAFE_VERIFY` and `INDEX01_TYPESAFE_SHADOW` are `false` by default. Enable only one mode. Startup rejects simultaneous modes. Shadow mode requires nonzero `INDEX01_EVALUATION_RETENTION_DAYS`. Active verification sends the transcription and one candidate item per request to TypeSafe and can route items to review or reject them. Shadow mode sends the same field-wise verification requests after extraction freezes, then records the model, pinned prompt version, field scores, decision, errors, and eventual item outcome without applying any decision. Shadow transport, authentication, malformed-response, and semantic failures never block, retry, reroute, or reject delivery. Shadow evidence is private, contains transcription-derived content, and follows `INDEX01_EVALUATION_RETENTION_DAYS`.
 
 `INDEX01_TYPESAFE_TOKEN` stays server-side and never appears in logs. Startup validates the token, pinned model, and fixed endpoint before the HTTP server listens. Live calls require explicit approval.
 
@@ -62,7 +63,7 @@ closed state, and write access.
 
 Set aliases as one JSON object. Each key is a case-insensitive task alias of at
 most 100 bytes. Each value is a TickTick project identifier. The worker gives
-only configured alias names to DeepSeek. DeepSeek cannot choose an arbitrary provider project ID. When TypeSafe verification is enabled, provide matching plain-language descriptions in `INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS`. TypeSafe receives alias names and descriptions only; the TickTick project IDs remain in the server.
+only configured alias names to DeepSeek. DeepSeek cannot choose an arbitrary provider project ID. When TypeSafe verification or shadow mode is enabled, provide matching plain-language descriptions in `INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS`. TypeSafe receives alias names and descriptions only; the TickTick project IDs remain in the server.
 Use a safe example with generic identifiers:
 
 ```dotenv

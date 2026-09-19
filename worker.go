@@ -23,6 +23,7 @@ type DeliveryProvider interface {
 type WorkerConfig struct {
 	EvidenceRouting       *evalcorpus.RoutingConfig
 	Verifier              ExtractionVerifier
+	ShadowVerifier        ExtractionVerifier
 	Owner                 string
 	TimeZone              string
 	LeaseDuration         time.Duration
@@ -161,6 +162,7 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 	extraction, err := w.extractor.Extract(ctx, claim.Transcription, w.config.ProjectAliases)
 	w.recordProviderLatency(ctx, "deepseek", time.Since(started), err != nil)
 	if err == nil {
+		shadowItems := append([]QueuedItem(nil), frozenItems(extraction)...)
 		if w.config.Verifier != nil {
 			accepted := make([]QueuedItem, 0, len(extraction.Items))
 			verifications := make([]TypeSafeVerificationEvidence, 0, len(extraction.Items))
@@ -211,7 +213,13 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 			}
 			extraction.Evidence.Routing = &routing
 		}
-		return w.store.FreezeExtraction(ctx, claim.RecordingID, w.config.Owner, extraction)
+		if err := w.store.FreezeExtraction(ctx, claim.RecordingID, w.config.Owner, extraction); err != nil {
+			return err
+		}
+		if w.config.ShadowVerifier != nil {
+			w.runShadowVerification(ctx, claim, shadowItems)
+		}
+		return nil
 	}
 	w.logDeepSeekFailure(claim.RecordingID, err)
 	kind := classifyDeepSeekError(err)
@@ -229,6 +237,40 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 		return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
 	default:
 		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeMalformed, "dead_letter")
+	}
+}
+
+func (w *Worker) runShadowVerification(ctx context.Context, claim *ExtractionClaim, items []QueuedItem) {
+	results := make([]ShadowVerification, 0, len(items))
+	shadowModel := ""
+	if modelProvider, ok := w.config.ShadowVerifier.(VerificationModelProvider); ok {
+		shadowModel = modelProvider.VerificationModel()
+	}
+	for index, item := range items {
+		verificationStarted := time.Now()
+		result, verificationErr := w.config.ShadowVerifier.Verify(ctx, claim.Transcription, item, w.config.ProjectAliases)
+		w.recordProviderLatency(ctx, "typesafe", time.Since(verificationStarted), verificationErr != nil)
+		shadow := ShadowVerification{ItemIndex: index, Model: shadowModel, PromptVersion: typeSafeVerificationPromptVersion, Outcome: "queued"}
+		if verificationErr != nil {
+			shadow.Decision = "error"
+			shadow.Error = verificationErr.Error()
+			shadow.ErrorKind = classifyTypeSafeError(verificationErr)
+		} else if result.Decision != VerificationAccept && result.Decision != VerificationReview && result.Decision != VerificationReject {
+			shadow.Decision = "error"
+			shadow.Error = "shadow verifier returned an invalid decision"
+			shadow.ErrorKind = TypeSafeErrorMalformed
+		} else {
+			shadow.Evidence = &result.Evidence
+			shadow.Decision = string(result.Decision)
+			if result.Evidence.Model != "" {
+				shadow.Model = result.Evidence.Model
+			}
+			shadow.Scores = typeSafeAnswerScores(result.Evidence.Answers)
+		}
+		results = append(results, shadow)
+	}
+	if err := w.store.SaveShadowVerifications(ctx, claim.RecordingID, results); err != nil {
+		w.config.Logger.Warn("typesafe shadow evidence persistence failed", "recording_id", claim.RecordingID)
 	}
 }
 

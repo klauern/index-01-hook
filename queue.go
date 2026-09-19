@@ -486,6 +486,11 @@ func (s *Store) CompleteDelivery(ctx context.Context, completion DeliveryComplet
 		strings.TrimSpace(completion.TickTickProjectID), timestamp(now), timestamp(now), completion.TaskID); err != nil {
 		return fmt.Errorf("complete delivery: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, `UPDATE typesafe_shadow_verifications
+		SET outcome = ? WHERE recording_fingerprint = (SELECT r.payload_fingerprint FROM recordings r WHERE r.id = ?)
+		AND item_index = (SELECT task_index FROM delivery_tasks WHERE id = ?) AND expires_at_ms > ?`, string(completion.Classification), recordingID, completion.TaskID, now.UnixMilli()); err != nil {
+		return fmt.Errorf("record shadow delivery outcome: %w", err)
+	}
 	if err := s.captureEvaluationDelivery(ctx, tx, completion.TaskID, now); err != nil {
 		return err
 	}
@@ -547,7 +552,7 @@ func (s *Store) finishDeliveryAttempt(ctx context.Context, taskID int64, owner s
 		return fmt.Errorf("begin delivery outcome: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	_, attempt, err := activeDeliveryLease(ctx, tx, taskID, owner, now)
+	recordingID, attempt, err := activeDeliveryLease(ctx, tx, taskID, owner, now)
 	if err != nil {
 		return err
 	}
@@ -565,6 +570,11 @@ func (s *Store) finishDeliveryAttempt(ctx context.Context, taskID int64, owner s
 			, reconcile_attempt_count = reconcile_attempt_count + ?
 		WHERE id = ?`, state, workflowState, retryAt.UTC().UnixMilli(), classification, timestamp(now), reconcileIncrement, taskID); err != nil {
 		return fmt.Errorf("finish delivery outcome: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE typesafe_shadow_verifications
+		SET outcome = ? WHERE recording_fingerprint = (SELECT payload_fingerprint FROM recordings WHERE id = ?)
+		AND item_index = (SELECT task_index FROM delivery_tasks WHERE id = ?) AND expires_at_ms > ?`, string(classification), recordingID, taskID, now.UnixMilli()); err != nil {
+		return fmt.Errorf("record shadow delivery outcome: %w", err)
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit delivery outcome: %w", err)

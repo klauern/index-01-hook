@@ -70,14 +70,20 @@ func runWithEnvironment(logger *slog.Logger, getenv func(string) string) error {
 	for alias := range cfg.TickTickProjectAliases {
 		aliases = append(aliases, alias)
 	}
-	var verifier ExtractionVerifier
-	if cfg.TypeSafeVerify {
-		verifier = typeSafeVerifier{client: typeSafe, enabled: true, aliasDescriptions: cfg.TypeSafeAliasDescriptions}
+	var verifier, shadowVerifier ExtractionVerifier
+	if cfg.TypeSafeVerify || cfg.TypeSafeShadow {
+		configuredVerifier := typeSafeVerifier{client: typeSafe, enabled: true, aliasDescriptions: cfg.TypeSafeAliasDescriptions}
+		if cfg.TypeSafeVerify {
+			verifier = configuredVerifier
+		}
+		if cfg.TypeSafeShadow {
+			shadowVerifier = configuredVerifier
+		}
 	}
 	worker, err := NewWorker(store, deepSeek, router, WorkerConfig{
 		EvidenceRouting: &evalcorpus.RoutingConfig{TimeZone: cfg.TimeZone, Aliases: cfg.TickTickProjectAliases, DefaultProjectID: router.defaultProjectID, NoteProjectID: router.noteProjectID},
-		Verifier:        verifier,
-		Owner:           cfg.WorkerOwner, TimeZone: cfg.TimeZone,
+		Verifier:        verifier, ShadowVerifier: shadowVerifier,
+		Owner: cfg.WorkerOwner, TimeZone: cfg.TimeZone,
 		LeaseDuration: 2 * time.Minute, PollInterval: time.Second,
 		RetryBase: 30 * time.Second, RetryMaximum: 30 * time.Minute,
 		ExtractionMaxAttempts: 5, DeliveryMaxAttempts: 5, ReconcileMaxAttempts: 3,

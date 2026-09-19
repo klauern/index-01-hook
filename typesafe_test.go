@@ -10,6 +10,19 @@ import (
 	"testing"
 )
 
+func TestTypeSafeAnswerScoresPreservesAnswerScores(t *testing.T) {
+	noul, confidence, score := 0.91, 0.82, 0.73
+	got := typeSafeAnswerScores(map[string]TypeSafeAnswer{
+		"noul":   {Noul: &noul},
+		"choice": {Confidence: &confidence},
+		"score":  {Score: &score, Confidence: &confidence},
+		"empty":  {},
+	})
+	if len(got) != 3 || got["noul"] != noul || got["choice"] != confidence || got["score"] != score {
+		t.Fatalf("scores = %+v", got)
+	}
+}
+
 func TestTypeSafeClientRequestAndResponse(t *testing.T) {
 	var seen TypeSafeRequest
 	client, err := NewTypeSafeClient("typesafe-secret", roundTripFunc(func(request *http.Request) (*http.Response, error) {

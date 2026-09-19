@@ -98,10 +98,18 @@ func TestDeliveryQueueFreshDatabaseAndLegacyUpgrade(t *testing.T) {
 		if err := store.db.QueryRow(`SELECT max(version) FROM schema_migrations`).Scan(&version); err != nil {
 			t.Fatalf("query migration version: %v", err)
 		}
-		if version != 9 {
-			t.Fatalf("migration version = %d, want 9", version)
+		if version != 10 {
+			t.Fatalf("migration version = %d, want 10", version)
 		}
-		for _, table := range []string{"extraction_jobs", "extractions", "extraction_attempts", "delivery_tasks", "delivery_attempts", "worker_health"} {
+		var foreignKeyTarget string
+		if err := store.db.QueryRow(`SELECT "table" FROM pragma_foreign_key_list('typesafe_shadow_verifications') WHERE "table" = 'evaluation_evidence'`).Scan(&foreignKeyTarget); err != nil || foreignKeyTarget != "evaluation_evidence" {
+			t.Fatalf("shadow evidence foreign key = %q, %v", foreignKeyTarget, err)
+		}
+		var checkSQL string
+		if err := store.db.QueryRow(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'typesafe_shadow_verifications'`).Scan(&checkSQL); err != nil || !strings.Contains(checkSQL, "expires_at_ms > created_at_ms") {
+			t.Fatalf("shadow evidence expiry constraint = %q, %v", checkSQL, err)
+		}
+		for _, table := range []string{"extraction_jobs", "extractions", "extraction_attempts", "delivery_tasks", "delivery_attempts", "worker_health", "typesafe_shadow_verifications"} {
 			var count int
 			if err := store.db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&count); err != nil {
 				t.Fatalf("query table %q: %v", table, err)
