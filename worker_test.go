@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -129,6 +130,30 @@ type scriptedShadowVerifier struct {
 	expected  int
 }
 
+type blockingShadowVerifier struct {
+	mu      sync.Mutex
+	calls   int
+	started chan struct{}
+	release chan struct{}
+}
+
+func (v *blockingShadowVerifier) Verify(context.Context, string, QueuedItem, []string) (VerificationResult, error) {
+	v.mu.Lock()
+	v.calls++
+	if v.calls == shadowVerificationConcurrency {
+		close(v.started)
+	}
+	v.mu.Unlock()
+	<-v.release
+	return VerificationResult{Decision: VerificationAccept, Evidence: TypeSafeVerificationEvidence{Model: "shadow-model", Decision: VerificationAccept}}, nil
+}
+
+func (v *blockingShadowVerifier) callCount() int {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.calls
+}
+
 func (v *scriptedShadowVerifier) Verify(_ context.Context, _ string, item QueuedItem, _ []string) (VerificationResult, error) {
 	index := len(v.items)
 	if index == 0 && v.started != nil {
@@ -204,6 +229,71 @@ func TestWorkerShadowIsolatedFromDeliveryAndPersistsOutcomes(t *testing.T) {
 		if result.PromptVersion != typeSafeVerificationPromptVersion || result.Outcome != string(OutcomeCreated) {
 			t.Errorf("shadow result = %+v", result)
 		}
+	}
+}
+
+func TestWorkerBoundsConcurrentShadowExtractions(t *testing.T) {
+	store, _ := newQueueStore(t)
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	for index := range shadowVerificationConcurrency + 1 {
+		if _, err := store.SaveRecording(context.Background(), RecordingInput{
+			RecordedAtMillis: 1760000000000 + int64(index),
+			Client:           "test",
+			Transcription:    fmt.Sprintf("shadow transcript %d", index),
+			Fingerprint:      fmt.Sprintf("%064x", index+1),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	results := make([]extractionResult, shadowVerificationConcurrency+1)
+	for index := range results {
+		results[index] = extractionResult{value: FrozenExtraction{Provider: "deepseek", Model: "deepseek-model", Items: []QueuedItem{{Kind: ItemKindTask, Title: fmt.Sprintf("task %d", index)}}}}
+	}
+	shadow := &blockingShadowVerifier{started: make(chan struct{}), release: make(chan struct{})}
+	worker := newTestWorker(t, store, &fakeExtractor{results: results}, &fakeDeliverer{})
+	worker.config.ShadowVerifier = shadow
+	for range shadowVerificationConcurrency + 1 {
+		runWorkerOnce(t, worker)
+	}
+	select {
+	case <-shadow.started:
+	case <-time.After(time.Second):
+		t.Fatal("bounded shadow verifications did not start")
+	}
+	if got := shadow.callCount(); got != shadowVerificationConcurrency {
+		t.Fatalf("shadow calls = %d, want %d", got, shadowVerificationConcurrency)
+	}
+	close(shadow.release)
+	worker.WaitForShadow()
+}
+
+func TestWorkerPersistsShadowEvidenceAfterCancellation(t *testing.T) {
+	store, _ := newQueueStore(t)
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	receipt := saveQueueRecording(t, store, "canceled shadow transcript")
+	claim, err := store.ClaimExtraction(context.Background(), "test-worker", time.Minute)
+	if err != nil || claim == nil {
+		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
+	}
+	items := []QueuedItem{{Kind: ItemKindTask, Title: "persist shadow result"}}
+	if err := store.FreezeExtraction(context.Background(), receipt.ID, "test-worker", FrozenExtraction{Provider: "deepseek", Model: "deepseek-model", Items: items}); err != nil {
+		t.Fatal(err)
+	}
+	worker := newTestWorker(t, store, &fakeExtractor{}, &fakeDeliverer{})
+	worker.config.ShadowVerifier = &scriptedShadowVerifier{expected: 1}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	worker.runShadowVerification(ctx, receipt.ID, claim.Transcription, items)
+	evidence, err := store.ListEvaluationEvidence(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evidence) != 1 || len(evidence[0].ShadowVerifications) != 1 {
+		t.Fatalf("shadow evidence after cancellation = %+v", evidence)
 	}
 }
 

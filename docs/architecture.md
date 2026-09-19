@@ -16,7 +16,7 @@ runs the HTTP receiver and the worker. The worker uses durable SQLite queues.
 9. Any review decision puts the complete extraction in `needs_review`.
 10. Accepted sibling items do not create delivery tasks after a review decision.
 11. The worker freezes the accepted items as delivery tasks.
-12. When shadow mode is enabled, TypeSafe evaluates frozen items outside the delivery worker cycle.
+12. When shadow mode is enabled, TypeSafe evaluates frozen items outside the delivery worker cycle. Four extraction batches can run at once. The worker skips new shadow work when the limit is full.
 13. The worker claims each delivery task separately.
 14. TickTick creates each task or note.
 15. The worker records the provider identifier and delivery result.

@@ -12,6 +12,11 @@ import (
 	"github.com/klauern/index-01-hook/internal/evalcorpus"
 )
 
+const (
+	shadowVerificationConcurrency = 4
+	shadowPersistenceTimeout      = 10 * time.Second
+)
+
 type ExtractionProvider interface {
 	Extract(context.Context, string, []string) (FrozenExtraction, error)
 }
@@ -40,11 +45,12 @@ type WorkerConfig struct {
 }
 
 type Worker struct {
-	store     *Store
-	extractor ExtractionProvider
-	deliverer DeliveryProvider
-	config    WorkerConfig
-	shadow    sync.WaitGroup
+	store       *Store
+	extractor   ExtractionProvider
+	deliverer   DeliveryProvider
+	config      WorkerConfig
+	shadow      sync.WaitGroup
+	shadowSlots chan struct{}
 }
 
 func NewWorker(store *Store, extractor ExtractionProvider, deliverer DeliveryProvider, config WorkerConfig) (*Worker, error) {
@@ -81,7 +87,13 @@ func NewWorker(store *Store, extractor ExtractionProvider, deliverer DeliveryPro
 		return nil, fmt.Errorf("worker project aliases are invalid")
 	}
 	config.ProjectAliases = aliases
-	return &Worker{store: store, extractor: extractor, deliverer: deliverer, config: config}, nil
+	return &Worker{
+		store:       store,
+		extractor:   extractor,
+		deliverer:   deliverer,
+		config:      config,
+		shadowSlots: make(chan struct{}, shadowVerificationConcurrency),
+	}, nil
 }
 
 func (w *Worker) Run(ctx context.Context) error {
@@ -219,13 +231,7 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 			return err
 		}
 		if w.config.ShadowVerifier != nil {
-			recordingID := claim.RecordingID
-			transcription := claim.Transcription
-			w.shadow.Add(1)
-			go func() {
-				defer w.shadow.Done()
-				w.runShadowVerification(ctx, recordingID, transcription, shadowItems)
-			}()
+			w.startShadowVerification(ctx, claim.RecordingID, claim.Transcription, shadowItems)
 		}
 		return nil
 	}
@@ -250,6 +256,23 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 
 func (w *Worker) WaitForShadow() {
 	w.shadow.Wait()
+}
+
+func (w *Worker) startShadowVerification(ctx context.Context, recordingID int64, transcription string, items []QueuedItem) {
+	select {
+	case w.shadowSlots <- struct{}{}:
+	case <-ctx.Done():
+		return
+	default:
+		w.config.Logger.Warn("typesafe shadow verification skipped because concurrency limit is full", "recording_id", recordingID)
+		return
+	}
+	w.shadow.Add(1)
+	go func() {
+		defer w.shadow.Done()
+		defer func() { <-w.shadowSlots }()
+		w.runShadowVerification(ctx, recordingID, transcription, items)
+	}()
 }
 
 func (w *Worker) runShadowVerification(ctx context.Context, recordingID int64, transcription string, items []QueuedItem) {
@@ -279,7 +302,9 @@ func (w *Worker) runShadowVerification(ctx context.Context, recordingID int64, t
 		}
 		results = append(results, shadow)
 	}
-	if err := w.store.SaveShadowVerifications(ctx, recordingID, results); err != nil {
+	persistCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shadowPersistenceTimeout)
+	defer cancel()
+	if err := w.store.SaveShadowVerifications(persistCtx, recordingID, results); err != nil {
 		w.config.Logger.Warn("typesafe shadow evidence persistence failed", "recording_id", recordingID)
 	}
 }

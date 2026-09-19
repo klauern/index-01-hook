@@ -98,14 +98,27 @@ func TestTypeSafeVerificationDoesNotSendProjectIdentifier(t *testing.T) {
 }
 
 func TestTypeSafeVerificationRejectTakesPrecedenceOverRouteReview(t *testing.T) {
+	responses := []string{
+		verificationFixtureResponseWith(0.99, 0.79),
+		verificationFixtureResponseWith(0.10, 0.79),
+	}
 	client, err := NewTypeSafeClient("typesafe-secret", roundTripFunc(func(*http.Request) (*http.Response, error) {
-		return fixtureResponse(http.StatusOK, verificationFixtureResponseWith(0.10, 0.79)), nil
+		response := responses[0]
+		responses = responses[1:]
+		return fixtureResponse(http.StatusOK, response), nil
 	}), TypeSafeClientConfig{Model: "jev-1.13.0"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	verifier := typeSafeVerifier{client: client, enabled: true, aliasDescriptions: map[string]string{"work": "employment tasks"}}
-	result, err := verifier.Verify(context.Background(), "Prepare the report", QueuedItem{Kind: ItemKindTask, Title: "Invented content"}, []string{"work"})
+	result, err := verifier.Verify(context.Background(), "Prepare the report", QueuedItem{Kind: ItemKindTask, Title: "Prepare the report", ProjectAlias: "work"}, []string{"work"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Decision != VerificationReview || result.Evidence.Reason != "route_uncertain" {
+		t.Fatalf("Verify() = %+v, want independent route review", result)
+	}
+	result, err = verifier.Verify(context.Background(), "Prepare the report", QueuedItem{Kind: ItemKindTask, Title: "Invented content"}, []string{"work"})
 	if err != nil {
 		t.Fatal(err)
 	}
