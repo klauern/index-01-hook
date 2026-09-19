@@ -12,12 +12,15 @@ runs the HTTP receiver and the worker. The worker uses durable SQLite queues.
 5. A transcription creates one extraction job.
 6. The worker claims the job with a durable lease.
 7. DeepSeek extracts zero to ten independent tasks or notes.
-8. The worker freezes the extracted items as delivery tasks.
-9. When shadow mode is enabled, TypeSafe evaluates frozen items outside the delivery worker cycle.
-10. The worker claims each delivery task separately.
-11. TickTick creates each task or note.
-12. The worker records the provider identifier and delivery result.
-13. A terminal retention operation purges eligible old recordings.
+8. If active verification is enabled, the worker verifies all items before freeze.
+9. Any review decision puts the complete extraction in `needs_review`.
+10. Accepted sibling items do not create delivery tasks after a review decision.
+11. The worker freezes the accepted items as delivery tasks.
+12. When shadow mode is enabled, TypeSafe evaluates frozen items outside the delivery worker cycle.
+13. The worker claims each delivery task separately.
+14. TickTick creates each task or note.
+15. The worker records the provider identifier and delivery result.
+16. A terminal retention operation purges eligible old recordings.
 
 A request without transcription can be retained as an audio-only receipt. It
 does not create an extraction job.

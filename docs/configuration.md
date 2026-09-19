@@ -47,7 +47,7 @@ unavailable model during extraction.
 
 `INDEX01_TYPESAFE_VERIFY` and `INDEX01_TYPESAFE_SHADOW` are `false` by default. Startup rejects `INDEX01_TYPESAFE_VERIFY=true` because current calibration defers active verification. Shadow mode requires nonzero `INDEX01_EVALUATION_RETENTION_DAYS`. Shadow mode sends field-wise verification requests after extraction freezes, then records the model, pinned prompt version, field scores, decision, errors, and eventual item outcome without applying any decision. Shadow requests run outside the delivery worker cycle. Shadow transport, authentication, malformed-response, and semantic failures never block, retry, reroute, or reject delivery. Shadow evidence is private, contains transcription-derived content, and follows `INDEX01_EVALUATION_RETENTION_DAYS`.
 
-`INDEX01_TYPESAFE_TOKEN` stays server-side and never appears in logs. Startup validates the token, pinned model, and fixed endpoint before the HTTP server listens. Live calls require explicit approval.
+`INDEX01_TYPESAFE_TOKEN` stays server-side and never appears in logs. Startup validates token presence, the pinned model, and the fixed endpoint before the HTTP server listens. Live calls require explicit approval.
 
 `INDEX01_TIME_ZONE` must be an available IANA time zone, such as `UTC` or
 `America/New_York`. `Local` is rejected. The default is `UTC`.

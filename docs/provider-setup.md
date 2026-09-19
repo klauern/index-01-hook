@@ -215,8 +215,8 @@ The data path is:
 
 1. Index 01 sends the selected recording and/or transcription to this receiver.
 2. The receiver sends transcription text to DeepSeek for task and note extraction.
-3. The receiver sends extracted task and note data to TickTick.
-4. When verification is enabled, the receiver sends the transcription and one extracted candidate item to TypeSafe.
+3. When verification is enabled, the worker sends the transcription and one extracted candidate item to TypeSafe during extraction.
+4. After extraction, the worker sends accepted task and note data to TickTick.
 5. SQLite stores processing data and extracted content. Backups can contain it.
 Use transcription-only delivery when audio is not required. Protect the webhook
 token, provider tokens, database, and backups. Do not place secrets in logs,

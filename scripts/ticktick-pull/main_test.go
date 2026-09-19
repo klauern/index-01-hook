@@ -26,7 +26,8 @@ func TestParseMarkerStrictAndEmbedded(t *testing.T) {
 func TestJoinAndPrivatePath(t *testing.T) {
 	d := t.TempDir()
 	fp := strings.Repeat("b", 64)
-	snap := snapshot{Tasks: []taskOut{{ID: "task-1", Content: "[index01:" + fp + ":0]"}, {ID: "orphan", Content: "[index01:" + strings.Repeat("c", 64) + ":0]"}}}
+	markerText := "[index01:" + fp + ":0]"
+	snap := snapshot{Tasks: []taskOut{{ID: "task-1", Content: markerText + " " + markerText}, {ID: "orphan", Content: "[index01:" + strings.Repeat("c", 64) + ":0]"}}}
 	ev := evidence{Archive: []archive{{Fingerprint: fp, Transcript: "remember milk", Deliveries: []delivery{{ItemIndex: 0, TaskID: "task-1", Kind: "task", Title: "Milk"}}}}, Findings: []finding{{TaskID: "task-1", Status: "missing"}}}
 	sb, _ := json.Marshal(snap)
 	eb, _ := json.Marshal(ev)
@@ -52,6 +53,9 @@ func TestJoinAndPrivatePath(t *testing.T) {
 	}
 	if len(got.Cases) != 1 || got.Cases[0].WeakLabel != "unsupported" || got.Cases[0].ObservedStatus != "missing" {
 		t.Fatalf("joined=%+v", got)
+	}
+	if got.Summary.Joined != 1 || got.Summary.ByStatus["missing"] != 1 {
+		t.Fatalf("duplicate marker changed summary: %+v", got.Summary)
 	}
 	if err := privatePath("."); err == nil {
 		t.Fatal("repository path accepted")
@@ -179,6 +183,7 @@ func TestPullRejectsNon200WithoutLeakingToken(t *testing.T) {
 func TestJoinWeakLabelsForMoveMissingAndUnknown(t *testing.T) {
 	dir := t.TempDir()
 	fpMove, fpMissing, fpUnknown := strings.Repeat("d", 64), strings.Repeat("e", 64), strings.Repeat("f", 64)
+	missingCandidate := realCandidate{Kind: "task", Title: "Gone from extraction", Content: "full archived content", Due: "2026-09-21", AllDay: true, Priority: 3, Tags: []string{"private"}, ProjectAlias: "home"}
 	snap := snapshot{Tasks: []taskOut{
 		{ID: "t-move", Content: "[index01:" + fpMove + ":0]"},
 		{ID: "t-unknown", Content: "[index01:" + fpUnknown + ":0]"},
@@ -186,7 +191,7 @@ func TestJoinWeakLabelsForMoveMissingAndUnknown(t *testing.T) {
 	ev := evidence{
 		Archive: []archive{
 			{Fingerprint: fpMove, Transcript: "move me", Deliveries: []delivery{{ItemIndex: 0, TaskID: "t-move", Kind: "task", Title: "Move me"}}},
-			{Fingerprint: fpMissing, Transcript: "gone", Deliveries: []delivery{{ItemIndex: 0, TaskID: "t-missing", Kind: "task", Title: "Gone"}}},
+			{Fingerprint: fpMissing, Transcript: "gone", Extraction: &extraction{Items: []realCandidate{missingCandidate}}, Deliveries: []delivery{{ItemIndex: 0, TaskID: "t-missing", Kind: "task", Title: "Delivery fallback"}}},
 			{Fingerprint: fpUnknown, Transcript: "unclear", Deliveries: []delivery{{ItemIndex: 0, TaskID: "t-unknown", Kind: "task", Title: "Unclear"}}},
 		},
 		Findings: []finding{
@@ -226,6 +231,9 @@ func TestJoinWeakLabelsForMoveMissingAndUnknown(t *testing.T) {
 	missing, ok := byTranscript["gone"]
 	if !ok || missing.WeakLabel != "unsupported" || missing.ObservedStatus != "missing" {
 		t.Fatalf("missing item=%+v, want unsupported from the archive", missing)
+	}
+	if missing.Candidate.Title != missingCandidate.Title || missing.Candidate.Content != missingCandidate.Content || missing.Candidate.Due != missingCandidate.Due || !missing.Candidate.AllDay || missing.Candidate.Priority != missingCandidate.Priority || len(missing.Candidate.Tags) != 1 || missing.Candidate.Tags[0] != "private" || missing.Candidate.ProjectAlias != missingCandidate.ProjectAlias {
+		t.Fatalf("missing candidate=%+v, want archived extraction candidate %+v", missing.Candidate, missingCandidate)
 	}
 	unknown, ok := byTranscript["unclear"]
 	if !ok || unknown.WeakLabel != "unknown" {

@@ -54,6 +54,18 @@ func TestNewDeepSeekClientDefaultsToUTC(t *testing.T) {
 	}
 }
 
+func TestVerificationPromptRequiresCanonicalDates(t *testing.T) {
+	prompt := deepSeekSystemPromptWithVerification(time.Date(2026, time.August, 12, 18, 0, 0, 0, time.UTC), deepSeekTestTimeZone, nil, true)
+	for _, required := range []string{"Resolve relative dates", "YYYY-MM-DD", "RFC3339", "correct " + deepSeekTestTimeZone + " offset"} {
+		if !strings.Contains(prompt, required) {
+			t.Errorf("verification prompt does not contain %q: %q", required, prompt)
+		}
+	}
+	if strings.Contains(prompt, "Do not resolve relative dates") {
+		t.Fatalf("verification prompt permits a noncanonical date: %q", prompt)
+	}
+}
+
 func TestNewDeepSeekClientWithConfigRejectsInvalidValues(t *testing.T) {
 	tests := []struct {
 		name   string

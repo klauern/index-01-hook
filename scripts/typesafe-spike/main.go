@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"time"
 )
+
+var spikeClient = &http.Client{Timeout: 30 * time.Second}
 
 type candidate struct {
 	Transcript string         `json:"transcript"`
@@ -161,13 +164,15 @@ func loadCandidates() ([]candidate, error) {
 func evaluate(token, model string, item candidate) (answerEnvelope, error) {
 	payload := map[string]any{"state": map[string]any{"transcript": item.Transcript, "candidate": item.Item}, "model": model, "questions": map[string]any{"supported": map[string]any{"type": "noul", "instructions": "Does the transcription support every candidate field without invented details?", "criteria": map[string]string{"true": "Supported", "false": "Invented or unsupported"}}}}
 	body, _ := json.Marshal(payload)
-	req, err := http.NewRequest(http.MethodPost, "https://api.typesafe.ai/v1/systemone", bytes.NewReader(body))
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.typesafe.ai/v1/systemone", bytes.NewReader(body))
 	if err != nil {
 		return answerEnvelope{}, err
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
-	res, err := http.DefaultClient.Do(req)
+	res, err := spikeClient.Do(req)
 	if err != nil {
 		return answerEnvelope{}, err
 	}

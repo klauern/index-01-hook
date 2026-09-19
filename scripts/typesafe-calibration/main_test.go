@@ -165,6 +165,14 @@ func TestInjectionAcceptStaysObservable(t *testing.T) {
 	if got := decisionForRecord(flagged, "fieldwise", .9, .2); got != "review" {
 		t.Fatalf("decision=%s, want review when the model flags the injection", got)
 	}
+	flagged.Signals = map[string]float64{"injection_detected": .8}
+	if got := decisionForRecord(flagged, "fieldwise", .9, .2); got != "review" {
+		t.Fatalf("fieldwise decision=%s, want review for float signal map", got)
+	}
+	m = calcMeasure([]caseRecord{flagged}, nil, "fieldwise", .9, .2)
+	if m.Review != 1 || m.InjectionAccepts != 0 {
+		t.Fatalf("float signal measure=%+v", m)
+	}
 }
 func TestMalformedResponseShapes(t *testing.T) {
 	cases := []struct {
@@ -343,7 +351,13 @@ func TestRealCasePathMeasuresWithoutGate(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(response{Model: "m", Answers: map[string]answer{"verdict": {Type: "choice", Choice: "wrong_field", Confidence: &confidence, Probabilities: map[string]float64{"supported": .1, "wrong_field": .9}}}})
 			return
 		}
-		_ = json.NewEncoder(w).Encode(response{Model: "m", Answers: validNoulAnswers(req.Questions, .95)})
+		answers := validNoulAnswers(req.Questions, .95)
+		if injection, ok := answers["injection_detected"]; ok {
+			low := .05
+			injection.Noul = &low
+			answers["injection_detected"] = injection
+		}
+		_ = json.NewEncoder(w).Encode(response{Model: "m", Answers: answers})
 	}))
 	defer srv.Close()
 

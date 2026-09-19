@@ -165,7 +165,7 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 	w.recordProviderLatency(ctx, "deepseek", time.Since(started), err != nil)
 	if err == nil {
 		shadowItems := append([]QueuedItem(nil), frozenItems(extraction)...)
-		if w.config.Verifier != nil {
+		if w.config.Verifier != nil && len(extraction.Items) > 0 {
 			accepted := make([]QueuedItem, 0, len(extraction.Items))
 			verifications := make([]TypeSafeVerificationEvidence, 0, len(extraction.Items))
 			needsReview := false

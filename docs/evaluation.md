@@ -193,6 +193,7 @@ The Choice design accepted 17 items with no unsafe accept and rejected 22, at ac
 Injected items scored 0.98 on the injection question. The highest score on a normal case was 0.80.
 Repeated cases were stable. The largest score spread was 0.12, and seven of eight cases stayed within 0.05.
 The selected thresholds are in `docs/evaluation-baseline/typesafe-thresholds.json`.
+The `enable` values in that file are grid results only. The owner decision is defer, so neither design is adopted.
 
 ### Decision: defer
 

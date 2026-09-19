@@ -373,6 +373,8 @@ func TestWorkerCompletesZeroTaskExtraction(t *testing.T) {
 	}}}}
 	deliverer := &fakeDeliverer{}
 	worker := newTestWorker(t, store, extractor, deliverer)
+	verifier := &scriptedShadowVerifier{}
+	worker.config.Verifier = verifier
 	if !runWorkerOnce(t, worker) {
 		t.Fatal("RunOnce() did no work")
 	}
@@ -382,6 +384,9 @@ func TestWorkerCompletesZeroTaskExtraction(t *testing.T) {
 	}
 	if status.State != "complete" || len(status.Tasks) != 0 || len(deliverer.createCalls) != 0 {
 		t.Fatalf("zero-task status = %+v, create calls = %v", status, deliverer.createCalls)
+	}
+	if len(verifier.items) != 0 {
+		t.Fatalf("zero-task extraction invoked verifier %d times", len(verifier.items))
 	}
 }
 

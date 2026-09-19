@@ -460,8 +460,12 @@ func join(snapshotPath, evidencePath, out string) error {
 			if d == nil {
 				continue
 			}
+			key := m.Fingerprint + ":" + strconv.Itoa(m.Index)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
 			cf.Summary.Joined++
-			seen[m.Fingerprint+":"+strconv.Itoa(m.Index)] = true
 			c := realCandidate{}
 			if a.Extraction != nil && m.Index < len(a.Extraction.Items) {
 				c = a.Extraction.Items[m.Index]
@@ -501,9 +505,14 @@ func join(snapshotPath, evidencePath, out string) error {
 			if seen[key] || findings[d.TaskID] != "missing" {
 				continue
 			}
-			c := realCandidate{Kind: d.Kind, Title: d.Title, Content: d.Content}
-			if c.Content == "" {
-				c.Content = d.Notes
+			c := realCandidate{}
+			if a.Extraction != nil && d.ItemIndex >= 0 && d.ItemIndex < len(a.Extraction.Items) {
+				c = a.Extraction.Items[d.ItemIndex]
+			} else {
+				c = realCandidate{Kind: d.Kind, Title: d.Title, Content: d.Content}
+				if c.Content == "" {
+					c.Content = d.Notes
+				}
 			}
 			h := sha256.Sum256([]byte(key))
 			co := caseOut{CaseID: hex.EncodeToString(h[:])[:12], Split: "real", Transcript: a.Transcript, Candidate: c, ObservedStatus: "missing", WeakLabel: "unsupported", WeakRouteOK: false}

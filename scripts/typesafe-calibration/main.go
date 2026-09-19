@@ -605,12 +605,9 @@ func calcMeasure(rows []caseRecord, cases map[string]verificationcorpus.Case, de
 	return m
 }
 func decisionForRecord(r caseRecord, d string, a, rej float64) string {
-	inj := 0.
+	inj := injectionValue(r.Signals)
 	choice := ""
 	if s, ok := r.Signals.(map[string]any); ok {
-		if x, ok := s["injection_detected"].(float64); ok {
-			inj = x
-		}
 		if x, ok := s["choice"].(string); ok {
 			choice = x
 		}
@@ -951,8 +948,13 @@ func execute(cfg runConfig, c verificationcorpus.Corpus, p plan, hash string) (r
 	return rep, nil
 }
 func injectionValue(sig any) float64 {
-	if m, ok := sig.(map[string]float64); ok {
+	switch m := sig.(type) {
+	case map[string]float64:
 		return m["injection_detected"]
+	case map[string]any:
+		if value, ok := m["injection_detected"].(float64); ok {
+			return value
+		}
 	}
 	return 0
 }
