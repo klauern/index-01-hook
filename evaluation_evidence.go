@@ -173,16 +173,16 @@ func (s *Store) SaveShadowVerifications(ctx context.Context, recordingID int64, 
 			scoresJSON = string(encoded)
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO typesafe_shadow_verifications
-			(recording_fingerprint, item_index, evidence_json, scores_json, decision, model, prompt_version, outcome, error, error_kind, created_at_ms, expires_at_ms)
-			VALUES (?, ?, ?, ?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?)
+			(recording_fingerprint, item_index, evidence_json, scores_json, decision, model, prompt_version, outcome, error, error_kind, latency_ms, input_tokens, created_at_ms, expires_at_ms)
+			VALUES (?, ?, ?, ?, ?, NULLIF(?, ''), ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?)
 			ON CONFLICT(recording_fingerprint, item_index) DO UPDATE SET
 			 evidence_json = excluded.evidence_json, scores_json = excluded.scores_json, decision = excluded.decision, model = excluded.model,
 			prompt_version = excluded.prompt_version,
 			outcome = CASE WHEN typesafe_shadow_verifications.outcome IN ('created', 'reconciled', 'completed')
 				THEN typesafe_shadow_verifications.outcome ELSE excluded.outcome END,
-			 error = excluded.error, error_kind = excluded.error_kind`,
+			 error = excluded.error, error_kind = excluded.error_kind, latency_ms = excluded.latency_ms, input_tokens = excluded.input_tokens`,
 			fingerprint, result.ItemIndex, evidenceJSON, scoresJSON, result.Decision, result.Model, result.PromptVersion,
-			outcome, result.Error, string(result.ErrorKind), now.UnixMilli(), expires); err != nil {
+			outcome, result.Error, string(result.ErrorKind), result.LatencyMilliseconds, result.InputTokens, now.UnixMilli(), expires); err != nil {
 			return fmt.Errorf("save shadow verification: %w", err)
 		}
 	}
@@ -249,7 +249,8 @@ func (s *Store) ListEvaluationEvidence(ctx context.Context) ([]EvaluationEvidenc
 		return nil, fmt.Errorf("close evaluation evidence rows: %w", err)
 	}
 	shadowRows, err := tx.QueryContext(ctx, `SELECT recording_fingerprint, item_index, evidence_json, scores_json, decision,
-		COALESCE(model, ''), prompt_version, outcome, COALESCE(error, ''), COALESCE(error_kind, '')
+		COALESCE(model, ''), prompt_version, outcome, COALESCE(error, ''), COALESCE(error_kind, ''),
+		latency_ms, input_tokens
 		FROM typesafe_shadow_verifications WHERE expires_at_ms > ? ORDER BY recording_fingerprint, item_index`, now)
 	if err != nil {
 		return nil, fmt.Errorf("read shadow verifications: %w", err)
@@ -258,7 +259,8 @@ func (s *Store) ListEvaluationEvidence(ctx context.Context) ([]EvaluationEvidenc
 		var fingerprint, decision, model, promptVersion, outcome, detail, errorKind string
 		var evidenceJSON, scoresJSON sql.NullString
 		var itemIndex int
-		if err := shadowRows.Scan(&fingerprint, &itemIndex, &evidenceJSON, &scoresJSON, &decision, &model, &promptVersion, &outcome, &detail, &errorKind); err != nil {
+		var latencyMilliseconds, inputTokens sql.NullInt64
+		if err := shadowRows.Scan(&fingerprint, &itemIndex, &evidenceJSON, &scoresJSON, &decision, &model, &promptVersion, &outcome, &detail, &errorKind, &latencyMilliseconds, &inputTokens); err != nil {
 			shadowRows.Close()
 			return nil, fmt.Errorf("scan shadow verification: %w", err)
 		}
@@ -268,6 +270,12 @@ func (s *Store) ListEvaluationEvidence(ctx context.Context) ([]EvaluationEvidenc
 			return nil, fmt.Errorf("shadow verification has no evidence")
 		}
 		shadow := ShadowVerification{ItemIndex: itemIndex, Decision: decision, Model: model, PromptVersion: promptVersion, Outcome: outcome, Error: detail, ErrorKind: TypeSafeErrorKind(errorKind)}
+		if latencyMilliseconds.Valid {
+			shadow.LatencyMilliseconds = latencyMilliseconds.Int64
+		}
+		if inputTokens.Valid {
+			shadow.InputTokens = int(inputTokens.Int64)
+		}
 		if evidenceJSON.Valid && evidenceJSON.String != "" {
 			shadow.Evidence = &TypeSafeVerificationEvidence{}
 			if err := json.Unmarshal([]byte(evidenceJSON.String), shadow.Evidence); err != nil {

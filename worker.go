@@ -282,8 +282,12 @@ func (w *Worker) runShadowVerification(ctx context.Context, recordingID int64, t
 		shadowModel = modelProvider.VerificationModel()
 	}
 	for index, item := range items {
+		started := time.Now()
 		result, verificationErr := w.config.ShadowVerifier.Verify(ctx, transcription, item, w.config.ProjectAliases)
-		shadow := ShadowVerification{ItemIndex: index, Model: shadowModel, PromptVersion: typeSafeVerificationPromptVersion, Outcome: "queued"}
+		shadow := ShadowVerification{
+			ItemIndex: index, Model: shadowModel, PromptVersion: typeSafeVerificationPromptVersion,
+			Outcome: "queued", LatencyMilliseconds: time.Since(started).Milliseconds(),
+		}
 		if verificationErr != nil {
 			shadow.Decision = "error"
 			shadow.Error = verificationErr.Error()
@@ -295,6 +299,7 @@ func (w *Worker) runShadowVerification(ctx context.Context, recordingID int64, t
 		} else {
 			shadow.Evidence = &result.Evidence
 			shadow.Decision = string(result.Decision)
+			shadow.InputTokens = result.Evidence.InputTokens
 			if result.Evidence.Model != "" {
 				shadow.Model = result.Evidence.Model
 			}

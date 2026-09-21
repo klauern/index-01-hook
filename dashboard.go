@@ -258,12 +258,29 @@ func (h *dashboardHandler) serveAsset(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(asset)
 }
 
+const typesafeJevInputPricePerMillion = 0.042
+
+func meteredTypeSafeCost(inputTokens int64) float64 {
+	if inputTokens <= 0 {
+		return 0
+	}
+	return float64(inputTokens) * typesafeJevInputPricePerMillion / 1_000_000
+}
+
 type dashboardStatus struct {
-	WorkerState        string
-	Heartbeat          string
-	RecordingCount     int64
-	PendingExtractions int64
-	PendingDeliveries  int64
+	WorkerState               string
+	Heartbeat                 string
+	RecordingCount            int64
+	PendingExtractions        int64
+	PendingDeliveries         int64
+	ShadowSampleCount         int64
+	ShadowAcceptCount         int64
+	ShadowReviewCount         int64
+	ShadowRejectCount         int64
+	ShadowFailureCount        int64
+	ShadowLatencyMilliseconds float64
+	ShadowInputTokens         int64
+	ShadowMeteredCost         float64
 }
 
 type dashboardRecording struct {
@@ -365,6 +382,17 @@ var dashboardTemplates = template.Must(template.New("dashboard").Funcs(template.
 			<div><dt>Recordings</dt><dd>{{.RecordingCount}}</dd></div>
 			<div><dt>Pending extractions</dt><dd>{{.PendingExtractions}}</dd></div>
 			<div><dt>Pending deliveries</dt><dd>{{.PendingDeliveries}}</dd></div>
+		</dl>
+		<h3>Jev shadow metrics</h3>
+		<dl>
+			<div><dt>Shadow evaluations</dt><dd>{{.ShadowSampleCount}}</dd></div>
+			<div><dt>Accept decisions</dt><dd>{{.ShadowAcceptCount}}</dd></div>
+			<div><dt>Review decisions</dt><dd>{{.ShadowReviewCount}}</dd></div>
+			<div><dt>Reject decisions</dt><dd>{{.ShadowRejectCount}}</dd></div>
+			<div><dt>Failure count</dt><dd>{{.ShadowFailureCount}}</dd></div>
+			<div><dt>Shadow latency</dt><dd>{{if gt .ShadowSampleCount 0}}{{printf "%.1f ms average" .ShadowLatencyMilliseconds}}{{else}}not recorded{{end}}</dd></div>
+			<div><dt>Jev input tokens</dt><dd>{{.ShadowInputTokens}}</dd></div>
+			<div><dt>metered cost</dt><dd>{{printf "$%.6f" .ShadowMeteredCost}}</dd></div>
 		</dl>
 	</section>
 {{end}}
@@ -529,7 +557,28 @@ func (h *dashboardHandler) readStatus(ctx context.Context) (dashboardStatus, err
 		status.Heartbeat = "not recorded"
 	}
 	err := h.db.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM recordings), (SELECT count(*) FROM extraction_jobs WHERE state NOT IN ('completed', 'review')), (SELECT count(*) FROM delivery_tasks WHERE state NOT IN ('completed', 'review'))`).Scan(&status.RecordingCount, &status.PendingExtractions, &status.PendingDeliveries)
-	return status, err
+	if err != nil {
+		return status, err
+	}
+	var latency sql.NullFloat64
+	if err := h.db.QueryRowContext(ctx, `
+		SELECT count(*),
+			coalesce(sum(CASE WHEN decision = 'accept' THEN 1 ELSE 0 END), 0),
+			coalesce(sum(CASE WHEN decision = 'review' THEN 1 ELSE 0 END), 0),
+			coalesce(sum(CASE WHEN decision = 'reject' THEN 1 ELSE 0 END), 0),
+			coalesce(sum(CASE WHEN decision = 'error' OR coalesce(error, '') <> '' THEN 1 ELSE 0 END), 0),
+			avg(latency_ms), coalesce(sum(input_tokens), 0)
+		FROM typesafe_shadow_verifications
+		WHERE expires_at_ms > ?`, time.Now().UTC().UnixMilli()).Scan(
+		&status.ShadowSampleCount, &status.ShadowAcceptCount, &status.ShadowReviewCount,
+		&status.ShadowRejectCount, &status.ShadowFailureCount, &latency, &status.ShadowInputTokens); err != nil {
+		return status, err
+	}
+	if latency.Valid {
+		status.ShadowLatencyMilliseconds = latency.Float64
+	}
+	status.ShadowMeteredCost = meteredTypeSafeCost(status.ShadowInputTokens)
+	return status, nil
 }
 
 func (h *dashboardHandler) readRecordings(ctx context.Context, values url.Values) (dashboardRecordingsPage, error) {

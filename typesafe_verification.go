@@ -46,15 +46,17 @@ type TypeSafeVerificationEvidence struct {
 }
 
 type ShadowVerification struct {
-	ItemIndex     int                           `json:"item_index"`
-	Evidence      *TypeSafeVerificationEvidence `json:"evidence,omitempty"`
-	Decision      string                        `json:"decision"`
-	Model         string                        `json:"model,omitempty"`
-	PromptVersion string                        `json:"prompt_version"`
-	Scores        map[string]float64            `json:"scores,omitempty"`
-	Outcome       string                        `json:"outcome"`
-	Error         string                        `json:"error,omitempty"`
-	ErrorKind     TypeSafeErrorKind             `json:"error_kind,omitempty"`
+	ItemIndex           int                           `json:"item_index"`
+	Evidence            *TypeSafeVerificationEvidence `json:"evidence,omitempty"`
+	Decision            string                        `json:"decision"`
+	Model               string                        `json:"model,omitempty"`
+	PromptVersion       string                        `json:"prompt_version"`
+	Scores              map[string]float64            `json:"scores,omitempty"`
+	Outcome             string                        `json:"outcome"`
+	Error               string                        `json:"error,omitempty"`
+	ErrorKind           TypeSafeErrorKind             `json:"error_kind,omitempty"`
+	LatencyMilliseconds int64                         `json:"latency_ms,omitempty"`
+	InputTokens         int                           `json:"input_tokens,omitempty"`
 }
 
 type VerificationResult struct {

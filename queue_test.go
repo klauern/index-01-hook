@@ -98,8 +98,8 @@ func TestDeliveryQueueFreshDatabaseAndLegacyUpgrade(t *testing.T) {
 		if err := store.db.QueryRow(`SELECT max(version) FROM schema_migrations`).Scan(&version); err != nil {
 			t.Fatalf("query migration version: %v", err)
 		}
-		if version != 10 {
-			t.Fatalf("migration version = %d, want 10", version)
+		if version != 11 {
+			t.Fatalf("migration version = %d, want 11", version)
 		}
 		var foreignKeyTarget string
 		if err := store.db.QueryRow(`SELECT "table" FROM pragma_foreign_key_list('typesafe_shadow_verifications') WHERE "table" = 'evaluation_evidence'`).Scan(&foreignKeyTarget); err != nil || foreignKeyTarget != "evaluation_evidence" {
