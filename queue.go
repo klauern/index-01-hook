@@ -75,6 +75,8 @@ type FrozenExtraction struct {
 	Provider           string
 	Model              string
 	ProviderResponseID string
+	Verification       *TypeSafeVerificationEvidence  `json:"verification,omitempty"`
+	Verifications      []TypeSafeVerificationEvidence `json:"verifications,omitempty"`
 	Items              []QueuedItem
 	Tasks              []QueuedTask
 }
@@ -123,17 +125,18 @@ type DeliveryStatus struct {
 }
 
 type RecordingQueueStatus struct {
-	RecordingID        int64            `json:"recording_id"`
-	RecordingHash      string           `json:"recording_hash"`
-	State              string           `json:"state"`
-	AttemptCount       int              `json:"attempt_count"`
-	LastClassification string           `json:"last_classification,omitempty"`
-	Provider           string           `json:"provider,omitempty"`
-	Model              string           `json:"model,omitempty"`
-	ProviderResponseID string           `json:"provider_response_id,omitempty"`
-	UpdatedAt          string           `json:"updated_at"`
-	NextAttemptAt      string           `json:"next_attempt_at,omitempty"`
-	Tasks              []DeliveryStatus `json:"tasks"`
+	RecordingID        int64                          `json:"recording_id"`
+	RecordingHash      string                         `json:"recording_hash"`
+	State              string                         `json:"state"`
+	AttemptCount       int                            `json:"attempt_count"`
+	LastClassification string                         `json:"last_classification,omitempty"`
+	Provider           string                         `json:"provider,omitempty"`
+	Model              string                         `json:"model,omitempty"`
+	ProviderResponseID string                         `json:"provider_response_id,omitempty"`
+	UpdatedAt          string                         `json:"updated_at"`
+	NextAttemptAt      string                         `json:"next_attempt_at,omitempty"`
+	Tasks              []DeliveryStatus               `json:"tasks"`
+	Verification       []TypeSafeVerificationEvidence `json:"verification,omitempty"`
 }
 
 func (s *Store) ClaimExtraction(ctx context.Context, owner string, leaseDuration time.Duration) (*ExtractionClaim, error) {
@@ -319,6 +322,61 @@ func (s *Store) BlockExtraction(ctx context.Context, recordingID int64, owner st
 	return s.finishExtractionAttempt(ctx, recordingID, owner, classification, "review", workflowState, s.now())
 }
 
+func (s *Store) SaveExtractionVerification(ctx context.Context, recordingID int64, owner string, evidence []TypeSafeVerificationEvidence) error {
+	if len(evidence) == 0 {
+		return nil
+	}
+	encoded, err := json.Marshal(evidence)
+	if err != nil {
+		return fmt.Errorf("encode extraction verification: %w", err)
+	}
+	result, err := s.db.ExecContext(ctx, `UPDATE extraction_jobs SET verification_json = ? WHERE recording_id = ? AND state = 'leased' AND lease_owner = ? AND lease_expires_at_ms > ?`, string(encoded), recordingID, strings.TrimSpace(owner), s.now().UTC().UnixMilli())
+	if err != nil {
+		return fmt.Errorf("save extraction verification: %w", err)
+	}
+	return requireOneRow(result)
+}
+
+func (s *Store) CompleteRejectedExtraction(ctx context.Context, recordingID int64, owner string) error {
+	now := s.now().UTC()
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin rejected extraction completion: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	var attempt int
+	err = tx.QueryRowContext(ctx, `
+		SELECT attempt_count FROM extraction_jobs
+		WHERE recording_id = ? AND state = 'leased' AND lease_owner = ?
+			AND lease_expires_at_ms > ?`, recordingID, strings.TrimSpace(owner), now.UnixMilli()).Scan(&attempt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrLeaseLost
+	}
+	if err != nil {
+		return fmt.Errorf("verify rejected extraction lease: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO extraction_attempts (recording_id, attempt_number, classification, created_at)
+		VALUES (?, ?, ?, ?)`, recordingID, attempt, OutcomeReview, timestamp(now)); err != nil {
+		return fmt.Errorf("record rejected extraction outcome: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE recordings SET transcription = '' WHERE id = ?`, recordingID); err != nil {
+		return fmt.Errorf("erase rejected transcription: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, `
+		UPDATE extraction_jobs
+		SET state = 'completed', workflow_state = 'complete', next_attempt_at_ms = ?,
+			lease_owner = NULL, lease_expires_at_ms = NULL, last_classification = ?,
+			updated_at = ?, completed_at = ?
+		WHERE recording_id = ?`, now.UnixMilli(), OutcomeReview, timestamp(now), timestamp(now), recordingID); err != nil {
+		return fmt.Errorf("complete rejected extraction: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit rejected extraction completion: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) finishExtractionAttempt(ctx context.Context, recordingID int64, owner string, classification OutcomeClassification, state, workflowState string, retryAt time.Time) error {
 	now := s.now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -457,6 +515,11 @@ func (s *Store) CompleteDelivery(ctx context.Context, completion DeliveryComplet
 		strings.TrimSpace(completion.TickTickProjectID), timestamp(now), timestamp(now), completion.TaskID); err != nil {
 		return fmt.Errorf("complete delivery: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, `UPDATE typesafe_shadow_verifications
+		SET outcome = ? WHERE recording_fingerprint = (SELECT r.payload_fingerprint FROM recordings r WHERE r.id = ?)
+		AND item_index = (SELECT task_index FROM delivery_tasks WHERE id = ?) AND expires_at_ms > ?`, string(completion.Classification), recordingID, completion.TaskID, now.UnixMilli()); err != nil {
+		return fmt.Errorf("record shadow delivery outcome: %w", err)
+	}
 	if err := s.captureEvaluationDelivery(ctx, tx, completion.TaskID, now); err != nil {
 		return err
 	}
@@ -518,7 +581,7 @@ func (s *Store) finishDeliveryAttempt(ctx context.Context, taskID int64, owner s
 		return fmt.Errorf("begin delivery outcome: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	_, attempt, err := activeDeliveryLease(ctx, tx, taskID, owner, now)
+	recordingID, attempt, err := activeDeliveryLease(ctx, tx, taskID, owner, now)
 	if err != nil {
 		return err
 	}
@@ -537,6 +600,11 @@ func (s *Store) finishDeliveryAttempt(ctx context.Context, taskID int64, owner s
 		WHERE id = ?`, state, workflowState, retryAt.UTC().UnixMilli(), classification, timestamp(now), reconcileIncrement, taskID); err != nil {
 		return fmt.Errorf("finish delivery outcome: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, `UPDATE typesafe_shadow_verifications
+		SET outcome = ? WHERE recording_fingerprint = (SELECT payload_fingerprint FROM recordings WHERE id = ?)
+		AND item_index = (SELECT task_index FROM delivery_tasks WHERE id = ?) AND expires_at_ms > ?`, string(classification), recordingID, taskID, now.UnixMilli()); err != nil {
+		return fmt.Errorf("record shadow delivery outcome: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit delivery outcome: %w", err)
 	}
@@ -545,21 +613,27 @@ func (s *Store) finishDeliveryAttempt(ctx context.Context, taskID int64, owner s
 
 func (s *Store) RecordingStatus(ctx context.Context, recordingID int64) (RecordingQueueStatus, error) {
 	var status RecordingQueueStatus
+	var verificationJSON string
 	err := s.db.QueryRowContext(ctx, `
 		SELECT j.recording_id, r.payload_fingerprint, j.workflow_state, j.attempt_count,
 			COALESCE(j.last_classification, ''), COALESCE(e.provider, ''),
 			COALESCE(e.model, ''), COALESCE(e.provider_response_id, ''),
-			j.updated_at, j.next_attempt_at_ms
+			COALESCE(j.verification_json, ''), j.updated_at, j.next_attempt_at_ms
 		FROM extraction_jobs j
 		JOIN recordings r ON r.id = j.recording_id
 		LEFT JOIN extractions e ON e.recording_id = j.recording_id
 		WHERE j.recording_id = ?`, recordingID).Scan(
 		&status.RecordingID, &status.RecordingHash, &status.State,
 		&status.AttemptCount, &status.LastClassification, &status.Provider,
-		&status.Model, &status.ProviderResponseID, &status.UpdatedAt, newUnixMillisTime(&status.NextAttemptAt),
+		&status.Model, &status.ProviderResponseID, &verificationJSON, &status.UpdatedAt, newUnixMillisTime(&status.NextAttemptAt),
 	)
 	if err != nil {
 		return RecordingQueueStatus{}, fmt.Errorf("query recording status: %w", err)
+	}
+	if verificationJSON != "" {
+		if err := json.Unmarshal([]byte(verificationJSON), &status.Verification); err != nil {
+			return RecordingQueueStatus{}, fmt.Errorf("decode recording verification: %w", err)
+		}
 	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, task_index, item_kind, workflow_state, attempt_count,

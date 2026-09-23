@@ -1,10 +1,11 @@
 # Index 01 Hook
 
 Index 01 Hook receives authenticated Index 01 multipart webhooks. It sends
-transcriptions to DeepSeek for extraction. It sends extracted tasks and notes
-to TickTick.
+transcriptions to DeepSeek for extraction. Verification is disabled by default; an
+approved and calibrated deployment can send transcription and candidate items to
+TypeSafe. It sends accepted tasks and notes to TickTick.
 
-Only DeepSeek and TickTick are supported providers.
+TypeSafe is an optional verification provider. DeepSeek remains the extractor and TickTick remains the delivery provider.
 
 ## Release status
 

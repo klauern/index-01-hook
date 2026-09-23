@@ -49,7 +49,7 @@ func runWithEnvironment(logger *slog.Logger, getenv func(string) string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	deepSeek, tickTick, router, err := validateProviders(ctx, cfg, http.DefaultTransport)
+	deepSeek, typeSafe, tickTick, router, err := validateProvidersWithTypeSafe(ctx, cfg, http.DefaultTransport)
 	if err != nil {
 		return err
 	}
@@ -70,8 +70,14 @@ func runWithEnvironment(logger *slog.Logger, getenv func(string) string) error {
 	for alias := range cfg.TickTickProjectAliases {
 		aliases = append(aliases, alias)
 	}
+	var shadowVerifier ExtractionVerifier
+	if cfg.TypeSafeShadow {
+		configuredVerifier := typeSafeVerifier{client: typeSafe, enabled: true, aliasDescriptions: cfg.TypeSafeAliasDescriptions}
+		shadowVerifier = configuredVerifier
+	}
 	worker, err := NewWorker(store, deepSeek, router, WorkerConfig{
 		EvidenceRouting: &evalcorpus.RoutingConfig{TimeZone: cfg.TimeZone, Aliases: cfg.TickTickProjectAliases, DefaultProjectID: router.defaultProjectID, NoteProjectID: router.noteProjectID},
+		ShadowVerifier:  shadowVerifier,
 		Owner:           cfg.WorkerOwner, TimeZone: cfg.TimeZone,
 		LeaseDuration: 2 * time.Minute, PollInterval: time.Second,
 		RetryBase: 30 * time.Second, RetryMaximum: 30 * time.Minute,
@@ -85,6 +91,7 @@ func runWithEnvironment(logger *slog.Logger, getenv func(string) string) error {
 	defer func() {
 		stop()
 		background.Wait()
+		worker.WaitForShadow()
 	}()
 	background.Add(2)
 	go func() {

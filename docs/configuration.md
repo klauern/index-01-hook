@@ -16,10 +16,16 @@ Kubernetes set deployment-specific values outside the application settings.
 | `INDEX01_DEEPSEEK_TOKEN` | Yes | None | Non-blank DeepSeek API token. |
 | `INDEX01_DEEPSEEK_MODEL` | No | `deepseek-v4-flash` | Safe provider identifier passed to DeepSeek. |
 | `INDEX01_TIME_ZONE` | No | `UTC` | Valid IANA time zone for date extraction and task delivery. |
+| `INDEX01_TYPESAFE_VERIFY` | No | `false` | Keep `false`. Startup rejects active verification because calibration has not approved it. |
+| `INDEX01_TYPESAFE_SHADOW` | No | `false` | Set to `true` to evaluate every extracted item without changing extraction or TickTick delivery. Results are private retention-bound evidence. Requires nonzero evaluation retention. |
+| `INDEX01_TYPESAFE_TOKEN` | Conditional | None | Server-side TypeSafe API token. Required when verification or shadow mode is enabled. |
+| `INDEX01_TYPESAFE_MODEL` | No | `jev-1.13.0` | Pinned TypeSafe model identifier. Do not use a moving alias for calibrated thresholds. |
+| `INDEX01_TYPESAFE_ENDPOINT` | No | `https://api.typesafe.ai/v1/systemone` | Fixed HTTPS TypeSafe endpoint. Startup rejects other hosts or paths. |
 | `INDEX01_TICKTICK_TOKEN` | Yes | None | Non-blank TickTick Open API token. |
 | `INDEX01_TICKTICK_DEFAULT_PROJECT_ID` | Yes | None | Writable `TASK` project identifier or `inbox`. |
 | `INDEX01_TICKTICK_NOTE_PROJECT_ID` | Yes | None | Writable `NOTE` project identifier. |
 | `INDEX01_TICKTICK_PROJECT_ALIASES` | No | `{}` | JSON object that maps task aliases to project identifiers. |
+| `INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS` | No | `{}` | JSON object that maps aliases to plain-language descriptions. Descriptions are sent to TypeSafe; project identifiers are not. |
 | `INDEX01_WORKER_OWNER` | No | `index-01-hook` | Durable lease owner. A blank value uses the default. |
 
 Every required value must be present and non-blank. Copied example values must
@@ -39,6 +45,10 @@ letters, digits, and `-_.:/`, with a maximum length of 256 bytes. The service
 does not validate model availability locally. The provider can reject an
 unavailable model during extraction.
 
+`INDEX01_TYPESAFE_VERIFY` and `INDEX01_TYPESAFE_SHADOW` are `false` by default. Startup rejects `INDEX01_TYPESAFE_VERIFY=true` because current calibration defers active verification. Shadow mode requires nonzero `INDEX01_EVALUATION_RETENTION_DAYS`. Shadow mode sends field-wise verification requests after extraction freezes, then records the model, pinned prompt version, field scores, decision, errors, and eventual item outcome without applying any decision. Shadow requests run outside the delivery worker cycle. The worker runs at most four shadow extraction batches at once. If the limit is full, the worker skips new shadow work and logs the recording identifier. Shadow transport, authentication, malformed-response, and semantic failures never block, retry, reroute, or reject delivery. Shadow evidence is private, contains transcription-derived content, and follows `INDEX01_EVALUATION_RETENTION_DAYS`.
+
+`INDEX01_TYPESAFE_TOKEN` stays server-side and never appears in logs. Startup validates token presence, the pinned model, and the fixed endpoint before the HTTP server listens. Live calls require explicit approval.
+
 `INDEX01_TIME_ZONE` must be an available IANA time zone, such as `UTC` or
 `America/New_York`. `Local` is rejected. The default is `UTC`.
 
@@ -53,8 +63,7 @@ closed state, and write access.
 
 Set aliases as one JSON object. Each key is a case-insensitive task alias of at
 most 100 bytes. Each value is a TickTick project identifier. The worker gives
-only configured alias names to DeepSeek. DeepSeek cannot choose an arbitrary provider project ID.
-
+only configured alias names to DeepSeek. DeepSeek cannot choose an arbitrary provider project ID. When TypeSafe verification or shadow mode is enabled, provide matching plain-language descriptions in `INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS`. TypeSafe receives alias names and descriptions only; the TickTick project IDs remain in the server.
 Use a safe example with generic identifiers:
 
 ```dotenv

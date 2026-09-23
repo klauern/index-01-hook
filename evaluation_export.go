@@ -32,9 +32,12 @@ type evaluationExportEvent struct {
 }
 
 type evaluationExportFinding struct {
-	TaskID string `json:"task_id"`
-	Status string `json:"status"`
-	Reason string `json:"reason,omitempty"`
+	TaskID         string `json:"task_id"`
+	ItemIndex      int    `json:"item_index"`
+	Status         string `json:"status"`
+	Reason         string `json:"reason,omitempty"`
+	ShadowDecision string `json:"shadow_decision,omitempty"`
+	ShadowOutcome  string `json:"shadow_outcome,omitempty"`
 }
 
 type evaluationExportLedger struct {
@@ -142,7 +145,11 @@ func buildEvaluationExport(evidence []EvaluationEvidence, now time.Time) (evalua
 			original := evaluationExportCandidate(recording, delivery, delivery.ProjectID, "")
 			from := evaluationExportObservation{TaskID: delivery.TaskID, ObservedAt: recording.CapturedAt, Candidate: original}
 			latest := from
-			finding := evaluationExportFinding{TaskID: delivery.TaskID, Status: "not_observed", Reason: "no_verified_remote_observation"}
+			finding := evaluationExportFinding{TaskID: delivery.TaskID, ItemIndex: delivery.ItemIndex, Status: "not_observed", Reason: "no_verified_remote_observation"}
+			if delivery.Shadow != nil {
+				finding.ShadowDecision = delivery.Shadow.Decision
+				finding.ShadowOutcome = delivery.Shadow.Outcome
+			}
 			observation := delivery.Observation
 			kind := evaluationExportKind(delivery.Kind)
 			marker, markerErr := tickTickMarker(recording.Fingerprint, delivery.ItemIndex)

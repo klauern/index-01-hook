@@ -12,11 +12,15 @@ runs the HTTP receiver and the worker. The worker uses durable SQLite queues.
 5. A transcription creates one extraction job.
 6. The worker claims the job with a durable lease.
 7. DeepSeek extracts zero to ten independent tasks or notes.
-8. SQLite freezes the validated extraction before delivery starts.
-9. The worker claims each delivery task separately.
-10. TickTick creates each task or note.
-11. The worker records the provider identifier and delivery result.
-12. A terminal retention operation purges eligible old recordings.
+8. If active verification is enabled, the worker verifies all items before freeze.
+9. Any review decision puts the complete extraction in `needs_review`.
+10. Accepted sibling items do not create delivery tasks after a review decision.
+11. The worker freezes the accepted items as delivery tasks.
+12. When shadow mode is enabled, TypeSafe evaluates frozen items outside the delivery worker cycle. Four extraction batches can run at once. The worker skips new shadow work when the limit is full.
+13. The worker claims each delivery task separately.
+14. TickTick creates each task or note.
+15. The worker records the provider identifier and delivery result.
+16. A terminal retention operation purges eligible old recordings.
 
 A request without transcription can be retained as an audio-only receipt. It
 does not create an extraction job.
@@ -67,6 +71,12 @@ The service stores the provider name, configured model, and optional provider
 response identifier with the frozen extraction. Frozen output is immutable.
 A later retry does not replace a successful frozen extraction.
 
+## TypeSafe verification
+
+Active verification is not approved. Startup rejects `INDEX01_TYPESAFE_VERIFY=true`. Shadow mode sends one request per frozen item. The request contains the transcription, the candidate fields, and alias descriptions. It does not contain TickTick project identifiers.
+
+The request asks narrow questions for injection, item presence, kind, title, content, date, priority, tags, and route. Go records the shadow decision and scores in private evaluation evidence. The shadow request runs asynchronously after freeze. A failure cannot change, retry, or delay a delivery task. TypeSafe never sends an item directly to TickTick.
+
 ## TickTick delivery
 
 The worker sends each frozen item independently to TickTick. A task request
@@ -86,11 +96,9 @@ compares the returned kind, marker, title, and content with frozen data. It does
 not send the source transcription.
 
 ## Failure and retry states
+DeepSeek authentication failures enter `blocked_auth`. Refusals enter `needs_review`. Malformed or terminal responses enter `dead_letter`. Retryable responses use bounded exponential retry and then enter `dead_letter` after the configured attempt limit.
 
-DeepSeek authentication failures enter `blocked_auth`. Refusals enter
-`needs_review`. Malformed or terminal responses enter `dead_letter`. Retryable
-responses use bounded exponential retry and then enter `dead_letter` after the
-configured attempt limit.
+When enabled, TypeSafe transport failures use bounded extraction retries. Authentication, malformed, and terminal TypeSafe responses enter `needs_review`; semantic uncertainty also enters `needs_review`. TypeSafe semantic judgments never enter `dead_letter`.
 
 TickTick authentication failures enter `blocked_auth`. Configuration failures
 enter `needs_review`. Malformed create responses enter `dead_letter`.
@@ -124,8 +132,7 @@ become eligible. Review unresolved terminal work before purge.
 `/healthz` checks a live SQLite query. `/statusz` and `/readyz` report aggregate
 worker, queue, intake, and provider data. A missing, stopped, stale, or failed
 worker can make the report degraded. A queue older than 15 minutes, blocked
-work, review work, dead-letter work, or provider latency above 25 seconds can
-also make the report degraded.
+work, review work, dead-letter work, or provider latency above 25 seconds can also make the report degraded. `/statusz` includes the latest TypeSafe latency and failure observation.
 
 A provider `last_failed` flag alone does not necessarily degrade readiness.
 Provider latency and queue or worker conditions determine the health reasons.

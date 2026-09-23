@@ -54,6 +54,48 @@ func TestNewDeepSeekClientDefaultsToUTC(t *testing.T) {
 	}
 }
 
+func TestVerificationPromptRequiresCanonicalDates(t *testing.T) {
+	prompt := deepSeekSystemPromptWithVerification(time.Date(2026, time.August, 12, 18, 0, 0, 0, time.UTC), deepSeekTestTimeZone, nil, true)
+	for _, required := range []string{"Resolve relative dates", "YYYY-MM-DD", "RFC3339", "correct " + deepSeekTestTimeZone + " offset"} {
+		if !strings.Contains(prompt, required) {
+			t.Errorf("verification prompt does not contain %q: %q", required, prompt)
+		}
+	}
+	if strings.Contains(prompt, "Do not resolve relative dates") {
+		t.Fatalf("verification prompt permits a noncanonical date: %q", prompt)
+	}
+}
+
+func TestVerificationPromptIncludesConfiguredLocalTimestamp(t *testing.T) {
+	now := time.Date(2026, time.August, 12, 18, 0, 0, 0, time.UTC)
+	var request deepSeekRequest
+	client, err := NewDeepSeekClientWithConfig(deepSeekTestToken, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if err := json.NewDecoder(req.Body).Decode(&request); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		return deepSeekFixtureOutput("verification-prompt", `{"items":[]}`), nil
+	}), func() time.Time { return now }, DeepSeekClientConfig{
+		Model: deepSeekModel, TimeZone: deepSeekTestTimeZone, SemanticVerification: true,
+	})
+	if err != nil {
+		t.Fatalf("NewDeepSeekClientWithConfig() error = %v", err)
+	}
+	if _, err := client.Extract(context.Background(), "Schedule this in two hours", nil); err != nil {
+		t.Fatalf("Extract() error = %v", err)
+	}
+	if len(request.Input) == 0 {
+		t.Fatal("request has no prompt input")
+	}
+	location, err := time.LoadLocation(deepSeekTestTimeZone)
+	if err != nil {
+		t.Fatalf("LoadLocation() error = %v", err)
+	}
+	expected := now.In(location).Format(time.RFC3339)
+	if !strings.Contains(request.Input[0].Content, "Current local time is "+expected+".") {
+		t.Fatalf("verification prompt = %q, want local timestamp %q", request.Input[0].Content, expected)
+	}
+}
+
 func TestNewDeepSeekClientWithConfigRejectsInvalidValues(t *testing.T) {
 	tests := []struct {
 		name   string

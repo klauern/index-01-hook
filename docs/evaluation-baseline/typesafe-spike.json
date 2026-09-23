@@ -1,0 +1,426 @@
+{
+  "candidate_count": 58,
+  "fabricated_count": 29,
+  "fabricated_mean_unsupported": 0.7920689655172416,
+  "latency_ms": 11376,
+  "live": true,
+  "model": "jev-1.13.0",
+  "note": "Synthetic fixture result only. This is a provisional signal, not a calibrated threshold.",
+  "provisional": true,
+  "results": [
+    {
+      "fabricated": false,
+      "input_tokens": 381,
+      "latency_ms": 370,
+      "output_tokens": 20,
+      "unsupported_probability": 0.48
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 355,
+      "latency_ms": 146,
+      "output_tokens": 20,
+      "unsupported_probability": 0.07999999999999996
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 379,
+      "latency_ms": 226,
+      "output_tokens": 20,
+      "unsupported_probability": 0.62
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 379,
+      "latency_ms": 139,
+      "output_tokens": 20,
+      "unsupported_probability": 0.54
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 381,
+      "latency_ms": 188,
+      "output_tokens": 20,
+      "unsupported_probability": 0.62
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 352,
+      "latency_ms": 130,
+      "output_tokens": 20,
+      "unsupported_probability": 0.43000000000000005
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 393,
+      "latency_ms": 188,
+      "output_tokens": 20,
+      "unsupported_probability": 0.9299999999999999
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 409,
+      "latency_ms": 207,
+      "output_tokens": 20,
+      "unsupported_probability": 0.27
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 379,
+      "latency_ms": 161,
+      "output_tokens": 20,
+      "unsupported_probability": 0.55
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 379,
+      "latency_ms": 175,
+      "output_tokens": 20,
+      "unsupported_probability": 0.29000000000000004
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 270,
+      "output_tokens": 20,
+      "unsupported_probability": 0.6
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 233,
+      "output_tokens": 20,
+      "unsupported_probability": 0.6699999999999999
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 110,
+      "output_tokens": 20,
+      "unsupported_probability": 0.71
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 131,
+      "output_tokens": 20,
+      "unsupported_probability": 0.7
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 585,
+      "output_tokens": 20,
+      "unsupported_probability": 0.6599999999999999
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 221,
+      "output_tokens": 20,
+      "unsupported_probability": 0.62
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 193,
+      "output_tokens": 20,
+      "unsupported_probability": 0.64
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 150,
+      "output_tokens": 20,
+      "unsupported_probability": 0.64
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 385,
+      "latency_ms": 181,
+      "output_tokens": 20,
+      "unsupported_probability": 0.62
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 386,
+      "latency_ms": 255,
+      "output_tokens": 20,
+      "unsupported_probability": 0.54
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 354,
+      "latency_ms": 136,
+      "output_tokens": 20,
+      "unsupported_probability": 0.13
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 387,
+      "latency_ms": 130,
+      "output_tokens": 20,
+      "unsupported_probability": 0.38
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 389,
+      "latency_ms": 170,
+      "output_tokens": 20,
+      "unsupported_probability": 0.47
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 402,
+      "latency_ms": 238,
+      "output_tokens": 20,
+      "unsupported_probability": 0.52
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 403,
+      "latency_ms": 129,
+      "output_tokens": 20,
+      "unsupported_probability": 0.62
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 371,
+      "latency_ms": 138,
+      "output_tokens": 20,
+      "unsupported_probability": 0.16000000000000003
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 382,
+      "latency_ms": 174,
+      "output_tokens": 20,
+      "unsupported_probability": 0.5
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 387,
+      "latency_ms": 197,
+      "output_tokens": 20,
+      "unsupported_probability": 0.43999999999999995
+    },
+    {
+      "fabricated": false,
+      "input_tokens": 381,
+      "latency_ms": 138,
+      "output_tokens": 20,
+      "unsupported_probability": 0.29000000000000004
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 385,
+      "latency_ms": 234,
+      "output_tokens": 20,
+      "unsupported_probability": 0.94
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 359,
+      "latency_ms": 349,
+      "output_tokens": 20,
+      "unsupported_probability": 0.39
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 383,
+      "latency_ms": 326,
+      "output_tokens": 20,
+      "unsupported_probability": 0.91
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 383,
+      "latency_ms": 273,
+      "output_tokens": 20,
+      "unsupported_probability": 0.8200000000000001
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 385,
+      "latency_ms": 250,
+      "output_tokens": 20,
+      "unsupported_probability": 0.87
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 356,
+      "latency_ms": 185,
+      "output_tokens": 20,
+      "unsupported_probability": 0.61
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 397,
+      "latency_ms": 155,
+      "output_tokens": 20,
+      "unsupported_probability": 0.97
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 413,
+      "latency_ms": 184,
+      "output_tokens": 20,
+      "unsupported_probability": 0.7
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 383,
+      "latency_ms": 132,
+      "output_tokens": 20,
+      "unsupported_probability": 0.6799999999999999
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 383,
+      "latency_ms": 126,
+      "output_tokens": 20,
+      "unsupported_probability": 0.88
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 167,
+      "output_tokens": 20,
+      "unsupported_probability": 0.87
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 319,
+      "output_tokens": 20,
+      "unsupported_probability": 0.9
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 137,
+      "output_tokens": 20,
+      "unsupported_probability": 0.9
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 192,
+      "output_tokens": 20,
+      "unsupported_probability": 0.88
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 133,
+      "output_tokens": 20,
+      "unsupported_probability": 0.87
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 139,
+      "output_tokens": 20,
+      "unsupported_probability": 0.89
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 223,
+      "output_tokens": 20,
+      "unsupported_probability": 0.89
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 202,
+      "output_tokens": 20,
+      "unsupported_probability": 0.9
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 389,
+      "latency_ms": 133,
+      "output_tokens": 20,
+      "unsupported_probability": 0.8200000000000001
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 390,
+      "latency_ms": 188,
+      "output_tokens": 20,
+      "unsupported_probability": 0.84
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 358,
+      "latency_ms": 123,
+      "output_tokens": 20,
+      "unsupported_probability": 0.42000000000000004
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 391,
+      "latency_ms": 187,
+      "output_tokens": 20,
+      "unsupported_probability": 0.86
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 393,
+      "latency_ms": 213,
+      "output_tokens": 20,
+      "unsupported_probability": 0.89
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 406,
+      "latency_ms": 167,
+      "output_tokens": 20,
+      "unsupported_probability": 0.73
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 407,
+      "latency_ms": 164,
+      "output_tokens": 20,
+      "unsupported_probability": 0.83
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 375,
+      "latency_ms": 192,
+      "output_tokens": 20,
+      "unsupported_probability": 0.29000000000000004
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 386,
+      "latency_ms": 202,
+      "output_tokens": 20,
+      "unsupported_probability": 0.8200000000000001
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 391,
+      "latency_ms": 173,
+      "output_tokens": 20,
+      "unsupported_probability": 0.87
+    },
+    {
+      "fabricated": true,
+      "input_tokens": 385,
+      "latency_ms": 199,
+      "output_tokens": 20,
+      "unsupported_probability": 0.73
+    }
+  ],
+  "review_volume": 0.8275862068965517,
+  "separation": 0.28448275862068984,
+  "supported_mean_unsupported": 0.5075862068965518,
+  "synthetic": true,
+  "token_usage": {
+    "input": 22304,
+    "output": 1160
+  }
+}

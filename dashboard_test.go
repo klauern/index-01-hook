@@ -167,6 +167,85 @@ func TestDashboardReadOnlyAndRedactedHTML(t *testing.T) {
 	}
 }
 
+func TestDashboardJevShadowMetricsAreAggregateAndPrivate(t *testing.T) {
+	now := time.Now().UTC()
+	path := filepath.Join(t.TempDir(), "index01.db")
+	store, err := openStore(context.Background(), path, func() time.Time { return now })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	receipt := saveQueueRecording(t, store, "private shadow transcript")
+	freezeQueueItems(t, store, "dashboard-shadow", []QueuedItem{
+		{Kind: ItemKindTask, Title: "private title one"},
+		{Kind: ItemKindTask, Title: "private title two"},
+		{Kind: ItemKindTask, Title: "private title three"},
+		{Kind: ItemKindTask, Title: "private title four"},
+	})
+	results := []ShadowVerification{
+		{ItemIndex: 0, Decision: "accept", PromptVersion: typeSafeVerificationPromptVersion, Outcome: "queued", LatencyMilliseconds: 10, InputTokens: 100},
+		{ItemIndex: 1, Decision: "review", PromptVersion: typeSafeVerificationPromptVersion, Outcome: "queued", LatencyMilliseconds: 20, InputTokens: 200},
+		{ItemIndex: 2, Decision: "reject", PromptVersion: typeSafeVerificationPromptVersion, Outcome: "queued", LatencyMilliseconds: 30, InputTokens: 300},
+		{ItemIndex: 3, Decision: "error", PromptVersion: typeSafeVerificationPromptVersion, Outcome: "queued", Error: "private provider detail", LatencyMilliseconds: 40},
+	}
+	if err := store.SaveShadowVerifications(context.Background(), receipt.ID, results); err != nil {
+		t.Fatal(err)
+	}
+	exported, err := store.ListEvaluationEvidence(context.Background())
+	if err != nil || len(exported) != 1 || len(exported[0].ShadowVerifications) != 4 || exported[0].ShadowVerifications[2].InputTokens != 300 {
+		t.Fatalf("private shadow export = %+v, %v", exported, err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := openDashboardDatabase(context.Background(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	handler := newDashboardHandler(db, nil)
+	status, err := handler.(*dashboardHandler).readStatus(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.ShadowSampleCount != 4 || status.ShadowAcceptCount != 1 || status.ShadowReviewCount != 1 || status.ShadowRejectCount != 1 || status.ShadowFailureCount != 1 {
+		t.Fatalf("shadow counts = %+v", status)
+	}
+	if status.ShadowLatencyMilliseconds != 25 || status.ShadowInputTokens != 600 {
+		t.Fatalf("shadow aggregates = %+v", status)
+	}
+	if want := 0.0000252; (status.ShadowMeteredCost-want) > 1e-12 || (want-status.ShadowMeteredCost) > 1e-12 {
+		t.Fatalf("metered cost = %.10f, want %.10f", status.ShadowMeteredCost, want)
+	}
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, localDashboardRequest(http.MethodGet, "/status"))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("dashboard status = %d", recorder.Code)
+	}
+	body := recorder.Body.String()
+	for _, safeValue := range []string{"Jev shadow metrics", "Failure count", "metered cost", "$0.000025"} {
+		if !strings.Contains(body, safeValue) {
+			t.Errorf("dashboard metrics missing %q", safeValue)
+		}
+	}
+	for _, privateValue := range []string{"private shadow transcript", "private provider detail", "private title one"} {
+		if strings.Contains(body, privateValue) {
+			t.Errorf("dashboard metrics exposed private value %q", privateValue)
+		}
+	}
+}
+
+func TestMeteredTypeSafeCostUsesInputTokensOnly(t *testing.T) {
+	if got := meteredTypeSafeCost(1_000_000); got != 0.042 {
+		t.Fatalf("meteredTypeSafeCost() = %.9f, want 0.042", got)
+	}
+	if got := meteredTypeSafeCost(0); got != 0 {
+		t.Fatalf("meteredTypeSafeCost(0) = %.9f, want 0", got)
+	}
+}
+
 func TestDashboardTranscriptionEvidence(t *testing.T) {
 	for _, test := range []struct {
 		characters int64

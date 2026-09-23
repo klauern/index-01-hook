@@ -48,6 +48,19 @@ func importEvaluationExport(t *testing.T, recording EvaluationEvidence, now time
 	return corpus, status
 }
 
+func TestEvaluationExportJoinsShadowDecisionWithDeliveryObservation(t *testing.T) {
+	recording, now := exportEvidenceFixture(t)
+	recording.Deliveries[0].Shadow = &ShadowVerification{ItemIndex: 0, Decision: "review", Outcome: string(OutcomeCreated), PromptVersion: typeSafeVerificationPromptVersion}
+	ledger, _, err := buildEvaluationExport([]EvaluationEvidence{recording}, now)
+	if err != nil || len(ledger.Findings) != 1 {
+		t.Fatalf("ledger = %+v, error = %v", ledger, err)
+	}
+	finding := ledger.Findings[0]
+	if finding.ShadowDecision != "review" || finding.ShadowOutcome != string(OutcomeCreated) || finding.Status != "observed_move" {
+		t.Fatalf("shadow finding = %+v", finding)
+	}
+}
+
 func TestEvaluationExportMoveImportsAndRejectsOldPrediction(t *testing.T) {
 	recording, now := exportEvidenceFixture(t)
 	corpus, status := importEvaluationExport(t, recording, now)

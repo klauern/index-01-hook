@@ -98,10 +98,18 @@ func TestDeliveryQueueFreshDatabaseAndLegacyUpgrade(t *testing.T) {
 		if err := store.db.QueryRow(`SELECT max(version) FROM schema_migrations`).Scan(&version); err != nil {
 			t.Fatalf("query migration version: %v", err)
 		}
-		if version != 8 {
-			t.Fatalf("migration version = %d, want 8", version)
+		if version != 11 {
+			t.Fatalf("migration version = %d, want 11", version)
 		}
-		for _, table := range []string{"extraction_jobs", "extractions", "extraction_attempts", "delivery_tasks", "delivery_attempts", "worker_health"} {
+		var foreignKeyTarget string
+		if err := store.db.QueryRow(`SELECT "table" FROM pragma_foreign_key_list('typesafe_shadow_verifications') WHERE "table" = 'evaluation_evidence'`).Scan(&foreignKeyTarget); err != nil || foreignKeyTarget != "evaluation_evidence" {
+			t.Fatalf("shadow evidence foreign key = %q, %v", foreignKeyTarget, err)
+		}
+		var checkSQL string
+		if err := store.db.QueryRow(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'typesafe_shadow_verifications'`).Scan(&checkSQL); err != nil || !strings.Contains(checkSQL, "expires_at_ms > created_at_ms") {
+			t.Fatalf("shadow evidence expiry constraint = %q, %v", checkSQL, err)
+		}
+		for _, table := range []string{"extraction_jobs", "extractions", "extraction_attempts", "delivery_tasks", "delivery_attempts", "worker_health", "typesafe_shadow_verifications"} {
 			var count int
 			if err := store.db.QueryRow(`SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&count); err != nil {
 				t.Fatalf("query table %q: %v", table, err)
@@ -355,6 +363,29 @@ func TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem(t *testing.T) 
 	_ = store.db.QueryRow(`SELECT count(*) FROM extraction_jobs`).Scan(&jobs)
 	if recordings != 1 || jobs != 1 || receives != workers {
 		t.Fatalf("counts = recordings:%d jobs:%d receives:%d, want 1, 1, %d", recordings, jobs, receives, workers)
+	}
+}
+
+func TestCompleteRejectedExtractionClearsTranscript(t *testing.T) {
+	store, _ := newQueueStore(t)
+	receipt := saveQueueRecording(t, store, "private rejected transcript")
+	claim, err := store.ClaimExtraction(context.Background(), "worker", time.Minute)
+	if err != nil || claim == nil {
+		t.Fatalf("claim = %+v, %v", claim, err)
+	}
+	if err := store.CompleteRejectedExtraction(context.Background(), receipt.ID, "worker"); err != nil {
+		t.Fatal(err)
+	}
+	var transcript, state, workflowState string
+	var completedAt sql.NullString
+	if err := store.db.QueryRow(`
+		SELECT r.transcription, j.state, j.workflow_state, j.completed_at
+		FROM recordings r JOIN extraction_jobs j ON j.recording_id = r.id
+		WHERE r.id = ?`, receipt.ID).Scan(&transcript, &state, &workflowState, &completedAt); err != nil {
+		t.Fatal(err)
+	}
+	if transcript != "" || state != "completed" || workflowState != "complete" || !completedAt.Valid {
+		t.Fatalf("rejected completion = transcript:%q state:%q workflow:%q completed:%v", transcript, state, workflowState, completedAt)
 	}
 }
 

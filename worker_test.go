@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -117,6 +118,200 @@ func runWorkerOnce(t *testing.T, worker *Worker) bool {
 		t.Fatalf("RunOnce() error = %v", err)
 	}
 	return worked
+}
+
+type scriptedShadowVerifier struct {
+	decisions []VerificationDecision
+	errors    []error
+	items     []QueuedItem
+	started   chan struct{}
+	release   chan struct{}
+	done      chan struct{}
+	expected  int
+}
+
+type blockingShadowVerifier struct {
+	mu      sync.Mutex
+	calls   int
+	started chan struct{}
+	release chan struct{}
+}
+
+func (v *blockingShadowVerifier) Verify(context.Context, string, QueuedItem, []string) (VerificationResult, error) {
+	v.mu.Lock()
+	v.calls++
+	if v.calls == shadowVerificationConcurrency {
+		close(v.started)
+	}
+	v.mu.Unlock()
+	<-v.release
+	return VerificationResult{Decision: VerificationAccept, Evidence: TypeSafeVerificationEvidence{Model: "shadow-model", Decision: VerificationAccept}}, nil
+}
+
+func (v *blockingShadowVerifier) callCount() int {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	return v.calls
+}
+
+func (v *scriptedShadowVerifier) Verify(_ context.Context, _ string, item QueuedItem, _ []string) (VerificationResult, error) {
+	index := len(v.items)
+	if index == 0 && v.started != nil {
+		close(v.started)
+		<-v.release
+	}
+	v.items = append(v.items, item)
+	if len(v.items) == v.expected && v.done != nil {
+		close(v.done)
+	}
+	if index < len(v.errors) && v.errors[index] != nil {
+		return VerificationResult{}, v.errors[index]
+	}
+	decision := VerificationAccept
+	if index < len(v.decisions) {
+		decision = v.decisions[index]
+	}
+	return VerificationResult{Decision: decision, Item: QueuedItem{Kind: ItemKindNote, Title: "shadow must not mutate"}, Evidence: TypeSafeVerificationEvidence{Model: "shadow-model", Decision: decision, PromptVersion: typeSafeVerificationPromptVersion}}, nil
+}
+
+func TestWorkerShadowIsolatedFromDeliveryAndPersistsOutcomes(t *testing.T) {
+	store, _ := newQueueStore(t)
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	saveQueueRecording(t, store, "shadow transcript")
+	due := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
+	items := []QueuedItem{{Kind: ItemKindTask, Title: "keep task", Content: "content", Due: &due, Tags: []string{"tag"}}, {Kind: ItemKindNote, Title: "keep note", Content: "note"}, {Kind: ItemKindTask, Title: "keep rejected-looking", Content: "still delivered"}}
+	extractor := &fakeExtractor{results: []extractionResult{{value: FrozenExtraction{Provider: "deepseek", Model: "deepseek-model", Items: items}}}}
+	shadow := &scriptedShadowVerifier{
+		decisions: []VerificationDecision{VerificationAccept, VerificationReview, VerificationReject},
+		errors:    []error{nil, typeSafeMalformed("shadow", "fixture failure"), nil},
+		started:   make(chan struct{}), release: make(chan struct{}), done: make(chan struct{}), expected: len(items),
+	}
+	deliverer := &fakeDeliverer{createResults: []deliveryResult{{created: TickTickCreatedTask{ID: "created", ProjectID: "project"}}}, noteResults: []deliveryResult{{created: TickTickCreatedTask{ID: "note", ProjectID: "project"}}}}
+	worker := newTestWorker(t, store, extractor, deliverer)
+	worker.config.ShadowVerifier = shadow
+	runWorkerOnce(t, worker)
+	select {
+	case <-shadow.started:
+	case <-time.After(time.Second):
+		t.Fatal("shadow verification did not start")
+	}
+	for range items {
+		runWorkerOnce(t, worker)
+	}
+	close(shadow.release)
+	select {
+	case <-shadow.done:
+	case <-time.After(time.Second):
+		t.Fatal("shadow verification did not finish")
+	}
+	if len(shadow.items) != len(items) || len(deliverer.createCalls) != 2 || len(deliverer.noteCalls) != 1 {
+		t.Fatalf("shadow calls or deliveries = %d, %d, %d", len(shadow.items), len(deliverer.createCalls), len(deliverer.noteCalls))
+	}
+	if deliverer.taskInputs[0].Title != items[0].Title || deliverer.noteInputs[0].Title != items[1].Title || deliverer.taskInputs[1].Title != items[2].Title {
+		t.Fatalf("shadow changed delivered items: tasks=%+v notes=%+v", deliverer.taskInputs, deliverer.noteInputs)
+	}
+	deadline := time.Now().Add(time.Second)
+	var evidence []EvaluationEvidence
+	var err error
+	for {
+		evidence, err = store.ListEvaluationEvidence(context.Background())
+		if err == nil && len(evidence) == 1 && len(evidence[0].ShadowVerifications) == len(items) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("shadow evidence = %+v, error = %v", evidence, err)
+		}
+		time.Sleep(time.Millisecond)
+	}
+	for _, result := range evidence[0].ShadowVerifications {
+		if result.PromptVersion != typeSafeVerificationPromptVersion || result.Outcome != string(OutcomeCreated) {
+			t.Errorf("shadow result = %+v", result)
+		}
+	}
+}
+
+func TestWorkerBoundsConcurrentShadowExtractions(t *testing.T) {
+	store, _ := newQueueStore(t)
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	for index := range shadowVerificationConcurrency + 1 {
+		if _, err := store.SaveRecording(context.Background(), RecordingInput{
+			RecordedAtMillis: 1760000000000 + int64(index),
+			Client:           "test",
+			Transcription:    fmt.Sprintf("shadow transcript %d", index),
+			Fingerprint:      fmt.Sprintf("%064x", index+1),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	results := make([]extractionResult, shadowVerificationConcurrency+1)
+	for index := range results {
+		results[index] = extractionResult{value: FrozenExtraction{Provider: "deepseek", Model: "deepseek-model", Items: []QueuedItem{{Kind: ItemKindTask, Title: fmt.Sprintf("task %d", index)}}}}
+	}
+	shadow := &blockingShadowVerifier{started: make(chan struct{}), release: make(chan struct{})}
+	worker := newTestWorker(t, store, &fakeExtractor{results: results}, &fakeDeliverer{})
+	worker.config.ShadowVerifier = shadow
+	for range shadowVerificationConcurrency + 1 {
+		runWorkerOnce(t, worker)
+	}
+	select {
+	case <-shadow.started:
+	case <-time.After(time.Second):
+		t.Fatal("bounded shadow verifications did not start")
+	}
+	if got := shadow.callCount(); got != shadowVerificationConcurrency {
+		t.Fatalf("shadow calls = %d, want %d", got, shadowVerificationConcurrency)
+	}
+	close(shadow.release)
+	worker.WaitForShadow()
+}
+
+func TestWorkerPersistsShadowEvidenceAfterCancellation(t *testing.T) {
+	store, _ := newQueueStore(t)
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	receipt := saveQueueRecording(t, store, "canceled shadow transcript")
+	claim, err := store.ClaimExtraction(context.Background(), "test-worker", time.Minute)
+	if err != nil || claim == nil {
+		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
+	}
+	items := []QueuedItem{{Kind: ItemKindTask, Title: "persist shadow result"}}
+	if err := store.FreezeExtraction(context.Background(), receipt.ID, "test-worker", FrozenExtraction{Provider: "deepseek", Model: "deepseek-model", Items: items}); err != nil {
+		t.Fatal(err)
+	}
+	worker := newTestWorker(t, store, &fakeExtractor{}, &fakeDeliverer{})
+	worker.config.ShadowVerifier = &scriptedShadowVerifier{expected: 1}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	worker.runShadowVerification(ctx, receipt.ID, claim.Transcription, items)
+	evidence, err := store.ListEvaluationEvidence(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evidence) != 1 || len(evidence[0].ShadowVerifications) != 1 {
+		t.Fatalf("shadow evidence after cancellation = %+v", evidence)
+	}
+}
+
+func TestNewWorkerRejectsActiveAndShadowVerificationTogether(t *testing.T) {
+	store, _ := newQueueStore(t)
+	config := WorkerConfig{
+		Verifier: &scriptedShadowVerifier{}, ShadowVerifier: &scriptedShadowVerifier{},
+		Owner: "test-worker", TimeZone: "UTC",
+		LeaseDuration: time.Minute, PollInterval: time.Millisecond,
+		RetryBase: time.Minute, RetryMaximum: 8 * time.Minute,
+		ExtractionMaxAttempts: 3, DeliveryMaxAttempts: 3, ReconcileMaxAttempts: 2,
+		ProjectAliases: []string{"work"}, Jitter: func(time.Duration) time.Duration { return 0 },
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	_, err := NewWorker(store, &fakeExtractor{}, &fakeDeliverer{}, config)
+	if err == nil || !strings.Contains(err.Error(), "active and shadow verification cannot both be configured") {
+		t.Fatalf("NewWorker() error = %v, want combined-verifier rejection", err)
+	}
 }
 
 func TestNewWorkerValidatesTimeZone(t *testing.T) {
@@ -285,6 +480,8 @@ func TestWorkerCompletesZeroTaskExtraction(t *testing.T) {
 	}}}}
 	deliverer := &fakeDeliverer{}
 	worker := newTestWorker(t, store, extractor, deliverer)
+	verifier := &scriptedShadowVerifier{}
+	worker.config.Verifier = verifier
 	if !runWorkerOnce(t, worker) {
 		t.Fatal("RunOnce() did no work")
 	}
@@ -294,6 +491,9 @@ func TestWorkerCompletesZeroTaskExtraction(t *testing.T) {
 	}
 	if status.State != "complete" || len(status.Tasks) != 0 || len(deliverer.createCalls) != 0 {
 		t.Fatalf("zero-task status = %+v, create calls = %v", status, deliverer.createCalls)
+	}
+	if len(verifier.items) != 0 {
+		t.Fatalf("zero-task extraction invoked verifier %d times", len(verifier.items))
 	}
 }
 

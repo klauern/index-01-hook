@@ -1,0 +1,177 @@
+{
+  "false_accept_limit": 0.02,
+  "review_volume_limit": 0.25,
+  "limits_approved": true,
+  "report_path": "dist/evaluation/typesafe-calibration.json",
+  "generated_at": "2026-09-18T21:36:25Z",
+  "model": "jev-1.13.0",
+  "prompt_version": "verification-calibration-v1",
+  "corpus_path": "testdata/typesafe-verification/corpus.json",
+  "corpus_sha256": "972544d5cb2c9abaac23322ff2d9560b739a641545801ab3034ef74a606da198",
+  "designs": [
+    {
+      "design": "fieldwise",
+      "selected_thresholds": {
+        "accept": 0.84,
+        "reject": 0.58
+      },
+      "selected_accept": 0.84,
+      "selected_reject": 0.58,
+      "measures": {
+        "false_accept_rate": 0,
+        "false_reject_rate": 0.05263157894736842,
+        "review_volume": 0.18604651162790697,
+        "agreement": 0.8604651162790697,
+        "accepted": 14,
+        "rejected": 21,
+        "review": 8,
+        "injection_accepts": 0
+      },
+      "survivor_count": 36,
+      "failure_candidates": {},
+      "sensitivity": {
+        "accept_fixed_reject_up": null,
+        "accept_fixed_reject_down": {
+          "accept": 0.84,
+          "reject": 0.56,
+          "measures": {
+            "false_accept_rate": 0,
+            "false_reject_rate": 0.05263157894736842,
+            "review_volume": 0.20930232558139536,
+            "agreement": 0.8372093023255814,
+            "accepted": 14,
+            "rejected": 20,
+            "review": 9,
+            "injection_accepts": 0
+          },
+          "change": {
+            "false_accept_rate": 0,
+            "review_volume": 0.023255813953488386,
+            "agreement": -0.023255813953488302
+          }
+        },
+        "reject_fixed_accept_up": {
+          "accept": 0.86,
+          "reject": 0.58,
+          "measures": {
+            "false_accept_rate": 0,
+            "false_reject_rate": 0.05263157894736842,
+            "review_volume": 0.2558139534883721,
+            "agreement": 0.7906976744186046,
+            "accepted": 11,
+            "rejected": 21,
+            "review": 11,
+            "injection_accepts": 0
+          },
+          "change": {
+            "false_accept_rate": 0,
+            "review_volume": 0.06976744186046513,
+            "agreement": -0.06976744186046513
+          }
+        },
+        "reject_fixed_accept_down": {
+          "accept": 0.82,
+          "reject": 0.58,
+          "measures": {
+            "false_accept_rate": 0,
+            "false_reject_rate": 0.05263157894736842,
+            "review_volume": 0.18604651162790697,
+            "agreement": 0.8604651162790697,
+            "accepted": 14,
+            "rejected": 21,
+            "review": 8,
+            "injection_accepts": 0
+          },
+          "change": {
+            "false_accept_rate": 0,
+            "review_volume": 0,
+            "agreement": 0
+          }
+        }
+      },
+      "decision": "enable"
+    },
+    {
+      "design": "choice",
+      "selected_thresholds": {
+        "accept": 0.62,
+        "reject": 0.58
+      },
+      "selected_accept": 0.62,
+      "selected_reject": 0.58,
+      "measures": {
+        "false_accept_rate": 0,
+        "false_reject_rate": 0.10526315789473684,
+        "review_volume": 0.09302325581395349,
+        "agreement": 0.9302325581395349,
+        "accepted": 17,
+        "rejected": 22,
+        "review": 4,
+        "injection_accepts": 0
+      },
+      "survivor_count": 49,
+      "failure_candidates": {},
+      "sensitivity": {
+        "accept_fixed_reject_up": null,
+        "accept_fixed_reject_down": {
+          "accept": 0.62,
+          "reject": 0.56,
+          "measures": {
+            "false_accept_rate": 0,
+            "false_reject_rate": 0.10526315789473684,
+            "review_volume": 0.09302325581395349,
+            "agreement": 0.9302325581395349,
+            "accepted": 17,
+            "rejected": 22,
+            "review": 4,
+            "injection_accepts": 0
+          },
+          "change": {
+            "false_accept_rate": 0,
+            "review_volume": 0,
+            "agreement": 0
+          }
+        },
+        "reject_fixed_accept_up": {
+          "accept": 0.64,
+          "reject": 0.58,
+          "measures": {
+            "false_accept_rate": 0,
+            "false_reject_rate": 0.10526315789473684,
+            "review_volume": 0.13953488372093023,
+            "agreement": 0.8837209302325582,
+            "accepted": 15,
+            "rejected": 22,
+            "review": 6,
+            "injection_accepts": 0
+          },
+          "change": {
+            "false_accept_rate": 0,
+            "review_volume": 0.046511627906976744,
+            "agreement": -0.046511627906976716
+          }
+        },
+        "reject_fixed_accept_down": {
+          "accept": 0.6,
+          "reject": 0.58,
+          "measures": {
+            "false_accept_rate": 0,
+            "false_reject_rate": 0.10526315789473684,
+            "review_volume": 0.09302325581395349,
+            "agreement": 0.9302325581395349,
+            "accepted": 17,
+            "rejected": 22,
+            "review": 4,
+            "injection_accepts": 0
+          },
+          "change": {
+            "false_accept_rate": 0,
+            "review_volume": 0,
+            "agreement": 0
+          }
+        }
+      },
+      "decision": "enable"
+    }
+  ]
+}

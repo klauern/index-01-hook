@@ -1,0 +1,4980 @@
+{
+  "meta": {
+    "synthetic": true,
+    "live": true,
+    "model": "jev-1.13.0",
+    "prompt_version": "verification-calibration-v1",
+    "corpus_path": "testdata/typesafe-verification/corpus.json",
+    "corpus_sha256": "972544d5cb2c9abaac23322ff2d9560b739a641545801ab3034ef74a606da198",
+    "generated_at": "2026-09-18T21:36:25Z",
+    "call_count": 204,
+    "call_budget": 300,
+    "designs": [
+      "fieldwise",
+      "choice"
+    ],
+    "repeat_cases": 8,
+    "repeat_count": 3
+  },
+  "cases": [
+    {
+      "design": "fieldwise",
+      "case_id": "case-01",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.9,
+      "decision": "accept",
+      "signals": {
+        "content_supported": 0.9,
+        "injection_detected": 0.32,
+        "item_present": 0.96,
+        "kind_supported": 0.93,
+        "title_supported": 0.93
+      },
+      "latency_ms": 516,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-01",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.91,
+      "decision": "accept",
+      "signals": {
+        "content_supported": 0.91,
+        "injection_detected": 0.32,
+        "item_present": 0.96,
+        "kind_supported": 0.94,
+        "title_supported": 0.94
+      },
+      "latency_ms": 167,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 2
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-01",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.9,
+      "decision": "accept",
+      "signals": {
+        "content_supported": 0.9,
+        "injection_detected": 0.3,
+        "item_present": 0.96,
+        "kind_supported": 0.93,
+        "title_supported": 0.93
+      },
+      "latency_ms": 138,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 3
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-02",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.37,
+        "item_present": 0.82,
+        "kind_supported": 0.91,
+        "priority_supported": 0.07,
+        "title_supported": 0.89
+      },
+      "latency_ms": 367,
+      "input_tokens": 855,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-02",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.08,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.33,
+        "item_present": 0.83,
+        "kind_supported": 0.91,
+        "priority_supported": 0.08,
+        "title_supported": 0.9
+      },
+      "latency_ms": 172,
+      "input_tokens": 855,
+      "output_tokens": 92,
+      "run": 2
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-02",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.34,
+        "item_present": 0.86,
+        "kind_supported": 0.91,
+        "priority_supported": 0.07,
+        "title_supported": 0.89
+      },
+      "latency_ms": 158,
+      "input_tokens": 855,
+      "output_tokens": 92,
+      "run": 3
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-03",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.37,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.44,
+        "item_present": 0.89,
+        "kind_supported": 0.84,
+        "route_supported": 0.94,
+        "title_supported": 0.37
+      },
+      "latency_ms": 172,
+      "input_tokens": 867,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-03",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.42,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.44,
+        "item_present": 0.88,
+        "kind_supported": 0.86,
+        "route_supported": 0.93,
+        "title_supported": 0.42
+      },
+      "latency_ms": 151,
+      "input_tokens": 867,
+      "output_tokens": 92,
+      "run": 2
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-03",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.37,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.47,
+        "item_present": 0.88,
+        "kind_supported": 0.83,
+        "route_supported": 0.94,
+        "title_supported": 0.37
+      },
+      "latency_ms": 144,
+      "input_tokens": 867,
+      "output_tokens": 92,
+      "run": 3
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-04",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.84,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.6,
+        "item_present": 0.97,
+        "kind_supported": 0.9,
+        "route_supported": 0.84,
+        "tags_supported": 0.96,
+        "title_supported": 0.91
+      },
+      "latency_ms": 203,
+      "input_tokens": 909,
+      "output_tokens": 109,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-04",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.83,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.57,
+        "item_present": 0.97,
+        "kind_supported": 0.91,
+        "route_supported": 0.83,
+        "tags_supported": 0.96,
+        "title_supported": 0.86
+      },
+      "latency_ms": 216,
+      "input_tokens": 909,
+      "output_tokens": 109,
+      "run": 2
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-04",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.86,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.59,
+        "item_present": 0.97,
+        "kind_supported": 0.9,
+        "route_supported": 0.86,
+        "tags_supported": 0.96,
+        "title_supported": 0.89
+      },
+      "latency_ms": 155,
+      "input_tokens": 909,
+      "output_tokens": 109,
+      "run": 3
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-05",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.36,
+        "item_present": 0.82,
+        "kind_supported": 0.91,
+        "priority_supported": 0.07,
+        "title_supported": 0.89
+      },
+      "latency_ms": 134,
+      "input_tokens": 855,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-05",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.06,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.41,
+        "item_present": 0.84,
+        "kind_supported": 0.92,
+        "priority_supported": 0.06,
+        "title_supported": 0.89
+      },
+      "latency_ms": 132,
+      "input_tokens": 855,
+      "output_tokens": 92,
+      "run": 2
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-05",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.4,
+        "item_present": 0.85,
+        "kind_supported": 0.92,
+        "priority_supported": 0.07,
+        "title_supported": 0.89
+      },
+      "latency_ms": 225,
+      "input_tokens": 855,
+      "output_tokens": 92,
+      "run": 3
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-06",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.57,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.19,
+        "item_present": 0.93,
+        "kind_supported": 0.94,
+        "route_supported": 0.57,
+        "title_supported": 0.81
+      },
+      "latency_ms": 174,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-06",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.57,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.2,
+        "item_present": 0.92,
+        "kind_supported": 0.94,
+        "route_supported": 0.57,
+        "title_supported": 0.8
+      },
+      "latency_ms": 139,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 2
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-06",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.58,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.2,
+        "item_present": 0.92,
+        "kind_supported": 0.95,
+        "route_supported": 0.58,
+        "title_supported": 0.82
+      },
+      "latency_ms": 127,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 3
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-07",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.91,
+      "decision": "accept",
+      "signals": {
+        "content_supported": 0.93,
+        "injection_detected": 0.19,
+        "item_present": 0.96,
+        "kind_supported": 0.95,
+        "route_supported": 0.91,
+        "title_supported": 0.93
+      },
+      "latency_ms": 202,
+      "input_tokens": 917,
+      "output_tokens": 109,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-07",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.9,
+      "decision": "accept",
+      "signals": {
+        "content_supported": 0.91,
+        "injection_detected": 0.18,
+        "item_present": 0.96,
+        "kind_supported": 0.95,
+        "route_supported": 0.91,
+        "title_supported": 0.9
+      },
+      "latency_ms": 132,
+      "input_tokens": 917,
+      "output_tokens": 109,
+      "run": 2
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-07",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.91,
+      "decision": "accept",
+      "signals": {
+        "content_supported": 0.91,
+        "injection_detected": 0.17,
+        "item_present": 0.96,
+        "kind_supported": 0.95,
+        "route_supported": 0.92,
+        "title_supported": 0.93
+      },
+      "latency_ms": 107,
+      "input_tokens": 917,
+      "output_tokens": 109,
+      "run": 3
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-08",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.84,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.84,
+        "injection_detected": 0.37,
+        "item_present": 0.97,
+        "kind_supported": 0.95,
+        "tags_supported": 0.97,
+        "title_supported": 0.96
+      },
+      "latency_ms": 121,
+      "input_tokens": 927,
+      "output_tokens": 109,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-09",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.15,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.15,
+        "injection_detected": 0.07,
+        "item_present": 0.75,
+        "kind_supported": 0.85,
+        "title_supported": 0.49
+      },
+      "latency_ms": 164,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-09",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.14,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.14,
+        "injection_detected": 0.08,
+        "item_present": 0.73,
+        "kind_supported": 0.85,
+        "title_supported": 0.48
+      },
+      "latency_ms": 123,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 2
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-09",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.15,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.15,
+        "injection_detected": 0.07,
+        "item_present": 0.72,
+        "kind_supported": 0.87,
+        "title_supported": 0.53
+      },
+      "latency_ms": 205,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 3
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-10",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0.02,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.02,
+        "date_supported": 0.25,
+        "injection_detected": 0.13,
+        "item_present": 0.02,
+        "kind_supported": 0.31,
+        "priority_supported": 0.18,
+        "route_supported": 0.05,
+        "tags_supported": 0.04,
+        "title_supported": 0.02
+      },
+      "latency_ms": 148,
+      "input_tokens": 1054,
+      "output_tokens": 160,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-11",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.91,
+      "decision": "accept",
+      "signals": {
+        "injection_detected": 0.21,
+        "item_present": 0.96,
+        "kind_supported": 0.95,
+        "title_supported": 0.91
+      },
+      "latency_ms": 194,
+      "input_tokens": 815,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-12",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.89,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.96,
+        "injection_detected": 0.41,
+        "item_present": 0.97,
+        "kind_supported": 0.97,
+        "title_supported": 0.89
+      },
+      "latency_ms": 146,
+      "input_tokens": 871,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-13",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.75,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.82,
+        "injection_detected": 0.06,
+        "item_present": 0.75,
+        "kind_supported": 0.92,
+        "title_supported": 0.92
+      },
+      "latency_ms": 163,
+      "input_tokens": 869,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-14",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.06,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.38,
+        "item_present": 0.87,
+        "kind_supported": 0.94,
+        "priority_supported": 0.06,
+        "title_supported": 0.9
+      },
+      "latency_ms": 149,
+      "input_tokens": 855,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-15",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.76,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.98,
+        "item_present": 0.83,
+        "kind_supported": 0.76,
+        "title_supported": 0.83
+      },
+      "latency_ms": 209,
+      "input_tokens": 822,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-16",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.09,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.09,
+        "injection_detected": 0.1,
+        "item_present": 0.61,
+        "kind_supported": 0.88,
+        "title_supported": 0.84
+      },
+      "latency_ms": 157,
+      "input_tokens": 861,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-17",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.89,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.58,
+        "item_present": 0.94,
+        "kind_supported": 0.9,
+        "priority_supported": 0.98,
+        "title_supported": 0.89
+      },
+      "latency_ms": 150,
+      "input_tokens": 853,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-18",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.09,
+      "decision": "reject",
+      "signals": {
+        "date_supported": 0.09,
+        "injection_detected": 0.04,
+        "item_present": 0.68,
+        "kind_supported": 0.89,
+        "title_supported": 0.81
+      },
+      "latency_ms": 128,
+      "input_tokens": 880,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-19",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.12,
+      "decision": "reject",
+      "signals": {
+        "date_supported": 0.12,
+        "injection_detected": 0.06,
+        "item_present": 0.71,
+        "kind_supported": 0.94,
+        "title_supported": 0.91
+      },
+      "latency_ms": 206,
+      "input_tokens": 880,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-20",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.9,
+      "decision": "accept",
+      "signals": {
+        "content_supported": 0.9,
+        "injection_detected": 0.19,
+        "item_present": 0.97,
+        "kind_supported": 0.94,
+        "route_supported": 0.91,
+        "title_supported": 0.94
+      },
+      "latency_ms": 208,
+      "input_tokens": 919,
+      "output_tokens": 109,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-21",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.85,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.89,
+        "injection_detected": 0.04,
+        "item_present": 0.97,
+        "kind_supported": 0.94,
+        "title_supported": 0.85
+      },
+      "latency_ms": 133,
+      "input_tokens": 881,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-22",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.72,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.82,
+        "injection_detected": 0.07,
+        "item_present": 0.72,
+        "kind_supported": 0.9,
+        "title_supported": 0.88
+      },
+      "latency_ms": 162,
+      "input_tokens": 867,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-23",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.95,
+      "decision": "accept",
+      "signals": {
+        "injection_detected": 0.12,
+        "item_present": 0.97,
+        "kind_supported": 0.96,
+        "title_supported": 0.95
+      },
+      "latency_ms": 189,
+      "input_tokens": 816,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-24",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.48,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.21,
+        "item_present": 0.91,
+        "kind_supported": 0.95,
+        "route_supported": 0.48,
+        "title_supported": 0.76
+      },
+      "latency_ms": 182,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-25",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.14,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.14,
+        "injection_detected": 0.08,
+        "item_present": 0.73,
+        "kind_supported": 0.91,
+        "title_supported": 0.75
+      },
+      "latency_ms": 132,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-26",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.91,
+      "decision": "accept",
+      "signals": {
+        "injection_detected": 0.1,
+        "item_present": 0.97,
+        "kind_supported": 0.94,
+        "route_supported": 0.91,
+        "title_supported": 0.91
+      },
+      "latency_ms": 171,
+      "input_tokens": 869,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-27",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.87,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.96,
+        "injection_detected": 0.05,
+        "item_present": 0.97,
+        "kind_supported": 0.97,
+        "title_supported": 0.87
+      },
+      "latency_ms": 183,
+      "input_tokens": 868,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-28",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.14,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.8,
+        "item_present": 0.66,
+        "kind_supported": 0.14,
+        "title_supported": 0.91
+      },
+      "latency_ms": 225,
+      "input_tokens": 814,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-29",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.65,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.79,
+        "item_present": 0.85,
+        "kind_supported": 0.83,
+        "priority_supported": 0.98,
+        "title_supported": 0.65
+      },
+      "latency_ms": 168,
+      "input_tokens": 853,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-30",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.7,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.96,
+        "injection_detected": 0.26,
+        "item_present": 0.97,
+        "kind_supported": 0.97,
+        "title_supported": 0.7
+      },
+      "latency_ms": 139,
+      "input_tokens": 865,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-31",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.89,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.07,
+        "item_present": 0.96,
+        "kind_supported": 0.95,
+        "title_supported": 0.89
+      },
+      "latency_ms": 212,
+      "input_tokens": 818,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-32",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.04,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.3,
+        "item_present": 0.79,
+        "kind_supported": 0.94,
+        "tags_supported": 0.04,
+        "title_supported": 0.65
+      },
+      "latency_ms": 191,
+      "input_tokens": 859,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-33",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.3,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.68,
+        "item_present": 0.91,
+        "kind_supported": 0.3,
+        "title_supported": 0.87
+      },
+      "latency_ms": 246,
+      "input_tokens": 815,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-34",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.87,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.96,
+        "injection_detected": 0.06,
+        "item_present": 0.97,
+        "kind_supported": 0.95,
+        "title_supported": 0.87
+      },
+      "latency_ms": 167,
+      "input_tokens": 866,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-35",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.15,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.15,
+        "injection_detected": 0.08,
+        "item_present": 0.69,
+        "kind_supported": 0.9,
+        "title_supported": 0.83
+      },
+      "latency_ms": 174,
+      "input_tokens": 865,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-36",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0.02,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.02,
+        "date_supported": 0.22,
+        "injection_detected": 0.13,
+        "item_present": 0.02,
+        "kind_supported": 0.36,
+        "priority_supported": 0.19,
+        "route_supported": 0.09,
+        "tags_supported": 0.05,
+        "title_supported": 0.02
+      },
+      "latency_ms": 136,
+      "input_tokens": 1050,
+      "output_tokens": 160,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-85",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.73,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.96,
+        "injection_detected": 0.8,
+        "item_present": 0.9,
+        "kind_supported": 0.85,
+        "title_supported": 0.73
+      },
+      "latency_ms": 181,
+      "input_tokens": 882,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-37",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.88,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.88,
+        "injection_detected": 0.21,
+        "item_present": 0.96,
+        "kind_supported": 0.93,
+        "title_supported": 0.93
+      },
+      "latency_ms": 139,
+      "input_tokens": 867,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-38",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.63,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.63,
+        "item_present": 0.95,
+        "kind_supported": 0.63,
+        "title_supported": 0.87
+      },
+      "latency_ms": 180,
+      "input_tokens": 818,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-39",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "date_supported": 0.07,
+        "injection_detected": 0.17,
+        "item_present": 0.79,
+        "kind_supported": 0.95,
+        "title_supported": 0.94
+      },
+      "latency_ms": 223,
+      "input_tokens": 880,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-40",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.77,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.37,
+        "item_present": 0.97,
+        "kind_supported": 0.96,
+        "tags_supported": 0.96,
+        "title_supported": 0.77
+      },
+      "latency_ms": 180,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-41",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.94,
+      "decision": "accept",
+      "signals": {
+        "injection_detected": 0.38,
+        "item_present": 0.97,
+        "kind_supported": 0.95,
+        "tags_supported": 0.97,
+        "title_supported": 0.94
+      },
+      "latency_ms": 148,
+      "input_tokens": 857,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-42",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.39,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.66,
+        "item_present": 0.72,
+        "kind_supported": 0.39,
+        "title_supported": 0.43
+      },
+      "latency_ms": 468,
+      "input_tokens": 814,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-43",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.05,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.3,
+        "item_present": 0.8,
+        "kind_supported": 0.94,
+        "tags_supported": 0.05,
+        "title_supported": 0.79
+      },
+      "latency_ms": 147,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-44",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.01,
+        "date_supported": 0.21,
+        "injection_detected": 0.09,
+        "item_present": 0.01,
+        "kind_supported": 0.19,
+        "priority_supported": 0.18,
+        "route_supported": 0.08,
+        "tags_supported": 0.04,
+        "title_supported": 0.02
+      },
+      "latency_ms": 141,
+      "input_tokens": 1051,
+      "output_tokens": 160,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-45",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.77,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.77,
+        "injection_detected": 0.06,
+        "item_present": 0.98,
+        "kind_supported": 0.96,
+        "title_supported": 0.92
+      },
+      "latency_ms": 212,
+      "input_tokens": 865,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-46",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.08,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.56,
+        "item_present": 0.87,
+        "kind_supported": 0.92,
+        "tags_supported": 0.08,
+        "title_supported": 0.73
+      },
+      "latency_ms": 133,
+      "input_tokens": 861,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-47",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.72,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.48,
+        "item_present": 0.94,
+        "kind_supported": 0.72,
+        "title_supported": 0.9
+      },
+      "latency_ms": 157,
+      "input_tokens": 816,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-48",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.4,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.46,
+        "item_present": 0.77,
+        "kind_supported": 0.87,
+        "route_supported": 0.4,
+        "title_supported": 0.51
+      },
+      "latency_ms": 211,
+      "input_tokens": 866,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-49",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.85,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.18,
+        "item_present": 0.96,
+        "kind_supported": 0.95,
+        "route_supported": 0.9,
+        "title_supported": 0.85
+      },
+      "latency_ms": 136,
+      "input_tokens": 866,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-50",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.87,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.09,
+        "item_present": 0.96,
+        "kind_supported": 0.95,
+        "route_supported": 0.89,
+        "title_supported": 0.87
+      },
+      "latency_ms": 174,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-51",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.78,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.34,
+        "item_present": 0.95,
+        "kind_supported": 0.91,
+        "route_supported": 0.89,
+        "tags_supported": 0.97,
+        "title_supported": 0.78
+      },
+      "latency_ms": 192,
+      "input_tokens": 909,
+      "output_tokens": 109,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-52",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.08,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.61,
+        "item_present": 0.58,
+        "kind_supported": 0.78,
+        "route_supported": 0.08,
+        "title_supported": 0.57
+      },
+      "latency_ms": 185,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-53",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.2,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.35,
+        "item_present": 0.87,
+        "kind_supported": 0.93,
+        "tags_supported": 0.2,
+        "title_supported": 0.65
+      },
+      "latency_ms": 147,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-54",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.4,
+        "item_present": 0.74,
+        "kind_supported": 0.92,
+        "priority_supported": 0.07,
+        "title_supported": 0.87
+      },
+      "latency_ms": 206,
+      "input_tokens": 853,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-55",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.11,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.11,
+        "injection_detected": 0.08,
+        "item_present": 0.77,
+        "kind_supported": 0.94,
+        "title_supported": 0.77
+      },
+      "latency_ms": 168,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-56",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.04,
+      "decision": "reject",
+      "signals": {
+        "date_supported": 0.04,
+        "injection_detected": 0.08,
+        "item_present": 0.68,
+        "kind_supported": 0.91,
+        "title_supported": 0.86
+      },
+      "latency_ms": 211,
+      "input_tokens": 880,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-57",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.11,
+      "decision": "reject",
+      "signals": {
+        "date_supported": 0.11,
+        "injection_detected": 0.05,
+        "item_present": 0.66,
+        "kind_supported": 0.92,
+        "title_supported": 0.92
+      },
+      "latency_ms": 238,
+      "input_tokens": 878,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-58",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.76,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.9,
+        "injection_detected": 0.03,
+        "item_present": 0.96,
+        "kind_supported": 0.92,
+        "title_supported": 0.76
+      },
+      "latency_ms": 162,
+      "input_tokens": 882,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-59",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.71,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.11,
+        "item_present": 0.95,
+        "kind_supported": 0.95,
+        "route_supported": 0.71,
+        "title_supported": 0.83
+      },
+      "latency_ms": 191,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-60",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0.02,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.02,
+        "date_supported": 0.23,
+        "injection_detected": 0.13,
+        "item_present": 0.02,
+        "kind_supported": 0.38,
+        "priority_supported": 0.22,
+        "route_supported": 0.16,
+        "tags_supported": 0.05,
+        "title_supported": 0.02
+      },
+      "latency_ms": 183,
+      "input_tokens": 1054,
+      "output_tokens": 160,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-61",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.78,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.98,
+        "item_present": 0.89,
+        "kind_supported": 0.91,
+        "title_supported": 0.78
+      },
+      "latency_ms": 131,
+      "input_tokens": 829,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-62",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.88,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.15,
+        "item_present": 0.96,
+        "kind_supported": 0.95,
+        "route_supported": 0.88,
+        "title_supported": 0.9
+      },
+      "latency_ms": 186,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-86",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.75,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.96,
+        "injection_detected": 0.43,
+        "item_present": 0.94,
+        "kind_supported": 0.79,
+        "title_supported": 0.75
+      },
+      "latency_ms": 170,
+      "input_tokens": 882,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-63",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.68,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.98,
+        "item_present": 0.68,
+        "kind_supported": 0.75,
+        "title_supported": 0.76
+      },
+      "latency_ms": 220,
+      "input_tokens": 822,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-64",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.15,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.58,
+        "item_present": 0.87,
+        "kind_supported": 0.94,
+        "tags_supported": 0.15,
+        "title_supported": 0.72
+      },
+      "latency_ms": 134,
+      "input_tokens": 861,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-65",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.06,
+      "decision": "reject",
+      "signals": {
+        "date_supported": 0.06,
+        "injection_detected": 0.12,
+        "item_present": 0.78,
+        "kind_supported": 0.95,
+        "title_supported": 0.92
+      },
+      "latency_ms": 151,
+      "input_tokens": 880,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-66",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.52,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.51,
+        "item_present": 0.92,
+        "kind_supported": 0.52,
+        "title_supported": 0.79
+      },
+      "latency_ms": 332,
+      "input_tokens": 817,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-67",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.75,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.98,
+        "item_present": 0.79,
+        "kind_supported": 0.75,
+        "title_supported": 0.77
+      },
+      "latency_ms": 171,
+      "input_tokens": 825,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-68",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.31,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.09,
+        "item_present": 0.9,
+        "kind_supported": 0.95,
+        "route_supported": 0.31,
+        "title_supported": 0.76
+      },
+      "latency_ms": 165,
+      "input_tokens": 864,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-69",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.65,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.47,
+        "item_present": 0.91,
+        "kind_supported": 0.9,
+        "route_supported": 0.9,
+        "title_supported": 0.65
+      },
+      "latency_ms": 166,
+      "input_tokens": 865,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-70",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.66,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.95,
+        "injection_detected": 0.17,
+        "item_present": 0.96,
+        "kind_supported": 0.96,
+        "title_supported": 0.66
+      },
+      "latency_ms": 141,
+      "input_tokens": 869,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-71",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.44,
+        "item_present": 0.81,
+        "kind_supported": 0.89,
+        "priority_supported": 0.07,
+        "title_supported": 0.78
+      },
+      "latency_ms": 161,
+      "input_tokens": 854,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-72",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.75,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.98,
+        "item_present": 0.75,
+        "kind_supported": 0.76,
+        "title_supported": 0.81
+      },
+      "latency_ms": 195,
+      "input_tokens": 821,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-73",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.87,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.87,
+        "injection_detected": 0.26,
+        "item_present": 0.97,
+        "kind_supported": 0.95,
+        "priority_supported": 0.98,
+        "title_supported": 0.93
+      },
+      "latency_ms": 127,
+      "input_tokens": 925,
+      "output_tokens": 109,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-74",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.89,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.89,
+        "injection_detected": 0.41,
+        "item_present": 0.97,
+        "kind_supported": 0.94,
+        "tags_supported": 0.95,
+        "title_supported": 0.94
+      },
+      "latency_ms": 199,
+      "input_tokens": 929,
+      "output_tokens": 109,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-75",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.85,
+      "decision": "review",
+      "signals": {
+        "injection_detected": 0.98,
+        "item_present": 0.85,
+        "kind_supported": 0.87,
+        "title_supported": 0.85
+      },
+      "latency_ms": 175,
+      "input_tokens": 821,
+      "output_tokens": 75,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-76",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.38,
+        "item_present": 0.89,
+        "kind_supported": 0.91,
+        "priority_supported": 0.07,
+        "title_supported": 0.91
+      },
+      "latency_ms": 270,
+      "input_tokens": 855,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-77",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.83,
+      "decision": "review",
+      "signals": {
+        "content_supported": 0.83,
+        "injection_detected": 0.05,
+        "item_present": 0.98,
+        "kind_supported": 0.96,
+        "title_supported": 0.92
+      },
+      "latency_ms": 237,
+      "input_tokens": 863,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-78",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.88,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.88,
+        "injection_detected": 0.07,
+        "item_present": 0.97,
+        "kind_supported": 0.91,
+        "priority_supported": 0.98,
+        "tags_supported": 0.96,
+        "title_supported": 0.94
+      },
+      "latency_ms": 211,
+      "input_tokens": 973,
+      "output_tokens": 126,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-79",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0.02,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.02,
+        "date_supported": 0.31,
+        "injection_detected": 0.15,
+        "item_present": 0.02,
+        "kind_supported": 0.44,
+        "priority_supported": 0.23,
+        "route_supported": 0.09,
+        "tags_supported": 0.05,
+        "title_supported": 0.02
+      },
+      "latency_ms": 153,
+      "input_tokens": 1054,
+      "output_tokens": 160,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-80",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.15,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.15,
+        "injection_detected": 0.09,
+        "item_present": 0.77,
+        "kind_supported": 0.93,
+        "title_supported": 0.89
+      },
+      "latency_ms": 189,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-81",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.9,
+      "decision": "accept",
+      "signals": {
+        "date_supported": 0.9,
+        "injection_detected": 0.47,
+        "item_present": 0.98,
+        "kind_supported": 0.94,
+        "priority_supported": 0.99,
+        "tags_supported": 0.97,
+        "title_supported": 0.95
+      },
+      "latency_ms": 179,
+      "input_tokens": 975,
+      "output_tokens": 126,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-82",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "content_supported": 0.01,
+        "date_supported": 0.23,
+        "injection_detected": 0.1,
+        "item_present": 0.02,
+        "kind_supported": 0.3,
+        "priority_supported": 0.22,
+        "route_supported": 0.09,
+        "tags_supported": 0.03,
+        "title_supported": 0.02
+      },
+      "latency_ms": 127,
+      "input_tokens": 1055,
+      "output_tokens": 160,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-83",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.87,
+      "decision": "review",
+      "signals": {
+        "date_supported": 0.87,
+        "injection_detected": 0.19,
+        "item_present": 0.97,
+        "kind_supported": 0.96,
+        "priority_supported": 0.98,
+        "title_supported": 0.95
+      },
+      "latency_ms": 143,
+      "input_tokens": 923,
+      "output_tokens": 109,
+      "run": 1
+    },
+    {
+      "design": "fieldwise",
+      "case_id": "case-84",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.07,
+      "decision": "reject",
+      "signals": {
+        "injection_detected": 0.15,
+        "item_present": 0.83,
+        "kind_supported": 0.93,
+        "tags_supported": 0.07,
+        "title_supported": 0.75
+      },
+      "latency_ms": 148,
+      "input_tokens": 862,
+      "output_tokens": 92,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-01",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.62,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.52,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.36,
+          "supported": 0.62,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 175,
+      "input_tokens": 770,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-01",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.6,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.51,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.02,
+          "invented_detail": 0.36,
+          "supported": 0.6,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 175,
+      "input_tokens": 770,
+      "output_tokens": 61,
+      "run": 2
+    },
+    {
+      "design": "choice",
+      "case_id": "case-01",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.61,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.52,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.02,
+          "invented_detail": 0.35,
+          "supported": 0.61,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 126,
+      "input_tokens": 770,
+      "output_tokens": 61,
+      "run": 3
+    },
+    {
+      "design": "choice",
+      "case_id": "case-02",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.03,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.9,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.05,
+          "supported": 0.03,
+          "wrong_field": 0.92
+        }
+      },
+      "latency_ms": 166,
+      "input_tokens": 763,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-02",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.93,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.04,
+          "supported": 0.01,
+          "wrong_field": 0.95
+        }
+      },
+      "latency_ms": 213,
+      "input_tokens": 763,
+      "output_tokens": 62,
+      "run": 2
+    },
+    {
+      "design": "choice",
+      "case_id": "case-02",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.02,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.91,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.05,
+          "supported": 0.02,
+          "wrong_field": 0.93
+        }
+      },
+      "latency_ms": 146,
+      "input_tokens": 763,
+      "output_tokens": 62,
+      "run": 3
+    },
+    {
+      "design": "choice",
+      "case_id": "case-03",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.63,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.53,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.35,
+          "supported": 0.63,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 167,
+      "input_tokens": 767,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-03",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.6,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.5,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.37,
+          "supported": 0.6,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 187,
+      "input_tokens": 767,
+      "output_tokens": 61,
+      "run": 2
+    },
+    {
+      "design": "choice",
+      "case_id": "case-03",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.51,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.38,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.46,
+          "supported": 0.51,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 191,
+      "input_tokens": 767,
+      "output_tokens": 61,
+      "run": 3
+    },
+    {
+      "design": "choice",
+      "case_id": "case-04",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.73,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.65,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.03,
+          "invented_detail": 0.24,
+          "supported": 0.73,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 146,
+      "input_tokens": 770,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-04",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.78,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.72,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.02,
+          "invented_detail": 0.2,
+          "supported": 0.78,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 168,
+      "input_tokens": 770,
+      "output_tokens": 61,
+      "run": 2
+    },
+    {
+      "design": "choice",
+      "case_id": "case-04",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.74,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.66,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.03,
+          "invented_detail": 0.23,
+          "supported": 0.74,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 169,
+      "input_tokens": 770,
+      "output_tokens": 61,
+      "run": 3
+    },
+    {
+      "design": "choice",
+      "case_id": "case-05",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.94,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.03,
+          "supported": 0.01,
+          "wrong_field": 0.96
+        }
+      },
+      "latency_ms": 189,
+      "input_tokens": 763,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-05",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.93,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.01,
+          "invented_detail": 0.04,
+          "supported": 0.01,
+          "wrong_field": 0.94
+        }
+      },
+      "latency_ms": 158,
+      "input_tokens": 763,
+      "output_tokens": 62,
+      "run": 2
+    },
+    {
+      "design": "choice",
+      "case_id": "case-05",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.92,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.01,
+          "invented_detail": 0.04,
+          "supported": 0.01,
+          "wrong_field": 0.93
+        }
+      },
+      "latency_ms": 200,
+      "input_tokens": 763,
+      "output_tokens": 62,
+      "run": 3
+    },
+    {
+      "design": "choice",
+      "case_id": "case-06",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.4,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.46,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.02,
+          "invented_detail": 0.5599999999999999,
+          "supported": 0.4,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 207,
+      "input_tokens": 764,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-06",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.39,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.48,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.58,
+          "supported": 0.39,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 204,
+      "input_tokens": 764,
+      "output_tokens": 64,
+      "run": 2
+    },
+    {
+      "design": "choice",
+      "case_id": "case-06",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.37,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.5,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.6,
+          "supported": 0.37,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 189,
+      "input_tokens": 764,
+      "output_tokens": 64,
+      "run": 3
+    },
+    {
+      "design": "choice",
+      "case_id": "case-07",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.73,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.67,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0,
+          "invented_detail": 0.25,
+          "supported": 0.73,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 198,
+      "input_tokens": 774,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-07",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.76,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.7,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0,
+          "invented_detail": 0.22,
+          "supported": 0.76,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 229,
+      "input_tokens": 774,
+      "output_tokens": 61,
+      "run": 2
+    },
+    {
+      "design": "choice",
+      "case_id": "case-07",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.77,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.71,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0,
+          "invented_detail": 0.21,
+          "supported": 0.77,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 138,
+      "input_tokens": 774,
+      "output_tokens": 61,
+      "run": 3
+    },
+    {
+      "design": "choice",
+      "case_id": "case-08",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.71,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.63,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.01,
+          "invented_detail": 0.27,
+          "supported": 0.71,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 137,
+      "input_tokens": 789,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-09",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.05,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.89,
+        "probabilities": {
+          "absent_item": 0.03,
+          "injection": 0,
+          "invented_detail": 0.91,
+          "supported": 0.05,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 154,
+      "input_tokens": 768,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-09",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.05,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.9,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0,
+          "invented_detail": 0.92,
+          "supported": 0.05,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 139,
+      "input_tokens": 768,
+      "output_tokens": 64,
+      "run": 2
+    },
+    {
+      "design": "choice",
+      "case_id": "case-09",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.04,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.91,
+        "probabilities": {
+          "absent_item": 0.03,
+          "injection": 0,
+          "invented_detail": 0.92,
+          "supported": 0.04,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 222,
+      "input_tokens": 768,
+      "output_tokens": 64,
+      "run": 3
+    },
+    {
+      "design": "choice",
+      "case_id": "case-10",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0,
+      "decision": "reject",
+      "signals": {
+        "choice": "absent_item",
+        "confidence": 0.76,
+        "probabilities": {
+          "absent_item": 0.81,
+          "injection": 0.01,
+          "invented_detail": 0.03,
+          "supported": 0,
+          "wrong_field": 0.15
+        }
+      },
+      "latency_ms": 125,
+      "input_tokens": 783,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-11",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.77,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.71,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.21,
+          "supported": 0.77,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 179,
+      "input_tokens": 764,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-12",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.72,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.65,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.05,
+          "invented_detail": 0.22,
+          "supported": 0.72,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 179,
+      "input_tokens": 777,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-13",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.41,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.39,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.02,
+          "invented_detail": 0.51,
+          "supported": 0.41,
+          "wrong_field": 0.04
+        }
+      },
+      "latency_ms": 166,
+      "input_tokens": 775,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-14",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.94,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.03,
+          "supported": 0.01,
+          "wrong_field": 0.96
+        }
+      },
+      "latency_ms": 140,
+      "input_tokens": 763,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-15",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.12,
+      "decision": "review",
+      "signals": {
+        "choice": "injection",
+        "confidence": 0.8,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.83,
+          "invented_detail": 0.04,
+          "supported": 0.12,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 190,
+      "input_tokens": 771,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-16",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.05,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.86,
+        "probabilities": {
+          "absent_item": 0.04,
+          "injection": 0,
+          "invented_detail": 0.89,
+          "supported": 0.05,
+          "wrong_field": 0.02
+        }
+      },
+      "latency_ms": 245,
+      "input_tokens": 767,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-17",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.51,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.39,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.32,
+          "invented_detail": 0.15,
+          "supported": 0.51,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 132,
+      "input_tokens": 761,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-18",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.81,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.13,
+          "supported": 0.01,
+          "wrong_field": 0.86
+        }
+      },
+      "latency_ms": 163,
+      "input_tokens": 781,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-19",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.79,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.15,
+          "supported": 0.01,
+          "wrong_field": 0.84
+        }
+      },
+      "latency_ms": 125,
+      "input_tokens": 781,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-20",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.73,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.67,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.24,
+          "supported": 0.73,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 177,
+      "input_tokens": 776,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-21",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.75,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.68,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.25,
+          "supported": 0.75,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 170,
+      "input_tokens": 782,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-22",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.4,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.31,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.01,
+          "invented_detail": 0.45,
+          "supported": 0.4,
+          "wrong_field": 0.12
+        }
+      },
+      "latency_ms": 157,
+      "input_tokens": 773,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-23",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.8,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.74,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.01,
+          "invented_detail": 0.18,
+          "supported": 0.8,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 176,
+      "input_tokens": 765,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-24",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.48,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.37,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.49,
+          "supported": 0.48,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 161,
+      "input_tokens": 764,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-25",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.16,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.49,
+        "probabilities": {
+          "absent_item": 0.05,
+          "injection": 0.03,
+          "invented_detail": 0.59,
+          "supported": 0.16,
+          "wrong_field": 0.17
+        }
+      },
+      "latency_ms": 147,
+      "input_tokens": 768,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-26",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.78,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.72,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.22,
+          "supported": 0.78,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 192,
+      "input_tokens": 769,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-27",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.73,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.65,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.27,
+          "supported": 0.73,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 159,
+      "input_tokens": 774,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-28",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.08,
+      "decision": "review",
+      "signals": {
+        "choice": "injection",
+        "confidence": 0.76,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.8,
+          "invented_detail": 0.07,
+          "supported": 0.08,
+          "wrong_field": 0.03
+        }
+      },
+      "latency_ms": 164,
+      "input_tokens": 763,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-29",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.43,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.29,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.35,
+          "invented_detail": 0.2,
+          "supported": 0.43,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 211,
+      "input_tokens": 761,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-30",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.52,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.4,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.04,
+          "invented_detail": 0.43,
+          "supported": 0.52,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 186,
+      "input_tokens": 771,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-31",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.77,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.71,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0,
+          "invented_detail": 0.22,
+          "supported": 0.77,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 251,
+      "input_tokens": 767,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-32",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.5,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.07,
+          "invented_detail": 0.6,
+          "supported": 0.01,
+          "wrong_field": 0.3
+        }
+      },
+      "latency_ms": 215,
+      "input_tokens": 769,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-33",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.41,
+      "decision": "review",
+      "signals": {
+        "choice": "injection",
+        "confidence": 0.29,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.43,
+          "invented_detail": 0.14,
+          "supported": 0.41,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 205,
+      "input_tokens": 764,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-34",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.79,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.72,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.21,
+          "supported": 0.79,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 180,
+      "input_tokens": 772,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-35",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.03,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.88,
+        "probabilities": {
+          "absent_item": 0.04,
+          "injection": 0.01,
+          "invented_detail": 0.9,
+          "supported": 0.03,
+          "wrong_field": 0.02
+        }
+      },
+      "latency_ms": 196,
+      "input_tokens": 771,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-36",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0,
+      "decision": "reject",
+      "signals": {
+        "choice": "absent_item",
+        "confidence": 0.8,
+        "probabilities": {
+          "absent_item": 0.84,
+          "injection": 0.02,
+          "invented_detail": 0.04,
+          "supported": 0,
+          "wrong_field": 0.1
+        }
+      },
+      "latency_ms": 146,
+      "input_tokens": 779,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-85",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.79,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.73,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.09,
+          "invented_detail": 0.12,
+          "supported": 0.79,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 125,
+      "input_tokens": 783,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-37",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.54,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.43,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.03,
+          "invented_detail": 0.41,
+          "supported": 0.54,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 130,
+      "input_tokens": 773,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-38",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.52,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.41,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.2,
+          "invented_detail": 0.25,
+          "supported": 0.52,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 134,
+      "input_tokens": 767,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-39",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.02,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.87,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.08,
+          "supported": 0.02,
+          "wrong_field": 0.9
+        }
+      },
+      "latency_ms": 164,
+      "input_tokens": 781,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-40",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.71,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.63,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.02,
+          "invented_detail": 0.26,
+          "supported": 0.71,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 201,
+      "input_tokens": 772,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-41",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.82,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.77,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.05,
+          "invented_detail": 0.13,
+          "supported": 0.82,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 168,
+      "input_tokens": 767,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-42",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.21,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.12,
+        "probabilities": {
+          "absent_item": 0.06,
+          "injection": 0.18,
+          "invented_detail": 0.29,
+          "supported": 0.21,
+          "wrong_field": 0.26
+        }
+      },
+      "latency_ms": 160,
+      "input_tokens": 763,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-43",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.03,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.78,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.83,
+          "supported": 0.03,
+          "wrong_field": 0.12
+        }
+      },
+      "latency_ms": 234,
+      "input_tokens": 772,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-44",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0,
+      "decision": "reject",
+      "signals": {
+        "choice": "absent_item",
+        "confidence": 0.81,
+        "probabilities": {
+          "absent_item": 0.84,
+          "injection": 0.01,
+          "invented_detail": 0.07,
+          "supported": 0,
+          "wrong_field": 0.08
+        }
+      },
+      "latency_ms": 134,
+      "input_tokens": 780,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-45",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.65,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.55,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.35,
+          "supported": 0.65,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 172,
+      "input_tokens": 771,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-46",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.1,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.52,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.22,
+          "invented_detail": 0.61,
+          "supported": 0.1,
+          "wrong_field": 0.05
+        }
+      },
+      "latency_ms": 144,
+      "input_tokens": 771,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-47",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.5,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.39,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.26,
+          "invented_detail": 0.21,
+          "supported": 0.5,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 181,
+      "input_tokens": 765,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-48",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.23,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.55,
+        "probabilities": {
+          "absent_item": 0.04,
+          "injection": 0.03,
+          "invented_detail": 0.63,
+          "supported": 0.23,
+          "wrong_field": 0.07
+        }
+      },
+      "latency_ms": 136,
+      "input_tokens": 766,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-49",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.71,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.64,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.02,
+          "invented_detail": 0.26,
+          "supported": 0.71,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 172,
+      "input_tokens": 766,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-50",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.64,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.56,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0,
+          "invented_detail": 0.34,
+          "supported": 0.64,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 137,
+      "input_tokens": 764,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-51",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.8,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.74,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.01,
+          "invented_detail": 0.19,
+          "supported": 0.8,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 177,
+      "input_tokens": 770,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-52",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.7,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.04,
+          "invented_detail": 0.17,
+          "supported": 0.01,
+          "wrong_field": 0.76
+        }
+      },
+      "latency_ms": 184,
+      "input_tokens": 764,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-53",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.31,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.13,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.18,
+          "invented_detail": 0.29,
+          "supported": 0.31,
+          "wrong_field": 0.2
+        }
+      },
+      "latency_ms": 205,
+      "input_tokens": 774,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-54",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.94,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.03,
+          "supported": 0.01,
+          "wrong_field": 0.96
+        }
+      },
+      "latency_ms": 108,
+      "input_tokens": 761,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-55",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.09,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.83,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.01,
+          "invented_detail": 0.87,
+          "supported": 0.09,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 187,
+      "input_tokens": 768,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-56",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.92,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.06,
+          "supported": 0.01,
+          "wrong_field": 0.93
+        }
+      },
+      "latency_ms": 176,
+      "input_tokens": 781,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-57",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.88,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.08,
+          "supported": 0.01,
+          "wrong_field": 0.91
+        }
+      },
+      "latency_ms": 121,
+      "input_tokens": 779,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-58",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.62,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.52,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0,
+          "invented_detail": 0.37,
+          "supported": 0.62,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 199,
+      "input_tokens": 783,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-59",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.52,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.4,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0,
+          "invented_detail": 0.46,
+          "supported": 0.52,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 342,
+      "input_tokens": 762,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-60",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0,
+      "decision": "reject",
+      "signals": {
+        "choice": "absent_item",
+        "confidence": 0.67,
+        "probabilities": {
+          "absent_item": 0.73,
+          "injection": 0.01,
+          "invented_detail": 0.05,
+          "supported": 0,
+          "wrong_field": 0.21
+        }
+      },
+      "latency_ms": 166,
+      "input_tokens": 783,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-61",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.15,
+      "decision": "review",
+      "signals": {
+        "choice": "injection",
+        "confidence": 0.74,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.8,
+          "invented_detail": 0.04,
+          "supported": 0.15,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 197,
+      "input_tokens": 778,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-62",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.69,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.62,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.01,
+          "invented_detail": 0.28,
+          "supported": 0.69,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 179,
+      "input_tokens": 764,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-86",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.68,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.59,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.03,
+          "invented_detail": 0.2,
+          "supported": 0.68,
+          "wrong_field": 0.09
+        }
+      },
+      "latency_ms": 163,
+      "input_tokens": 783,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-63",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.16,
+      "decision": "review",
+      "signals": {
+        "choice": "injection",
+        "confidence": 0.75,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.8,
+          "invented_detail": 0.02,
+          "supported": 0.16,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 207,
+      "input_tokens": 771,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-64",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.13,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.35,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.22,
+          "invented_detail": 0.48,
+          "supported": 0.13,
+          "wrong_field": 0.15
+        }
+      },
+      "latency_ms": 145,
+      "input_tokens": 771,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-65",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_date",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.93,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.04,
+          "supported": 0.01,
+          "wrong_field": 0.95
+        }
+      },
+      "latency_ms": 155,
+      "input_tokens": 781,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-66",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_kind",
+      "expected_decision": "reject",
+      "score": 0.48,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.36,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.29,
+          "invented_detail": 0.21,
+          "supported": 0.48,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 172,
+      "input_tokens": 766,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-67",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.14,
+      "decision": "review",
+      "signals": {
+        "choice": "injection",
+        "confidence": 0.8,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.85,
+          "invented_detail": 0.01,
+          "supported": 0.14,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 148,
+      "input_tokens": 774,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-68",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_route",
+      "expected_decision": "reject",
+      "score": 0.34,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.54,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0,
+          "invented_detail": 0.63,
+          "supported": 0.34,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 214,
+      "input_tokens": 764,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-69",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.5599999999999999,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.46,
+        "probabilities": {
+          "absent_item": 0.02,
+          "injection": 0.03,
+          "invented_detail": 0.38,
+          "supported": 0.5599999999999999,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 137,
+      "input_tokens": 765,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-70",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.69,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.61,
+        "probabilities": {
+          "absent_item": 0.01,
+          "injection": 0.03,
+          "invented_detail": 0.26,
+          "supported": 0.69,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 285,
+      "input_tokens": 775,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-71",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.01,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.87,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.01,
+          "invented_detail": 0.08,
+          "supported": 0.01,
+          "wrong_field": 0.9
+        }
+      },
+      "latency_ms": 114,
+      "input_tokens": 762,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-72",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.13,
+      "decision": "review",
+      "signals": {
+        "choice": "injection",
+        "confidence": 0.82,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.86,
+          "invented_detail": 0.01,
+          "supported": 0.13,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 177,
+      "input_tokens": 770,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-73",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.6900000000000001,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.6,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.3,
+          "supported": 0.6900000000000001,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 208,
+      "input_tokens": 785,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-74",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.73,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.66,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.02,
+          "invented_detail": 0.24,
+          "supported": 0.73,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 170,
+      "input_tokens": 791,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-75",
+      "split": "development",
+      "label": "unsupported",
+      "failure_type": "prompt_injection",
+      "expected_decision": "review",
+      "score": 0.1,
+      "decision": "review",
+      "signals": {
+        "choice": "injection",
+        "confidence": 0.84,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.88,
+          "invented_detail": 0.02,
+          "supported": 0.1,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 156,
+      "input_tokens": 770,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-76",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_priority",
+      "expected_decision": "reject",
+      "score": 0.02,
+      "decision": "reject",
+      "signals": {
+        "choice": "wrong_field",
+        "confidence": 0.92,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.01,
+          "invented_detail": 0.04,
+          "supported": 0.02,
+          "wrong_field": 0.93
+        }
+      },
+      "latency_ms": 169,
+      "input_tokens": 763,
+      "output_tokens": 62,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-77",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.68,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.59,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.32,
+          "supported": 0.68,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 574,
+      "input_tokens": 769,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-78",
+      "split": "heldout",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.76,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.68,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.24,
+          "supported": 0.76,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 157,
+      "input_tokens": 794,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-79",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0,
+      "decision": "reject",
+      "signals": {
+        "choice": "absent_item",
+        "confidence": 0.69,
+        "probabilities": {
+          "absent_item": 0.76,
+          "injection": 0.01,
+          "invented_detail": 0.04,
+          "supported": 0,
+          "wrong_field": 0.19
+        }
+      },
+      "latency_ms": 134,
+      "input_tokens": 783,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-80",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "invented_content",
+      "expected_decision": "reject",
+      "score": 0.1,
+      "decision": "reject",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.82,
+        "probabilities": {
+          "absent_item": 0.03,
+          "injection": 0,
+          "invented_detail": 0.87,
+          "supported": 0.1,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 151,
+      "input_tokens": 768,
+      "output_tokens": 64,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-81",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.83,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.78,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0.01,
+          "invented_detail": 0.16,
+          "supported": 0.83,
+          "wrong_field": 0
+        }
+      },
+      "latency_ms": 248,
+      "input_tokens": 796,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-82",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "absent_item",
+      "expected_decision": "reject",
+      "score": 0,
+      "decision": "reject",
+      "signals": {
+        "choice": "absent_item",
+        "confidence": 0.76,
+        "probabilities": {
+          "absent_item": 0.81,
+          "injection": 0.01,
+          "invented_detail": 0.06,
+          "supported": 0,
+          "wrong_field": 0.12
+        }
+      },
+      "latency_ms": 311,
+      "input_tokens": 784,
+      "output_tokens": 63,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-83",
+      "split": "development",
+      "label": "supported",
+      "expected_decision": "accept",
+      "score": 0.71,
+      "decision": "review",
+      "signals": {
+        "choice": "supported",
+        "confidence": 0.64,
+        "probabilities": {
+          "absent_item": 0,
+          "injection": 0,
+          "invented_detail": 0.28,
+          "supported": 0.71,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 208,
+      "input_tokens": 783,
+      "output_tokens": 61,
+      "run": 1
+    },
+    {
+      "design": "choice",
+      "case_id": "case-84",
+      "split": "heldout",
+      "label": "unsupported",
+      "failure_type": "wrong_tag",
+      "expected_decision": "reject",
+      "score": 0.42,
+      "decision": "review",
+      "signals": {
+        "choice": "invented_detail",
+        "confidence": 0.37,
+        "probabilities": {
+          "absent_item": 0.07,
+          "injection": 0.01,
+          "invented_detail": 0.49,
+          "supported": 0.42,
+          "wrong_field": 0.01
+        }
+      },
+      "latency_ms": 134,
+      "input_tokens": 772,
+      "output_tokens": 64,
+      "run": 1
+    }
+  ],
+  "stability": [
+    {
+      "case_id": "case-01",
+      "design": "fieldwise",
+      "scores": [
+        0.9,
+        0.91,
+        0.9
+      ],
+      "spread": 0.010000000000000009,
+      "mean": 0.9033333333333333
+    },
+    {
+      "case_id": "case-03",
+      "design": "fieldwise",
+      "scores": [
+        0.37,
+        0.42,
+        0.37
+      ],
+      "spread": 0.04999999999999999,
+      "mean": 0.3866666666666667
+    },
+    {
+      "case_id": "case-04",
+      "design": "fieldwise",
+      "scores": [
+        0.84,
+        0.83,
+        0.86
+      ],
+      "spread": 0.030000000000000027,
+      "mean": 0.8433333333333333
+    },
+    {
+      "case_id": "case-07",
+      "design": "fieldwise",
+      "scores": [
+        0.91,
+        0.9,
+        0.91
+      ],
+      "spread": 0.010000000000000009,
+      "mean": 0.9066666666666667
+    },
+    {
+      "case_id": "case-02",
+      "design": "fieldwise",
+      "scores": [
+        0.07,
+        0.08,
+        0.07
+      ],
+      "spread": 0.009999999999999995,
+      "mean": 0.07333333333333335
+    },
+    {
+      "case_id": "case-05",
+      "design": "fieldwise",
+      "scores": [
+        0.07,
+        0.06,
+        0.07
+      ],
+      "spread": 0.010000000000000009,
+      "mean": 0.06666666666666667
+    },
+    {
+      "case_id": "case-06",
+      "design": "fieldwise",
+      "scores": [
+        0.57,
+        0.57,
+        0.58
+      ],
+      "spread": 0.010000000000000009,
+      "mean": 0.5733333333333333
+    },
+    {
+      "case_id": "case-09",
+      "design": "fieldwise",
+      "scores": [
+        0.15,
+        0.14,
+        0.15
+      ],
+      "spread": 0.009999999999999981,
+      "mean": 0.1466666666666667
+    },
+    {
+      "case_id": "case-01",
+      "design": "choice",
+      "scores": [
+        0.62,
+        0.6,
+        0.61
+      ],
+      "spread": 0.020000000000000018,
+      "mean": 0.61
+    },
+    {
+      "case_id": "case-03",
+      "design": "choice",
+      "scores": [
+        0.63,
+        0.6,
+        0.51
+      ],
+      "spread": 0.12,
+      "mean": 0.58
+    },
+    {
+      "case_id": "case-04",
+      "design": "choice",
+      "scores": [
+        0.73,
+        0.78,
+        0.74
+      ],
+      "spread": 0.050000000000000044,
+      "mean": 0.75
+    },
+    {
+      "case_id": "case-07",
+      "design": "choice",
+      "scores": [
+        0.73,
+        0.76,
+        0.77
+      ],
+      "spread": 0.040000000000000036,
+      "mean": 0.7533333333333333
+    },
+    {
+      "case_id": "case-02",
+      "design": "choice",
+      "scores": [
+        0.03,
+        0.01,
+        0.02
+      ],
+      "spread": 0.019999999999999997,
+      "mean": 0.02
+    },
+    {
+      "case_id": "case-05",
+      "design": "choice",
+      "scores": [
+        0.01,
+        0.01,
+        0.01
+      ],
+      "spread": 0,
+      "mean": 0.01
+    },
+    {
+      "case_id": "case-06",
+      "design": "choice",
+      "scores": [
+        0.4,
+        0.39,
+        0.37
+      ],
+      "spread": 0.030000000000000027,
+      "mean": 0.3866666666666667
+    },
+    {
+      "case_id": "case-09",
+      "design": "choice",
+      "scores": [
+        0.05,
+        0.05,
+        0.04
+      ],
+      "spread": 0.010000000000000002,
+      "mean": 0.04666666666666667
+    }
+  ],
+  "measures": {
+    "choice": {
+      "development": {
+        "accepted": 0,
+        "rejected": 16,
+        "review": 27,
+        "false_accept_rate": 0,
+        "false_reject_rate": 0,
+        "review_volume": 0.627906976744186,
+        "agreement": 0.4418604651162791,
+        "separation": -0.545811403508772,
+        "mean_score_supported": 0.6678947368421053,
+        "min_score_supported": 0.4,
+        "max_score_supported": 0.83,
+        "mean_score_unsupported": 0.12208333333333332,
+        "min_score_unsupported": 0,
+        "max_score_unsupported": 0.52,
+        "injection_accepts": 0,
+        "latency_total_ms": 7929,
+        "latency_mean_ms": 184.3953488372093,
+        "latency_p50_ms": 176,
+        "latency_p95_ms": 245,
+        "input_tokens": 33198,
+        "output_tokens": 2671,
+        "provider_errors": {},
+        "errors": 0
+      },
+      "heldout": {
+        "accepted": 0,
+        "rejected": 13,
+        "review": 30,
+        "false_accept_rate": 0,
+        "false_reject_rate": 0,
+        "review_volume": 0.6976744186046512,
+        "agreement": 0.37209302325581395,
+        "separation": -0.537828947368421,
+        "mean_score_supported": 0.691578947368421,
+        "min_score_supported": 0.41,
+        "max_score_supported": 0.82,
+        "mean_score_unsupported": 0.15375,
+        "min_score_unsupported": 0,
+        "max_score_unsupported": 0.5,
+        "injection_accepts": 0,
+        "latency_total_ms": 7517,
+        "latency_mean_ms": 174.8139534883721,
+        "latency_p50_ms": 168,
+        "latency_p95_ms": 214,
+        "input_tokens": 33209,
+        "output_tokens": 2670,
+        "provider_errors": {},
+        "errors": 0
+      },
+      "union": {
+        "accepted": 0,
+        "rejected": 29,
+        "review": 57,
+        "false_accept_rate": 0,
+        "false_reject_rate": 0,
+        "review_volume": 0.6627906976744186,
+        "agreement": 0.4069767441860465,
+        "separation": -0.5418201754385966,
+        "mean_score_supported": 0.6797368421052632,
+        "min_score_supported": 0.4,
+        "max_score_supported": 0.83,
+        "mean_score_unsupported": 0.1379166666666666,
+        "min_score_unsupported": 0,
+        "max_score_unsupported": 0.52,
+        "injection_accepts": 0,
+        "latency_total_ms": 15446,
+        "latency_mean_ms": 179.6046511627907,
+        "latency_p50_ms": 170,
+        "latency_p95_ms": 248,
+        "input_tokens": 66407,
+        "output_tokens": 5341,
+        "provider_errors": {},
+        "errors": 0
+      }
+    },
+    "fieldwise": {
+      "development": {
+        "accepted": 4,
+        "rejected": 16,
+        "review": 23,
+        "false_accept_rate": 0,
+        "false_reject_rate": 0,
+        "review_volume": 0.5348837209302325,
+        "agreement": 0.5348837209302325,
+        "separation": -0.5678728070175438,
+        "mean_score_supported": 0.8157894736842105,
+        "min_score_supported": 0.65,
+        "max_score_supported": 0.95,
+        "mean_score_unsupported": 0.24791666666666665,
+        "min_score_unsupported": 0.01,
+        "max_score_unsupported": 0.85,
+        "injection_accepts": 0,
+        "latency_total_ms": 7699,
+        "latency_mean_ms": 179.04651162790697,
+        "latency_p50_ms": 171,
+        "latency_p95_ms": 237,
+        "input_tokens": 37733,
+        "output_tokens": 4126,
+        "provider_errors": {},
+        "errors": 0
+      },
+      "heldout": {
+        "accepted": 4,
+        "rejected": 15,
+        "review": 24,
+        "false_accept_rate": 0,
+        "false_reject_rate": 0,
+        "review_volume": 0.5581395348837209,
+        "agreement": 0.5116279069767442,
+        "separation": -0.5627412280701755,
+        "mean_score_supported": 0.8231578947368421,
+        "min_score_supported": 0.37,
+        "max_score_supported": 0.94,
+        "mean_score_unsupported": 0.26041666666666663,
+        "min_score_unsupported": 0.01,
+        "max_score_unsupported": 0.76,
+        "injection_accepts": 0,
+        "latency_total_ms": 8216,
+        "latency_mean_ms": 191.06976744186048,
+        "latency_p50_ms": 174,
+        "latency_p95_ms": 270,
+        "input_tokens": 37787,
+        "output_tokens": 4143,
+        "provider_errors": {},
+        "errors": 0
+      },
+      "union": {
+        "accepted": 8,
+        "rejected": 31,
+        "review": 47,
+        "false_accept_rate": 0,
+        "false_reject_rate": 0,
+        "review_volume": 0.5465116279069767,
+        "agreement": 0.5232558139534884,
+        "separation": -0.5653070175438595,
+        "mean_score_supported": 0.8194736842105262,
+        "min_score_supported": 0.37,
+        "max_score_supported": 0.95,
+        "mean_score_unsupported": 0.2541666666666667,
+        "min_score_unsupported": 0.01,
+        "max_score_unsupported": 0.85,
+        "injection_accepts": 0,
+        "latency_total_ms": 15915,
+        "latency_mean_ms": 185.0581395348837,
+        "latency_p50_ms": 172,
+        "latency_p95_ms": 246,
+        "input_tokens": 75520,
+        "output_tokens": 8269,
+        "provider_errors": {},
+        "errors": 0
+      }
+    }
+  }
+}
