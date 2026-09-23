@@ -297,6 +297,23 @@ func TestWorkerPersistsShadowEvidenceAfterCancellation(t *testing.T) {
 	}
 }
 
+func TestNewWorkerRejectsActiveAndShadowVerificationTogether(t *testing.T) {
+	store, _ := newQueueStore(t)
+	config := WorkerConfig{
+		Verifier: &scriptedShadowVerifier{}, ShadowVerifier: &scriptedShadowVerifier{},
+		Owner: "test-worker", TimeZone: "UTC",
+		LeaseDuration: time.Minute, PollInterval: time.Millisecond,
+		RetryBase: time.Minute, RetryMaximum: 8 * time.Minute,
+		ExtractionMaxAttempts: 3, DeliveryMaxAttempts: 3, ReconcileMaxAttempts: 2,
+		ProjectAliases: []string{"work"}, Jitter: func(time.Duration) time.Duration { return 0 },
+		Logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	_, err := NewWorker(store, &fakeExtractor{}, &fakeDeliverer{}, config)
+	if err == nil || !strings.Contains(err.Error(), "active and shadow verification cannot both be configured") {
+		t.Fatalf("NewWorker() error = %v, want combined-verifier rejection", err)
+	}
+}
+
 func TestNewWorkerValidatesTimeZone(t *testing.T) {
 	tests := []struct {
 		name       string

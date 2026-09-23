@@ -57,6 +57,9 @@ func NewWorker(store *Store, extractor ExtractionProvider, deliverer DeliveryPro
 	if store == nil || extractor == nil || deliverer == nil {
 		return nil, fmt.Errorf("store and providers are required")
 	}
+	if config.Verifier != nil && config.ShadowVerifier != nil {
+		return nil, fmt.Errorf("active and shadow verification cannot both be configured")
+	}
 	config.Owner = strings.TrimSpace(config.Owner)
 	if config.Owner == "" {
 		return nil, fmt.Errorf("worker owner is required")
