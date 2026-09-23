@@ -259,7 +259,7 @@ func runEvaluationCase(c evaluationCase, trial int, live bool) evaluationResult 
 					return nil, errors.New("unexpected production extraction request")
 				}
 				location, _ := time.LoadLocation(c.TimeZone)
-				if !strings.Contains(request.Input[0].Content, "Current local date is "+clock.In(location).Format("2006-01-02")) ||
+				if !strings.Contains(request.Input[0].Content, "Current local time is "+clock.In(location).Format(time.RFC3339)) ||
 					!strings.Contains(request.Input[0].Content, "The time zone is "+c.TimeZone) {
 					return nil, errors.New("production prompt uses the wrong date or time zone")
 				}
