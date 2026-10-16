@@ -28,6 +28,9 @@ PR #30 had no submitted human reviews during inspection. Its bot discussion rema
 
 ## Review and merge order
 
+The workflow-policy child is [#35](https://github.com/klauern/index-01-hook/pull/35), based on `codex/workflow-baseline-20261016`.
+Its initial documentation commit is `d103f7f`.
+
 The new module child is [#34](https://github.com/klauern/index-01-hook/pull/34), head `883d306`.
 Its base is `dependabot/go_modules/modernc.org/sqlite-1.60.1` at `077adf4`.
 Its diff changes one module requirement and two checksum entries.
@@ -36,7 +39,7 @@ The original #30 branch remains unchanged at `b63a6d2`.
 The dependency edges are:
 
 - `main` → #29 → #34 (`x/sys` child).
-- `main` → #33 → this workflow-policy child.
+- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) (workflow-policy child).
 - `main` → #26, #27, #31, and #32 independently.
 
 Review each child relative to its immediate base. Review the cumulative module stack with SQLite 1.60.1 and `x/sys` 0.49.0.
@@ -73,7 +76,7 @@ A uniquely tagged Docker build and synthetic SQLite volume/backup/restore test a
 `go list -m` confirmed SQLite 1.60.1 and `x/sys` 0.49.0.
 The incremental diff contains only the `x/sys` requirement and checksum update.
 
-The #33 → workflow-policy cumulative stack passed `scripts/validate-offline.sh`, including all six offline gates.
+The #33 → #35 cumulative stack passed `scripts/validate-offline.sh`, including all six offline gates.
 Focused Markdown, README, and documentation checks passed for the incremental policy change.
 Live provider tests remained disabled in both stacks. Hosted checks are separate from these local results.
 Keep implementation moving on either tested stack while review and merge decisions remain pending.
