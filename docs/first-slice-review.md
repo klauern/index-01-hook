@@ -50,7 +50,8 @@ It does not claim that CodeRabbit reviewed the code. Tests and builds are record
 The signal handler stops later gates. A noninteractive shell can defer the handler until its current foreground command finishes.
 The command does not promise immediate termination of that foreground process.
 
-The corrections are a child of #35. The original reviewed heads still contain the findings.
+The corrections are [PR #36](https://github.com/klauern/index-01-hook/pull/36), a child of #35.
+The reviewed correction code is commit `276496bc1526d2ce266d86fef968781ed7db0a29`. The original reviewed heads still contain the findings.
 Use the complete correction stack for acceptance. Do not describe an unchanged parent head as corrected.
 No published branch needs a force-push or history rewrite to apply these corrections.
 
