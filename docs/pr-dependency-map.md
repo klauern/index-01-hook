@@ -39,7 +39,7 @@ The original #30 branch remains unchanged at `b63a6d2`.
 The dependency edges are:
 
 - `main` → #29 → #34 (`x/sys` child).
-- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) (workflow-policy child).
+- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections).
 - `main` → #26, #27, #31, and #32 independently.
 
 Review each child relative to its immediate base. Review the cumulative module stack with SQLite 1.60.1 and `x/sys` 0.49.0.
@@ -80,3 +80,14 @@ The #33 → #35 cumulative stack passed `scripts/validate-offline.sh`, including
 Focused Markdown, README, and documentation checks passed for the incremental policy change.
 Live provider tests remained disabled in both stacks. Hosted checks are separate from these local results.
 Keep implementation moving on either tested stack while review and merge decisions remain pending.
+
+
+## Source review state
+
+CodeRabbit skipped draft review on #33, #34, and #35. A successful skip status is not completed review.
+Independent local source review found three P2 defects in #33. The original parent heads remain unchanged.
+[PR #36](https://github.com/klauern/index-01-hook/pull/36) corrects the defects on the cumulative tooling stack.
+Its reviewed code revision is `276496bc1526d2ce266d86fef968781ed7db0a29`.
+Use the complete #33 → #35 → #36 stack for acceptance. Do not describe #33 alone as corrected.
+PR #34 had no concrete finding within its focused module-diff review.
+See [the review evidence](first-slice-review.md) for scope, reproductions, corrections, test evidence, and limits.

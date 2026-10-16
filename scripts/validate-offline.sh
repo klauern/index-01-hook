@@ -7,11 +7,15 @@ unset INDEX01_TYPESAFE_SPIKE_APPROVED INDEX01_TYPESAFE_CALIBRATION_APPROVED
 export INDEX01_RUN_LIVE_DEEPSEEK_TEST=0 INDEX01_RUN_LIVE_EVALUATION=0
 export INDEX01_RUN_LIVE_CORPUS_EVALUATION=0 INDEX01_EVAL_CORPUS=
 export INDEX01_EVAL_CORPUS_MODE=replay
+export INDEX01_EVAL_REPORT_DIR=dist/evaluation
 
 script_dir=$(CDPATH='' cd "$(dirname "$0")" && pwd)
 cd "$script_dir/.."
 artifact_dir=$(mktemp -d "${TMPDIR:-/tmp}/index01-offline.XXXXXX")
-trap 'rm -rf "$artifact_dir"' EXIT HUP INT TERM
+trap 'rm -rf "$artifact_dir"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # Continue after a failure so the report identifies every failed gate.
 result=0
