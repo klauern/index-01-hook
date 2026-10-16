@@ -39,7 +39,7 @@ The original #30 branch remains unchanged at `b63a6d2`.
 The dependency edges are:
 
 - `main` → #29 → #34 (`x/sys` child).
-- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections).
+- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections) → [#37](https://github.com/klauern/index-01-hook/pull/37) (boundary inventory).
 - `main` → #26, #27, #31, and #32 independently.
 
 Review each child relative to its immediate base. Review the cumulative module stack with SQLite 1.60.1 and `x/sys` 0.49.0.
@@ -91,3 +91,13 @@ Its reviewed code revision is `276496bc1526d2ce266d86fef968781ed7db0a29`.
 Use the complete #33 → #35 → #36 stack for acceptance. Do not describe #33 alone as corrected.
 PR #34 had no concrete finding within its focused module-diff review.
 See [the review evidence](first-slice-review.md) for scope, reproductions, corrections, test evidence, and limits.
+
+## Boundary inventory continuation
+
+[PR #37](https://github.com/klauern/index-01-hook/pull/37) starts from #36 at `1f8548f`.
+Its reviewed implementation is `12b34b4`. It inventories the complete tooling stack and the committed application baseline.
+The slice assigns 91 surfaces, 11 executables, six runtime contracts, and 16 root commands.
+Five independent local reviewers inspected the slice. Two reviewers inspected corrections to three guard defects.
+The corrected slice passed all six offline gates, focused regression tests, ShellCheck, and actionlint.
+The next contract slice can use #37 when it requires this inventory. Keep unrelated module changes independent.
+Hosted CI remains a separate gate. Check the actual PR head before accepting or continuing the stack.

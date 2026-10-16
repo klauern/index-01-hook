@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "surfaces": {
+    "application_policy": [
+      "date_parts.go",
+      "extraction_evidence.go",
+      "health.go",
+      "internal/evalcorpus/types.go",
+      "typesafe_verification.go",
+      "worker.go"
+    ],
+    "provider": [
+      "deepseek.go",
+      "evaluation_collection.go",
+      "ticktick.go",
+      "typesafe.go"
+    ],
+    "persistence": [
+      "database_security.go",
+      "evaluation_evidence.go",
+      "migrations/001_initial.sql",
+      "migrations/002_delivery_queue.sql",
+      "migrations/003_worker_state.sql",
+      "migrations/004_item_kind.sql",
+      "migrations/005_worker_health.sql",
+      "migrations/006_database_identity.sql",
+      "migrations/007_evaluation_evidence.sql",
+      "migrations/008_evaluation_expiry.sql",
+      "migrations/009_typesafe_verification.sql",
+      "migrations/010_typesafe_shadow.sql",
+      "migrations/011_typesafe_shadow_metrics.sql",
+      "queue.go",
+      "retention.go",
+      "store.go"
+    ],
+    "inbound_interface": [
+      "dashboard.go",
+      "dashboard_static/dashboard.css",
+      "dashboard_static/htmx.LICENSE",
+      "dashboard_static/htmx.min.js",
+      "evaluation_export.go",
+      "operator.go",
+      "validate_config.go",
+      "webhook.go"
+    ],
+    "runtime": [
+      "cleanup.go",
+      "config.go",
+      "main.go",
+      "server.go"
+    ],
+    "tooling": [
+      "e2e/generate-certs.sh",
+      "e2e/provider-fixture/main.go",
+      "internal/evalcorpus/corpus.go",
+      "internal/evalcorpus/coverage.go",
+      "internal/evalcorpus/import.go",
+      "internal/verificationcorpus/corpus.go",
+      "internal/verificationcorpus/types.go",
+      "scripts/backup-export.sh",
+      "scripts/backup-export_test.sh",
+      "scripts/build-release-artifacts.sh",
+      "scripts/build-release-artifacts_test.sh",
+      "scripts/ci-manifests.sh",
+      "scripts/clean-public-source.sh",
+      "scripts/clean-public-source_test.sh",
+      "scripts/compose-backup.sh",
+      "scripts/compose-config_test.sh",
+      "scripts/compose-operations_test.sh",
+      "scripts/compose-production.sh",
+      "scripts/compose-production_test.sh",
+      "scripts/compose-proxy_test.sh",
+      "scripts/compose-restore.sh",
+      "scripts/compose-volume_test.sh",
+      "scripts/eval-corpus/main.go",
+      "scripts/kubernetes-maintenance-lock.sh",
+      "scripts/kubernetes-maintenance-lock_test.sh",
+      "scripts/public-experience-e2e.sh",
+      "scripts/public-infrastructure_test.sh",
+      "scripts/publish-public-history.sh",
+      "scripts/publish-public-history_test.sh",
+      "scripts/release-notices/main.go",
+      "scripts/release-security_test.sh",
+      "scripts/rename-no-replace/main.go",
+      "scripts/rename-no-replace/rename_darwin.go",
+      "scripts/rename-no-replace/rename_linux.go",
+      "scripts/rename-no-replace/rename_other.go",
+      "scripts/render-manifests.sh",
+      "scripts/render-manifests_test.sh",
+      "scripts/require-kube-context.sh",
+      "scripts/restore-external-backup.sh",
+      "scripts/restore-external-backup_test.sh",
+      "scripts/rollback_test.sh",
+      "scripts/routing-feedback/main.go",
+      "scripts/ticktick-pull/main.go",
+      "scripts/typesafe-calibration/main.go",
+      "scripts/typesafe-spike/main.go",
+      "scripts/typesafe-thresholds/main.go",
+      "scripts/validate-offline.sh",
+      "scripts/validate-offline_test.sh",
+      "scripts/validate-release-inputs.sh",
+      "scripts/validate-release-tag.sh",
+      "scripts/validate-release-tag_test.sh",
+      "scripts/work-session/main.go",
+      "scripts/workload-security_test.sh"
+    ]
+  },
+  "entry_points": {
+    "dashboard-http": {
+      "file": "dashboard.go",
+      "function": "runDashboardWithContext",
+      "owner": "inbound_interface"
+    },
+    "delivery-worker": {
+      "file": "worker.go",
+      "function": "Worker.Run",
+      "owner": "runtime"
+    },
+    "e2e/provider-fixture/main.go#main": {
+      "file": "e2e/provider-fixture/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "evaluation-collection": {
+      "file": "evaluation_collection.go",
+      "function": "runEvaluationCollection",
+      "owner": "runtime"
+    },
+    "main.go#main": {
+      "file": "main.go",
+      "function": "main",
+      "owner": "runtime"
+    },
+    "operator-dispatch": {
+      "file": "operator.go",
+      "function": "executeWithInput",
+      "owner": "inbound_interface"
+    },
+    "scripts/eval-corpus/main.go#main": {
+      "file": "scripts/eval-corpus/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "scripts/release-notices/main.go#main": {
+      "file": "scripts/release-notices/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "scripts/rename-no-replace/main.go#main": {
+      "file": "scripts/rename-no-replace/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "scripts/routing-feedback/main.go#main": {
+      "file": "scripts/routing-feedback/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "scripts/ticktick-pull/main.go#main": {
+      "file": "scripts/ticktick-pull/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "scripts/typesafe-calibration/main.go#main": {
+      "file": "scripts/typesafe-calibration/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "scripts/typesafe-spike/main.go#main": {
+      "file": "scripts/typesafe-spike/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "scripts/typesafe-thresholds/main.go#main": {
+      "file": "scripts/typesafe-thresholds/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "scripts/work-session/main.go#main": {
+      "file": "scripts/work-session/main.go",
+      "function": "main",
+      "owner": "tooling"
+    },
+    "serve": {
+      "file": "main.go",
+      "function": "runWithEnvironment",
+      "owner": "runtime"
+    },
+    "webhook-http": {
+      "file": "webhook.go",
+      "function": "NewHandler",
+      "owner": "inbound_interface"
+    }
+  },
+  "commands": {
+    "backup": "inbound_interface",
+    "dashboard": "inbound_interface",
+    "evaluation-collect": "inbound_interface",
+    "evaluation-export": "inbound_interface",
+    "evaluation-status": "inbound_interface",
+    "healthcheck": "inbound_interface",
+    "maintenance": "runtime",
+    "purge-expired": "inbound_interface",
+    "restore": "inbound_interface",
+    "retry-delivery": "inbound_interface",
+    "retry-recording": "inbound_interface",
+    "serve": "runtime",
+    "status": "inbound_interface",
+    "ticktick-projects": "inbound_interface",
+    "validate-config": "inbound_interface",
+    "version": "runtime"
+  }
+}
