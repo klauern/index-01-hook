@@ -132,3 +132,8 @@ Continue from the inventory PR when the next contract slice needs this ownership
 `index-01-hook-b7y.1.2` defines neutral contracts, error categories, identities, stage metadata, and transaction ownership.
 Record each invariant owner and its validation. Keep transport and SQL types outside the application contracts.
 The parent boundary epic remains open until its own acceptance criteria pass.
+
+The published inventory is [PR #37](https://github.com/klauern/index-01-hook/pull/37), based on #36.
+The reviewed implementation revision is `12b34b4`. All six offline gates passed after the review corrections.
+Focused inventory regressions, Markdown checks, ShellCheck, and actionlint also passed.
+Live provider checks were disabled. Hosted CI and its security results remain separate from these local results.
