@@ -12,18 +12,15 @@ import (
 	"testing"
 )
 
-func TestWorkSessionProcess(t *testing.T) {
-	if os.Getenv("INDEX01_LOCK_TEST_HELPER") != "1" {
-		return
+// Build the documented CLI instead of bypassing its launcher through a test helper.
+func buildWorkSession(t *testing.T) string {
+	t.Helper()
+	binary := filepath.Join(t.TempDir(), "work-session")
+	cmd := exec.Command("go", "build", "-o", binary, ".")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("build session command: %v: %s", err, output)
 	}
-	for i, arg := range os.Args {
-		if arg == "--" {
-			os.Args = append([]string{os.Args[0]}, os.Args[i+1:]...)
-			main()
-			return
-		}
-	}
-	os.Exit(2)
+	return binary
 }
 
 func git(t *testing.T, dir string, args ...string) {
@@ -36,21 +33,21 @@ func git(t *testing.T, dir string, args ...string) {
 	}
 }
 
-func helper(dir string, args ...string) *exec.Cmd {
-	cmd := exec.Command(os.Args[0], append([]string{"-test.run=^TestWorkSessionProcess$", "--"}, args...)...)
+func helper(binary, dir string, args ...string) *exec.Cmd {
+	cmd := exec.Command(binary, args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "INDEX01_LOCK_TEST_HELPER=1")
 	return cmd
 }
 
 func TestWorkSessionExcludesOtherWorktreesAndReleasesAfterExit(t *testing.T) {
+	binary := buildWorkSession(t)
 	repo := t.TempDir()
 	git(t, repo, "init", "-q")
 	git(t, repo, "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "Synthetic baseline")
 	other := filepath.Join(t.TempDir(), "linked")
 	git(t, repo, "worktree", "add", "-qb", "other", other)
 
-	first := helper(repo, "sh", "-c", "echo ready; read -r value")
+	first := helper(binary, repo, "sh", "-c", "echo ready; read -r value")
 	stdin, err := first.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +67,7 @@ func TestWorkSessionExcludesOtherWorktreesAndReleasesAfterExit(t *testing.T) {
 		t.Fatalf("holder did not start: %s", stderr.String())
 	}
 
-	output, err := helper(other, "sh", "-c", "echo must-not-run").CombinedOutput()
+	output, err := helper(binary, other, "sh", "-c", "echo must-not-run").CombinedOutput()
 	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 75 {
 		t.Fatalf("contender = %v, %s", err, output)
 	}
@@ -81,16 +78,16 @@ func TestWorkSessionExcludesOtherWorktreesAndReleasesAfterExit(t *testing.T) {
 	if err := first.Wait(); err != nil {
 		t.Fatal(err)
 	}
-	if output, err := helper(other, "sh", "-c", "exit 7").CombinedOutput(); err == nil {
+	if output, err := helper(binary, other, "sh", "-c", "exit 7").CombinedOutput(); err == nil {
 		t.Fatalf("command failure was lost: %s", output)
 	} else if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 7 {
 		t.Fatalf("command exit = %v", err)
 	}
-	if output, err := helper(repo, "true").CombinedOutput(); err != nil {
+	if output, err := helper(binary, repo, "true").CombinedOutput(); err != nil {
 		t.Fatalf("lock not released: %v: %s", err, output)
 	}
 	// A killed holder must not leave a stale lock.
-	killed := helper(repo, "sh", "-c", "echo ready; read -r value")
+	killed := helper(binary, repo, "sh", "-c", "echo ready; read -r value")
 	input, _ := killed.StdinPipe()
 	defer input.Close()
 	pipe, _ := killed.StdoutPipe()
@@ -104,23 +101,24 @@ func TestWorkSessionExcludesOtherWorktreesAndReleasesAfterExit(t *testing.T) {
 		t.Fatal(err)
 	}
 	killed.Wait()
-	if output, err := helper(other, "true").CombinedOutput(); err != nil {
+	if output, err := helper(binary, other, "true").CombinedOutput(); err != nil {
 		t.Fatalf("killed holder retained lock: %v: %s", err, output)
 	}
 }
 
 func TestWorkSessionErrorsReleaseLock(t *testing.T) {
+	binary := buildWorkSession(t)
 	repo := t.TempDir()
 	git(t, repo, "init", "-q")
 	for _, args := range [][]string{nil, {"index01-command-that-does-not-exist"}} {
-		if err := helper(repo, args...).Run(); err == nil {
+		if err := helper(binary, repo, args...).Run(); err == nil {
 			t.Fatalf("expected failure for %v", args)
 		}
 	}
-	if err := helper(repo, "true").Run(); err != nil {
+	if err := helper(binary, repo, "true").Run(); err != nil {
 		t.Fatalf("failed command retained lock: %v", err)
 	}
-	if err := helper(t.TempDir(), "true").Run(); err == nil {
+	if err := helper(binary, t.TempDir(), "true").Run(); err == nil {
 		t.Fatal("accepted a non-repository directory")
 	}
 }

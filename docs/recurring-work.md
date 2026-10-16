@@ -10,11 +10,12 @@ Use Beads for scope, dependencies, claims, and completion evidence. Pull request
 4. Start the session command under the shared lock:
 
    ```sh
-   go run ./scripts/work-session sh
+   go build -o dist/work-session ./scripts/work-session && ./dist/work-session sh
    ```
 
    Run all remaining session commands inside this shell. Exit the shell when the session ends.
    An automation can replace `sh` with its implementation command and arguments.
+   Invoke the compiled executable directly. `go run` changes nonzero command statuses to status 1.
    Do not lock only the test command. Hold the lock through issue updates, commits, pushes, and pull request creation.
 5. Verify read access with `gh repo view` and `gh pr list --state open`.
 6. Run `bd prime`, `bd ready --json`, and `bd list --status in_progress --json`.
@@ -49,13 +50,14 @@ Keep product policy changes separate from package moves.
 Run the focused tests first. Then run:
 
 ```sh
-task validate-offline
+task --exit-code validate-offline
 ```
 
 This command runs uncached Go tests, uncached race tests, vet, Task checks, offline evaluation, and a temporary binary build.
-It disables inherited live-test opt-ins, provider tokens, calibration approval, and private corpus selection.
+It disables inherited live-test opt-ins, provider tokens, calibration approval, private corpus selection, and external report destinations.
 It prints one result for each gate and returns failure if any gate fails. Later gates still run after a failure.
-It writes offline evaluation reports under `dist/evaluation`.
+Every gate writes evaluation reports under `dist/evaluation`. Cancellation stops later gates.
+The script returns status 129, 130, or 143 for HUP, INT, or TERM. Use Task with `--exit-code` to preserve that status.
 It does not isolate network access at the operating system level. Synthetic integration tests can use local HTTP servers.
 The command uses the installed Go toolchain and dependencies. Normal Go module downloads can occur if dependencies are missing.
 
@@ -90,6 +92,17 @@ Keep the issue open while required acceptance evidence remains unverified.
 Distinguish implementation evidence, review state, merge readiness, and epic completion in the handoff.
 A draft can contain tested work that future slices use. An open pull request does not prove acceptance.
 See [the pull request dependency map](pr-dependency-map.md) for the current branch order and overlap decisions.
+
+## Record review separately
+
+Record the reviewed base and head, reviewer source, scope, findings, and unresolved limits.
+Check whether an automated reviewer completed a review or only reported a skip.
+Do not treat passing tests, builds, CodeQL, or a successful skip status as completed source review.
+Record regression tests separately from the source review that found and checked a defect.
+After a correction, record the correction revision and the follow-up review scope.
+A child correction does not change the original parent head. State which complete stack contains the fix.
+Keep draft status while required acceptance or security gates remain unresolved.
+See [the first-slice review evidence](first-slice-review.md) for the initial review and findings.
 
 ## Publish and resume
 
