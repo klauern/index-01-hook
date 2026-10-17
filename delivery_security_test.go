@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestUncertainTickTickCreateReconcilesBeforeAnotherPost(t *testing.T) {
+func TestUncertainTickTickCreateRequiresReviewWithoutAnotherPost(t *testing.T) {
 	tests := []struct {
 		name      string
 		status    int
@@ -55,6 +55,9 @@ func TestUncertainTickTickCreateReconcilesBeforeAnotherPost(t *testing.T) {
 					return fixtureResponse(http.StatusCreated, `{"id":"task-one","projectId":"default"}`), nil
 				case http.MethodGet:
 					calls = append(calls, "GET")
+					if request.URL.Path == "/open/v1/project" {
+						return fixtureResponse(http.StatusOK, `[{"id":"default"}]`), nil
+					}
 					return fixtureResponse(http.StatusOK, `{"tasks":[]}`), nil
 				default:
 					t.Fatalf("unexpected TickTick method %q", request.Method)
@@ -70,18 +73,18 @@ func TestUncertainTickTickCreateReconcilesBeforeAnotherPost(t *testing.T) {
 			}
 			clock.Advance(time.Minute)
 			runWorkerOnce(t, worker)
-			if !reflect.DeepEqual(calls, []string{"POST", "GET"}) {
-				t.Fatalf("calls before verified absence = %v", calls)
+			if !reflect.DeepEqual(calls, []string{"POST", "GET", "GET", "GET"}) {
+				t.Fatalf("calls after reconciliation = %v", calls)
 			}
 			runWorkerOnce(t, worker)
-			if !reflect.DeepEqual(calls, []string{"POST", "GET", "POST"}) {
-				t.Fatalf("calls after verified absence = %v", calls)
+			if postCount != 1 {
+				t.Fatalf("automatic duplicate create: %v", calls)
 			}
 			status, err := store.RecordingStatus(context.Background(), receipt.ID)
 			if err != nil {
 				t.Fatalf("RecordingStatus() error = %v", err)
 			}
-			if status.State != "complete" || status.Tasks[0].State != "complete" {
+			if status.State != "extracted" || status.Tasks[0].State != "needs_review" {
 				t.Fatalf("final status = %+v", status)
 			}
 		})

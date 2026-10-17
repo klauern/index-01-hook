@@ -420,10 +420,9 @@ func (w *Worker) reconcileDelivery(ctx context.Context, claim *DeliveryClaim) er
 	case TickTickReconciliationReview:
 		return w.store.BlockDelivery(ctx, claim.ID, w.config.Owner, OutcomeAmbiguous, "needs_review")
 	case TickTickReconciliationUnconfirmed:
-		if claim.CycleAttemptNumber >= w.config.DeliveryMaxAttempts {
-			return w.store.BlockDelivery(ctx, claim.ID, w.config.Owner, OutcomeAmbiguous, "needs_review")
-		}
-		return w.store.RetryDelivery(ctx, claim.ID, w.config.Owner, OutcomeRetryable, w.store.now())
+		// A missing marker does not prove that an ambiguous create failed.
+		// Never issue another POST from this state.
+		return w.store.BlockDelivery(ctx, claim.ID, w.config.Owner, OutcomeAmbiguous, "needs_review")
 	default:
 		return w.store.BlockDelivery(ctx, claim.ID, w.config.Owner, OutcomeMalformed, "dead_letter")
 	}

@@ -779,17 +779,15 @@ func TestWorkerBoundsAmbiguousReconciliation(t *testing.T) {
 	}
 }
 
-func TestWorkerReconcilesFinalUncertainCreateBeforeReview(t *testing.T) {
+func TestWorkerReviewsUnconfirmedAmbiguousCreateWithoutSecondPost(t *testing.T) {
 	store, clock := newQueueStore(t)
 	receipt := saveQueueRecording(t, store, "Ambiguous create loop")
 	freezeQueueTasks(t, store, "extractor", []QueuedTask{{Title: "Only", Priority: 0}})
 	deliverer := &fakeDeliverer{
 		createResults: []deliveryResult{
 			{err: &TickTickError{Kind: TickTickErrorAmbiguous, Operation: "create task"}},
-			{err: &TickTickError{Kind: TickTickErrorAmbiguous, Operation: "create task"}},
 		},
 		reconcileResults: []reconciliationResult{
-			{result: TickTickReconciliationResult{Status: TickTickReconciliationUnconfirmed}},
 			{result: TickTickReconciliationResult{Status: TickTickReconciliationUnconfirmed}},
 		},
 	}
@@ -798,15 +796,12 @@ func TestWorkerReconcilesFinalUncertainCreateBeforeReview(t *testing.T) {
 	runWorkerOnce(t, worker)
 	clock.Advance(time.Minute)
 	runWorkerOnce(t, worker)
-	runWorkerOnce(t, worker)
-	clock.Advance(4 * time.Minute)
-	runWorkerOnce(t, worker)
 
 	status, err := store.RecordingStatus(context.Background(), receipt.ID)
 	if err != nil {
 		t.Fatalf("RecordingStatus() error = %v", err)
 	}
-	if status.Tasks[0].State != "needs_review" || len(deliverer.createCalls) != 2 || len(deliverer.reconcileCalls) != 2 {
+	if status.Tasks[0].State != "needs_review" || len(deliverer.createCalls) != 1 || len(deliverer.reconcileCalls) != 1 {
 		t.Fatalf("bounded status = %+v, creates = %v, reconciles = %v", status.Tasks[0], deliverer.createCalls, deliverer.reconcileCalls)
 	}
 }

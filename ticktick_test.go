@@ -584,16 +584,23 @@ func TestTickTickReconcileUsesOneExactMarkerLine(t *testing.T) {
 	}{
 		{name: "one exact match", tasks: `[{"id":"match","kind":"TEXT","title":"Expected title","content":"` + expectedContent + `"},{"id":"other","kind":"TEXT","title":"Other","content":"none"}]`, wantStatus: TickTickReconciliationConfirmed, wantID: "match"},
 		{name: "multiple exact matches", tasks: `[{"id":"one","kind":"TEXT","title":"Expected title","content":"` + expectedContent + `"},{"id":"two","kind":"text","title":"Expected title","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationReview},
+		{name: "duplicate marker with other kind", tasks: `[{"id":"one","kind":"TEXT","title":"Expected title","content":"` + expectedContent + `"},{"id":"two","kind":"NOTE","title":"Expected title","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationReview},
 		{name: "zero exact matches", tasks: `[{"id":"substring","kind":"TEXT","title":"Expected title","content":"prefix ` + marker + ` suffix"}]`, wantStatus: TickTickReconciliationUnconfirmed},
 		{name: "wrong title is review", tasks: `[{"id":"spoof","kind":"TEXT","title":"Unrelated","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationReview},
 		{name: "wrong content is review", tasks: `[{"id":"spoof","kind":"TEXT","title":"Expected title","content":"` + marker + `\n\nunrelated"}]`, wantStatus: TickTickReconciliationReview},
-		{name: "note kind is ignored", tasks: `[{"id":"note","kind":"NOTE","title":"Expected title","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationUnconfirmed},
+		{name: "note kind requires review", tasks: `[{"id":"note","kind":"NOTE","title":"Expected title","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationReview},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fixtureTickTickClient(t, func(request *http.Request) (*http.Response, error) {
-				if request.Method != http.MethodGet || request.URL.Path != "/open/v1/project/work/data" {
+				if request.URL.Path == "/open/v1/project" {
+					return fixtureResponse(http.StatusOK, `[{"id":"work"}]`), nil
+				}
+				if request.URL.Path == "/open/v1/project/inbox/data" {
+					return fixtureResponse(http.StatusOK, `{"tasks":[]}`), nil
+				}
+				if request.URL.Path != "/open/v1/project/work/data" {
 					t.Fatalf("request = %s %s", request.Method, request.URL.Path)
 				}
 				return fixtureResponse(http.StatusOK, `{"tasks":`+tt.tasks+`}`), nil
@@ -622,13 +629,17 @@ func TestTickTickReconcileNoteRequiresNoteKindAndExactMarker(t *testing.T) {
 		wantStatus TickTickReconciliationStatus
 		wantID     string
 	}{
-		{name: "one note match ignores text item", tasks: `[{"id":"text","kind":"TEXT","title":"Expected note","content":"` + expectedContent + `"},{"id":"note","kind":"NOTE","title":"Expected note","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationConfirmed, wantID: "note"},
+		{name: "one note match", tasks: `[{"id":"note","kind":"NOTE","title":"Expected note","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationConfirmed, wantID: "note"},
+		{name: "note and text marker require review", tasks: `[{"id":"text","kind":"TEXT","title":"Expected note","content":"` + expectedContent + `"},{"id":"note","kind":"NOTE","title":"Expected note","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationReview},
 		{name: "multiple note matches require review", tasks: `[{"id":"one","kind":"NOTE","title":"Expected note","content":"` + expectedContent + `"},{"id":"two","kind":"note","title":"Expected note","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationReview},
-		{name: "text match is unconfirmed", tasks: `[{"id":"text","kind":"TEXT","title":"Expected note","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationUnconfirmed},
+		{name: "text match requires review", tasks: `[{"id":"text","kind":"TEXT","title":"Expected note","content":"` + expectedContent + `"}]`, wantStatus: TickTickReconciliationReview},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			client := fixtureTickTickClient(t, func(request *http.Request) (*http.Response, error) {
+				if request.URL.Path == "/open/v1/project" {
+					return fixtureResponse(http.StatusOK, `[{"id":"notes"}]`), nil
+				}
 				if request.URL.Path != "/open/v1/project/notes/data" {
 					t.Fatalf("request path = %q", request.URL.Path)
 				}
@@ -651,15 +662,18 @@ func TestTickTickReconcileNoteRequiresNoteKindAndExactMarker(t *testing.T) {
 func TestTickTickReconcileRejectsMissingTaskList(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":6]"
 	for _, body := range []string{`{}`, `{"tasks":null}`} {
-		client := fixtureTickTickClient(t, func(*http.Request) (*http.Response, error) {
+		client := fixtureTickTickClient(t, func(request *http.Request) (*http.Response, error) {
+			if request.URL.Path == "/open/v1/project" {
+				return fixtureResponse(http.StatusOK, `[{"id":"default"}]`), nil
+			}
 			return fixtureResponse(http.StatusOK, body), nil
 		})
 		router := &TickTickRouter{client: client, defaultProjectID: "default"}
-		_, err := router.ReconcileItem(context.Background(), TickTickReconciliationInput{
+		result, err := router.ReconcileItem(context.Background(), TickTickReconciliationInput{
 			Kind: ItemKindTask, Marker: marker, Title: "Expected", Content: "content",
 		})
-		if tickTickErrorKind(err) != TickTickErrorMalformed {
-			t.Fatalf("ReconcileItem(%s) error = %v", body, err)
+		if err != nil || result.Status != TickTickReconciliationReview {
+			t.Fatalf("ReconcileItem(%s) = %+v, %v; want review", body, result, err)
 		}
 	}
 }
