@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	workerStaleAfter  = 2 * time.Minute
-	queueDelayedAfter = 15 * time.Minute
-	providerSlowAfter = 25 * time.Second
+	workerStaleAfter         = 2 * time.Minute
+	queueDelayedAfter        = 15 * time.Minute
+	providerSlowAfter        = 25 * time.Second
+	providerSlowRecoverAfter = 5 * time.Minute
 )
 
 type OperationalStatus struct {
@@ -308,16 +309,35 @@ func healthReasons(status OperationalStatus) []string {
 	if status.Queue.DeadLetter > 0 {
 		reasons = append(reasons, "dead_letter")
 	}
-	if status.Providers.DeepSeek.LastLatencyMilliseconds > providerSlowAfter.Milliseconds() {
-		reasons = append(reasons, "deepseek_slow")
-	}
-	if status.Providers.TickTick.LastLatencyMilliseconds > providerSlowAfter.Milliseconds() {
-		reasons = append(reasons, "ticktick_slow")
-	}
-	if status.Providers.TypeSafe.LastLatencyMilliseconds > providerSlowAfter.Milliseconds() {
-		reasons = append(reasons, "typesafe_slow")
+	checkedAt, parseErr := time.Parse(time.RFC3339Nano, status.CheckedAt)
+	if parseErr == nil {
+		if providerSlowDegraded(status.Providers.DeepSeek, checkedAt) {
+			reasons = append(reasons, "deepseek_slow")
+		}
+		if providerSlowDegraded(status.Providers.TickTick, checkedAt) {
+			reasons = append(reasons, "ticktick_slow")
+		}
+		if providerSlowDegraded(status.Providers.TypeSafe, checkedAt) {
+			reasons = append(reasons, "typesafe_slow")
+		}
 	}
 	return reasons
+}
+
+// providerSlowDegraded reports whether a slow-provider observation is still
+// fresh enough to degrade readiness. The observation expires after
+// providerSlowRecoverAfter so a recovered provider stops blocking readiness.
+// The latency and observation time stay visible in the status report.
+func providerSlowDegraded(status ProviderLatencyStatus, checkedAt time.Time) bool {
+	if status.LastLatencyMilliseconds <= providerSlowAfter.Milliseconds() {
+		return false
+	}
+	observedAt, err := time.Parse(time.RFC3339Nano, status.LastObservedAt)
+	if err != nil {
+		return false
+	}
+	age := checkedAt.Sub(observedAt)
+	return age >= 0 && age <= providerSlowRecoverAfter
 }
 
 func requireHealthRow(result sql.Result) error {
