@@ -279,3 +279,8 @@ This slice depends on the ownership baseline in PR #37. The independent dependen
 Preserve the primary checkout and the local architecture-plan worktree.
 Continue `.1.2` with active-verification evidence and typed status/read contracts before extracting those consumers.
 Re-read authoritative Beads and current PR heads before selecting the next child base.
+
+The published core specification is [PR #38](https://github.com/klauern/index-01-hook/pull/38), based on #37.
+The reviewed specification revision is `59a9636`. All six offline gates passed after the review corrections.
+ShellCheck, actionlint, and diff checks also passed. Live provider checks remained disabled.
+Check final-head hosted CI separately before acceptance.
