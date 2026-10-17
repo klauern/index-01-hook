@@ -8,7 +8,8 @@ No pending primary-checkout application change is included.
 [boundary-inventory.json](boundary-inventory.json) lists every assigned path, executable entry point, and root command.
 It is the machine-checked inventory. Beads remains the task tracker.
 Ownership identifies the primary migration responsibility. It does not assert that current files have separated concerns.
-Exact package names, port signatures, and transaction contracts remain work under `index-01-hook-b7y.1.2` and later tasks.
+The [core contract specification](../adr/0002-application-contracts.md) starts `index-01-hook-b7y.1.2`.
+Secondary contracts and production extraction remain later work.
 
 ## Ownership
 

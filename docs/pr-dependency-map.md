@@ -39,7 +39,7 @@ The original #30 branch remains unchanged at `b63a6d2`.
 The dependency edges are:
 
 - `main` → #29 → #34 (`x/sys` child).
-- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections) → [#37](https://github.com/klauern/index-01-hook/pull/37) (boundary inventory).
+- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections) → [#37](https://github.com/klauern/index-01-hook/pull/37) (boundary inventory) → [#38](https://github.com/klauern/index-01-hook/pull/38) (core contracts).
 - `main` → #26, #27, #31, and #32 independently.
 
 Review each child relative to its immediate base. Review the cumulative module stack with SQLite 1.60.1 and `x/sys` 0.49.0.
@@ -101,3 +101,18 @@ Five independent local reviewers inspected the slice. Two reviewers inspected co
 The corrected slice passed all six offline gates, focused regression tests, ShellCheck, and actionlint.
 The next contract slice can use #37 when it requires this inventory. Keep unrelated module changes independent.
 Hosted CI remains a separate gate. Check the actual PR head before accepting or continuing the stack.
+
+## October 17 contract continuation
+
+[PR #38](https://github.com/klauern/index-01-hook/pull/38) starts from #37 at `72217cd`.
+The reviewed core specification is `59a9636`. No parent merged during this session.
+ADR-0002 defines neutral signatures, identity, stage metadata, safe outcomes, and atomic transition ownership.
+Fifteen invariant records reference existing runnable regression tests. The compilation check exercises typed route selection.
+Five independent reviewers found three substantive gaps. Three reviewers inspected corrections with no remaining concrete findings in scope.
+The corrected cumulative stack passed full uncached Go tests, race tests, vet, Task checks, offline evaluation, and build.
+Incremental specification, negative guard, invariant reference, inventory, and Markdown checks passed.
+A unique container image passed synthetic volume, backup, and restore integration checks.
+Hosted CI remains a separate gate. The parent security baseline has 11 standard-library findings and skipped secret scans.
+`index-01-hook-b7y.1.2` remains open for the secondary contracts listed in ADR-0002.
+Next: specify lease-checked active-verification evidence and typed redacted reads on this child when required.
+No claim of completed extraction or completion on `main` follows from this specification.
