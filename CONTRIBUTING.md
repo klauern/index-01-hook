@@ -9,7 +9,7 @@ The README release status states when the repository is still private.
 
 Install these tools before you work on the project:
 
-- Go 1.26.6 or newer to build and test the service.
+- Go 1.26.9 or newer to build and test the service.
 - Git to clone the repository and manage branches.
 - Task to run commands in `Taskfile.yml`.
 - The Docker CLI with the Docker Compose plugin to run static Compose checks.
@@ -86,3 +86,9 @@ public documentation with examples that contain synthetic values only.
 This project uses the MIT License. By submitting a contribution, you provide
 the contribution under the MIT License and confirm that you have the right to
 do so. The project does not require a copyright assignment.
+
+## Pull request readiness
+
+Follow [the readiness gate](docs/pr-readiness.md) for current and future pull requests.
+Require source assessment, current green checks, and ready status before the final handoff.
+Inherited security failures remain failures. Report external or manual blockers separately.
