@@ -16,6 +16,7 @@ import (
 
 var errBusy = errors.New("another work session holds the repository lock")
 
+// main reports session errors and returns status 75 when another session holds the lock.
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -26,6 +27,8 @@ func main() {
 	}
 }
 
+// run acquires the shared repository lock and replaces this process with the requested command.
+// The replacement process retains the lock and returns its own exit status.
 func run(args []string) error {
 	if len(args) == 0 {
 		return errors.New("usage: work-session COMMAND [ARG ...]")
