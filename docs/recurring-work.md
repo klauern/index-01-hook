@@ -64,7 +64,7 @@ task --exit-code validate-offline
 This command runs uncached Go tests, uncached race tests, vet, Task checks, offline evaluation, and a temporary binary build.
 It disables inherited live-test opt-ins, provider tokens, calibration approval, private corpus selection, and external report destinations.
 It prints one result for each gate and returns failure if any gate fails. Later gates still run after a failure.
-Every gate writes evaluation reports under `dist/evaluation`. Cancellation stops later gates.
+The validation command sets `INDEX01_EVAL_REPORT_DIR` to `dist/evaluation` for all gates. Cancellation stops later gates.
 The script returns status 129, 130, or 143 for HUP, INT, or TERM. Use Task with `--exit-code` to preserve that status.
 It does not isolate network access at the operating system level. Synthetic integration tests can use local HTTP servers.
 The command uses the installed Go toolchain and dependencies. Normal Go module downloads can occur if dependencies are missing.
