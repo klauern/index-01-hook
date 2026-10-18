@@ -83,6 +83,7 @@ func TestDependabotCoversGoAndActions(t *testing.T) {
 	}
 }
 
+// TestCIContainerIsolationAndBuilderPin verifies isolated container checks and the approved immutable Go builder.
 func TestCIContainerIsolationAndBuilderPin(t *testing.T) {
 	volumeTest, err := os.ReadFile("scripts/compose-volume_test.sh")
 	if err != nil {
