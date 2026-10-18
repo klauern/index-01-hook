@@ -52,7 +52,7 @@ Use a new replacement head if that preserves published history and a small diff.
 Keep the previous pull request and branch available as review context.
 No pull request merge is part of this maintenance workflow.
 
-## Baseline gates
+## Original baseline gates (historical)
 
 PR #33's original head completed both CI runs:
 [branch run](https://github.com/klauern/index-01-hook/actions/runs/38837309392) and
@@ -80,3 +80,20 @@ The #33 → #35 cumulative stack passed `scripts/validate-offline.sh`, including
 Focused Markdown, README, and documentation checks passed for the incremental policy change.
 Live provider tests remained disabled in both stacks. Hosted checks are separate from these local results.
 Keep implementation moving on either tested stack while review and merge decisions remain pending.
+
+## Green-and-ready repair pass
+
+Nick now requires every current and future PR to have source assessment, ready status, and green final-head checks.
+The [readiness policy](pr-readiness.md) supersedes the previous temporary tolerance of inherited security failures.
+[PR #40](https://github.com/klauern/index-01-hook/pull/40), head `7a3e9c9`, is the shared Go 1.26.9 and export-fixture prerequisite.
+Main merge order starts with #40. The independent children are #26, #27, #29, #31, #32, and #33.
+Then merge #29 before #34, and #33 before #35 → #36 → #37 → #38 → #39.
+No merge is authorized as part of this pass.
+
+The three defects from the new CodeRabbit review of #33 at `cc0dda3` are now corrected at the parent in `12b29bf`.
+This additive backport preserves the original PR #36 correction `276496b` and all subsequent review history.
+Review each child relative to its actual immediate base after propagation.
+The source patch is identical; documentation now requires compiled session invocation, isolated reports, cancellation exits, and the readiness gate.
+The original skipped-review statuses remain historical evidence. The new #33 COMMENTED review is a completed review with three findings.
+Required checks are `test`, `container`, `manifests`, and `security`. Inspect other checks and review comments as well.
+Verify current exact heads and all terminal results through GitHub. Do not infer readiness from old success or skipped statuses.
