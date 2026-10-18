@@ -84,3 +84,17 @@ Do not describe that old review as verification of `12b29bf` or later heads.
 A [capacity query on #26](https://github.com/klauern/index-01-hook/pull/26#issuecomment-6252887753) reported 58 minutes at 17:25:39 UTC.
 Its earliest advertised retry was approximately 18:23:39 UTC on October 18.
 This reply does not prove an independent bot-author pool. Keep one serialized project queue.
+
+## Completed pass on the original prerequisite head
+
+CodeRabbit finished the #40 pass at 17:29:20 UTC on October 18.
+The [review-info comment](https://github.com/klauern/index-01-hook/pull/40#issuecomment-6252285277) reports no actionable comments.
+Its coverage marker identifies source and covered commit `7a3e9c91ba6a64a77381b85ff2c0b246a4bd3d70` as reviewed.
+The GitHub submitted-reviews endpoint has no entry. Record this as a completed bot pass published in a comment.
+Do not call it human approval or a submitted GitHub review.
+The same comment reports a warning for documentation coverage on three touched tests.
+Document those tests without lowering the threshold. Verify the updated head in the next included slot.
+The comment confirms one included review per hour and zero remaining reviews after this pass.
+
+CodeRabbit acknowledged the original #33 fixes in all three review threads after receiving correction evidence.
+Those acknowledgments do not replace an updated-head review or remeasure documentation coverage.
