@@ -220,6 +220,8 @@ jobs:
           name: release-artifacts
           path: dist/release
           merge-multiple: true
+          skip-decompress: false
+          digest-mismatch: error
       - name: Reject unexpected artifact set
         run: |
           set -eu
