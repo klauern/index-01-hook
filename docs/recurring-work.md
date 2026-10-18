@@ -245,3 +245,24 @@ The pending checkout already changes this test. Preserve that work under the bas
 The initial export attempt and the attempt after staging both failed. Staging did not resolve the baseline failure.
 Container-based public end-to-end deployment and disposable-cluster infrastructure tests were not run.
 Local govulncheck and complete-history secret scans were not run during this slice. Check remote CI for their results.
+
+## Green and ready gate
+
+The [pull request readiness policy](pr-readiness.md) applies to every current and future pull request.
+This current policy supersedes earlier allowances for inherited baseline failures in this document and descendant snapshots.
+Do not finish at submission or accept known inherited security failures as the final result.
+Assess all open PRs, including independent changes and every stacked descendant.
+Require source assessment, terminal green final-head checks, and ready status before the final handoff.
+A draft is temporary. Mark eligible PRs ready so draft-gated checks and reviews can run, then verify their results.
+A successful skipped-review notice does not establish completed source review.
+Record exact heads, bases, dependency edges, merge order, incremental and cumulative test results, and unresolved reviews.
+Fix legitimate findings. Do not disable checks, lower thresholds, add blanket exclusions, or change protection settings to obtain green.
+Pending, canceled, stale, and failure-induced skipped checks do not pass this gate.
+Report external or manual blockers precisely. Continue unaffected repair work without inventing a pass.
+Keep new feature slices paused while the all-PR readiness pass has actionable failures.
+Review readiness does not establish integration or epic completion on `main`.
+
+The three PR #33 validation defects originally corrected in PR #36 are now corrected additively at this parent.
+The source patch comes from `276496bc1526d2ce266d86fef968781ed7db0a29`.
+Regression tests use the compiled session binary, isolate report paths, and verify cancellation stops subsequent gates.
+Preserve the original PR #36 commit and review history while propagating this parent correction through the stack.
