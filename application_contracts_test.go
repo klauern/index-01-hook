@@ -53,7 +53,19 @@ func TestApplicationContractSpecification(t *testing.T) {
 	if !found {
 		t.Fatal("unterminated Go contract specification")
 	}
-	code += "\nfunc selectedRoute(result AssessmentResult) string { return result.Item.ProjectAlias }\n"
+	code += `
+func selectedRoute(result AssessmentResult) string { return result.Item.ProjectAlias }
+func prepareActiveEvidence(result AssessmentResult) ActiveVerificationEvidence {
+ return ActiveVerificationEvidence{Decision: result.Decision, Metadata: result.Metadata, Reason: result.Reason, Detail: result.PrivateDetail}
+}
+func persistActive(ctx context.Context, repository ActiveVerificationRepository, id RecordingID, owner LeaseOwner, evidence []ActiveVerificationEvidence) error {
+ return repository.SaveActiveVerification(ctx, id, owner, evidence)
+}
+func readAggregate(ctx context.Context, reader OperationalReader) (int, error) {
+ snapshot, err := reader.OperationalStatus(ctx)
+ return snapshot.Queue.Active, err
+}
+`
 	if err := checkApplicationSpecification(code); err != nil {
 		t.Fatal(err)
 	}

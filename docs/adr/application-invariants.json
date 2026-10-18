@@ -120,5 +120,30 @@
     "tests": [
       "worker_test.go#TestWorkerStatusIsRedactedAndGracefulShutdownLeavesLease"
     ]
+  },
+  {
+    "id": "active-evidence-lease",
+    "owner": "persistence",
+    "rule": "Nonempty active verification evidence writes require an active lease and preserve earlier evidence on failure.",
+    "tests": [
+      "verification_contract_test.go#TestActiveVerificationEvidenceLeaseAndLifecycle"
+    ]
+  },
+  {
+    "id": "active-evidence-empty",
+    "owner": "persistence",
+    "rule": "Empty active verification evidence is a no-op before lease and context validation.",
+    "tests": [
+      "verification_contract_test.go#TestActiveVerificationEmptyEvidenceIsNoOp"
+    ]
+  },
+  {
+    "id": "aggregate-read",
+    "owner": "inbound_interface",
+    "rule": "Operational aggregate reads do not write or expose transcripts and private verification evidence.",
+    "tests": [
+      "verification_contract_test.go#TestOperationalAggregateReadsExcludeVerificationEvidenceAndDoNotWrite",
+      "health_test.go#TestStatuszReturnsSafeAggregateData"
+    ]
   }
 ]

@@ -5,7 +5,7 @@ Date: 2026-10-17
 Status: Selected contract specification. Production extraction is not implemented.
 
 Scope: `index-01-hook-b7y.1.2`, following the [boundary inventory](../architecture/boundary-inventory.md).
-The source baseline is PR #37 at `72217cd`. Pending primary-checkout changes remain excluded.
+The source baseline is PR #37 at `72217cd`. Independent primary-checkout changes remain excluded.
 The local architecture plan at `74f79ad` remains separate. This record does not publish or supersede that plan.
 
 ## Dependency decision
@@ -123,6 +123,7 @@ type AssessmentRequest struct {
     Metadata StageMetadata
 }
 type AssessmentResult struct {
+    Reason string
     Item Item
     Decision Decision
     Scores map[string]float64
@@ -166,6 +167,51 @@ type DeliveryRepository interface {
     RetryReconciliation(context.Context, DeliveryID, LeaseOwner, time.Time) error
     ReviewDelivery(context.Context, DeliveryID, LeaseOwner, Outcome) error
     BlockDelivery(context.Context, DeliveryID, LeaseOwner, Outcome, string) error
+}
+// Private evidence write remains separate from freeze and from shadow persistence.
+type ActiveVerificationEvidence struct {
+    Decision Decision
+    Metadata StageMetadata
+    Reason string
+    Detail []byte
+}
+type ActiveVerificationRepository interface {
+    SaveActiveVerification(context.Context, RecordingID, LeaseOwner, []ActiveVerificationEvidence) error
+}
+// Aggregate read models contain no transcript, item content, or private evidence.
+type OperationalSnapshot struct {
+    Status string
+    CheckedAt time.Time
+    Reasons []string
+    Intake IntakeSnapshot
+    Worker WorkerSnapshot
+    Queue QueueSnapshot
+    Providers ProviderSnapshots
+}
+type IntakeSnapshot struct {
+    RetainedUniqueRecordings, RetainedReceiveCount int
+    LastReceivedAt *time.Time
+    LastDuplicate bool
+    LastResponseStatus int
+}
+type WorkerSnapshot struct {
+    State string
+    Stale bool
+    StartedAt, HeartbeatAt, LastCycleStartedAt, LastCycleCompletedAt *time.Time
+    LastCycleFailed bool
+}
+type QueueSnapshot struct {
+    Active, Retries, BlockedAuthentication, NeedsReview, DeadLetter int
+    OldestActiveAgeSeconds int64
+}
+type ProviderSnapshots struct { DeepSeek, TickTick, TypeSafe ProviderSnapshot }
+type ProviderSnapshot struct {
+    LastLatencyMilliseconds int64
+    LastObservedAt *time.Time
+    LastFailed bool
+}
+type OperationalReader interface {
+    OperationalStatus(context.Context) (OperationalSnapshot, error)
 }
 type ShadowEvidenceRepository interface {
     SaveShadow(context.Context, RecordingID, []AssessmentResult) error
@@ -223,18 +269,55 @@ No remote call occurs within a persistence transaction.
 The existing methods remain authoritative until adapter extraction passes their regression tests.
 Save active verification evidence before freeze as the current workflow requires. Preserve its separate lease-checked write.
 Do not combine that write with shadow persistence or silently change the existing failure window.
-The core port list will need a separate active-verification evidence write before that path is extracted.
-This is a declared follow-up contract, not an implemented parity claim.
+`ActiveVerificationRepository` now specifies that separate write. The current adapter method remains `Store.SaveExtractionVerification`.
+Its typed evidence list preserves original item order, including accepted, review, and rejected decisions.
+`Detail` carries a versioned private encoding of current questions, answers, token counts, and other persisted evidence fields.
+The assessment result carries a typed reason so the application need not decode private detail to prepare this write.
+Metadata preserves model and prompt version. It must not invent clock or stage values for legacy rows.
+Adapters must preserve existing persisted field names through conversion tests before extraction.
+An empty evidence list is a no-op before lease validation, including a missing recording or canceled context.
+A nonempty write requires the active owner and an unexpired extraction lease. Wrong, expired, or completed leases return lease loss.
+Encoding failure leaves prior evidence unchanged. Saving evidence cannot freeze items or create delivery tasks.
+The write commits before review, rejected completion, or freeze. A later failed transition does not undo that evidence write.
+Rejected completion erases the operational transcript but retains the already saved verification record.
+That record follows existing recording retention. Do not imply erasure of every private evidence copy.
+
+## Aggregate read and screening semantics
+
+`OperationalReader` is the shared aggregate read for health/status drivers and aggregate dashboard display.
+It returns typed values. Inbound adapters retain existing public field names, optional fields, timestamps, authentication, and status codes.
+`LastResponseStatus` is existing intake response telemetry. It does not give application policy a transport client or response object.
+Persistence maps absent database timestamps to `nil`. Inbound adapters preserve the current omitted-field representation.
+`CheckedAt` uses the injected clock. Retain millisecond and second units in the named fields.
+
+The read must not open a write-capable dashboard connection, run migrations, refresh evidence expiry, or update worker state.
+Current service health reads use the existing service store. Dashboard opening remains a separate read-only adapter requirement.
+No aggregate field may carry transcripts, titles, notes, provider request bodies, or active/shadow evidence.
+Do not reuse this model for private recording detail or evidence export.
+Unknown storage errors propagate as errors; adapters retain their existing safe diagnostics and unavailable responses.
+Keep aggregate queries within the existing consistency behavior. This specification does not promise a cross-query snapshot transaction.
+
+`InjectionScreener.Screen` runs before extraction when active verification supplies the capability.
+A positive screen sends extraction to review without calling the extractor.
+A retryable screen failure retries only while the cycle attempt limit permits another attempt.
+Other screen failures, or exhausted attempts, select review. This differs from some later per-item verification failure classifications.
+A screen does not produce an item evidence list and cannot grant delivery authority.
+No active verification enablement or threshold change follows from these signatures.
+
+This specification retains the PR #38 source baseline for health reason and expiry behavior.
+On October 18, the formerly pending source changes were separate local commits on `cleanup/worktree-review` at `77b7594`.
+Health `3411659`, reconciliation `d0ec0f8`, export fixture `a0c99d1`, and their documentation remain excluded from this stack.
+The primary checkout is clean. Review and publish those contributions separately before selecting the migration behavior baseline.
 
 ## Remaining boundary contracts
 
 The core signatures above are the first bounded part of `.1.2`.
-The following consumers need separate neutral signatures before this task can close:
+The following consumers require the stated remaining work before this task can close:
 
 | Consumer | Required contract work | Migration owner |
 | --- | --- | --- |
-| Active verification evidence | Lease-checked evidence save, screen failure mapping, and rejected extraction evidence lifecycle. | Application policy and persistence |
-| Status, dashboard, and health | Typed redacted snapshots, schema-compatible reads, no migrations, current health reasons. | Inbound interface and application policy |
+| Active verification evidence | Write signature and lease lifecycle specified here. Provider encoding conversion and adapter extraction remain unimplemented. | Application policy and persistence |
+| Status, dashboard, and health | Aggregate operational snapshot specified. Recording details, dashboard queries, and schema-compatible adapter conversion remain open. | Inbound interface and application policy |
 | Operator retry and retention | Exact-ID retry restrictions, purge counts, original evidence expiry, no product retention changes. | Application policy and persistence |
 | Observation and export | Versioned evidence values, chronology, read-only export selection, explicit file delivery boundary. | Application policy and persistence |
 | Backup, restore, and runtime | Keep database and file safety in adapters; specify shutdown, worker health, and storage-last close ordering. | Runtime and persistence |
@@ -254,7 +337,7 @@ Passing that suite does not prove that future extracted adapters satisfy these c
 - New routing semantics remain under `index-01-hook-bpy`. Preserve current aliases and note routing.
 - Retention policy changes remain under `index-01-hook-zzv`. Preserve original evidence expiry and current transcript-copy distinctions.
 - Existing-item mutation and history policy remain under `index-01-hook-66f`.
-- Pending moved-item reconciliation and health-expiry changes remain under `index-01-hook-b7y.2.1`.
+- Source disposition for separately committed reconciliation and health-expiry changes remains under `index-01-hook-b7y.2.1`.
 
 The last item is source disposition, not permission to select either behavior during extraction.
 Do not claim this contract slice includes the pending fixes.
@@ -284,3 +367,24 @@ The published core specification is [PR #38](https://github.com/klauern/index-01
 The reviewed specification revision is `59a9636`. All six offline gates passed after the review corrections.
 ShellCheck, actionlint, and diff checks also passed. Live provider checks remained disabled.
 Check final-head hosted CI separately before acceptance.
+
+## October 18 evidence and aggregate-read validation
+
+This continuation specifies the active evidence write and aggregate operational read on parent PR #38 at `7dd99c7`.
+It adds real SQLite regressions for active, wrong, expired, reclaimed, and completed lease owners.
+The regressions preserve saved evidence after encoding failure and after a later rejected-completion transition fails.
+They verify empty-list no-op behavior and evidence retention after successful rejected completion.
+An aggregate test exercises the store and `/statusz`, rejects private sentinels, and checks that SQLite write counts do not change.
+The write-count assertion relies on the store's single connection. It does not claim absence of external filesystem effects.
+Compile consumers prepare typed active evidence and invoke the aggregate read without decoding provider data.
+The invariant registry now has 18 entries.
+
+Five independent local reviewers checked source semantics, guards, history, scope, and invariants against `7dd99c7`.
+They reported no concrete defects. Two reviewers checked the final typed-reason and failed-transition refinements.
+Source review remains separate from test evidence.
+Focused regressions, all six offline gates, ShellCheck, actionlint, and diff checks passed.
+A dedicated Docker image passed synthetic network-isolated volume, backup, and restore checks.
+Live provider and deployment end-to-end checks were not run. Hosted CI remains a separate acceptance gate.
+
+The remaining `.1.2` work includes recording/dashboard reads, operator retry and retention, observation/export, and runtime contracts.
+The new signatures do not establish adapter conversion parity or completion on `main`.
