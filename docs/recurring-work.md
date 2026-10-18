@@ -47,6 +47,14 @@ Keep product policy changes separate from package moves.
 
 ## Validate
 
+Fixture Git commands must use the shared test environment builder.
+Remove inherited repository-location and local configuration overrides before fixture commands.
+Apply the same environment to fixture session commands and command builds.
+Preserve the explicit synthetic identity and isolated Git configuration.
+The production session command retains caller-supplied repository selection.
+Never test contaminated fixture commands against the shared checkout.
+The regression uses a disposable outer repository and verifies that its HEAD and index remain unchanged.
+
 Run the focused tests first. Then run:
 
 ```sh

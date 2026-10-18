@@ -12,11 +12,34 @@ import (
 	"testing"
 )
 
+// testEnv removes inherited Git repository overrides and preserves explicit fixture settings.
+func testEnv(extra ...string) []string {
+	var env []string
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		switch key {
+		case "GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
+			"GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_QUARANTINE_PATH",
+			"GIT_PREFIX", "GIT_CEILING_DIRECTORIES", "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+			"GIT_IMPLICIT_WORK_TREE", "GIT_NAMESPACE", "GIT_GRAFT_FILE", "GIT_SHALLOW_FILE",
+			"GIT_NO_REPLACE_OBJECTS", "GIT_REPLACE_REF_BASE", "GIT_CONFIG",
+			"GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT":
+			continue
+		}
+		if strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
+			continue
+		}
+		env = append(env, entry)
+	}
+	return append(env, extra...)
+}
+
 // buildWorkSession builds the documented command so tests exercise the actual launcher.
 func buildWorkSession(t *testing.T) string {
 	t.Helper()
 	binary := filepath.Join(t.TempDir(), "work-session")
 	cmd := exec.Command("go", "build", "-o", binary, ".")
+	cmd.Env = testEnv()
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build session command: %v: %s", err, output)
 	}
@@ -28,7 +51,7 @@ func git(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1", "GIT_AUTHOR_NAME=Synthetic", "GIT_AUTHOR_EMAIL=test@example.invalid", "GIT_COMMITTER_NAME=Synthetic", "GIT_COMMITTER_EMAIL=test@example.invalid")
+	cmd.Env = testEnv("GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1", "GIT_AUTHOR_NAME=Synthetic", "GIT_AUTHOR_EMAIL=test@example.invalid", "GIT_COMMITTER_NAME=Synthetic", "GIT_COMMITTER_EMAIL=test@example.invalid")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v: %s", args, err, output)
 	}
@@ -38,6 +61,7 @@ func git(t *testing.T, dir string, args ...string) {
 func helper(binary, dir string, args ...string) *exec.Cmd {
 	cmd := exec.Command(binary, args...)
 	cmd.Dir = dir
+	cmd.Env = testEnv()
 	return cmd
 }
 
@@ -124,5 +148,73 @@ func TestWorkSessionErrorsReleaseLock(t *testing.T) {
 	}
 	if err := helper(binary, t.TempDir(), "true").Run(); err == nil {
 		t.Fatal("accepted a non-repository directory")
+	}
+}
+
+// TestFixtureSubprocessesIgnoreGitLocationOverrides protects an outer repository from fixture commands and lock discovery.
+func TestFixtureSubprocessesIgnoreGitLocationOverrides(t *testing.T) {
+	binary := buildWorkSession(t)
+	// Bootstrap with a captured clean environment before introducing disposable overrides.
+	cleanEnv := testEnv("GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_NOSYSTEM=1",
+		"GIT_AUTHOR_NAME=Synthetic", "GIT_AUTHOR_EMAIL=test@example.invalid",
+		"GIT_COMMITTER_NAME=Synthetic", "GIT_COMMITTER_EMAIL=test@example.invalid")
+	cleanGit := func(dir string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir, cmd.Env = dir, cleanEnv
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("clean fixture git %v: %v: %s", args, err, output)
+		}
+		return strings.TrimSpace(string(output))
+	}
+	outer := t.TempDir()
+	cleanGit(outer, "init", "-q")
+	if err := os.WriteFile(filepath.Join(outer, "sentinel"), []byte("synthetic outer content\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cleanGit(outer, "add", "sentinel")
+	cleanGit(outer, "-c", "commit.gpgsign=false", "commit", "-qm", "Outer baseline")
+	outerHead := cleanGit(outer, "rev-parse", "HEAD")
+	outerIndex := filepath.Join(outer, ".git", "index")
+	indexBefore, err := os.ReadFile(outerIndex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for key, value := range map[string]string{
+		"GIT_DIR":              filepath.Join(outer, ".git"),
+		"GIT_COMMON_DIR":       filepath.Join(outer, ".git"),
+		"GIT_WORK_TREE":        outer,
+		"GIT_INDEX_FILE":       outerIndex,
+		"GIT_OBJECT_DIRECTORY": filepath.Join(outer, ".git", "objects"),
+	} {
+		t.Setenv(key, value)
+	}
+	fixture := t.TempDir()
+	git(t, fixture, "init", "-q")
+	git(t, fixture, "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "Fixture baseline")
+	if _, err := os.Stat(filepath.Join(fixture, ".git")); err != nil {
+		t.Errorf("fixture repository was not created: %v", err)
+	} else {
+		want, err := filepath.EvalSymlinks(filepath.Join(fixture, ".git"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		output, err := helper(binary, fixture, "git", "rev-parse", "--absolute-git-dir").CombinedOutput()
+		if err != nil {
+			t.Errorf("fixture session failed: %v: %s", err, output)
+		} else if got, err := filepath.EvalSymlinks(strings.TrimSpace(string(output))); err != nil || got != want {
+			t.Errorf("session repository = %q (%v), want %q", got, err, want)
+		}
+	}
+	if err := helper(binary, t.TempDir(), "true").Run(); err == nil {
+		t.Error("session accepted a non-repository through inherited Git overrides")
+	}
+	if got := cleanGit(outer, "rev-parse", "HEAD"); got != outerHead {
+		t.Errorf("fixture commands changed outer HEAD: %s -> %s", outerHead, got)
+	}
+	indexAfter, err := os.ReadFile(outerIndex)
+	if err != nil || !bytes.Equal(indexAfter, indexBefore) {
+		t.Errorf("fixture commands changed outer index: %v", err)
 	}
 }
