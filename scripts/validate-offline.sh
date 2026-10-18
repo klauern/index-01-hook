@@ -19,6 +19,7 @@ trap 'exit 143' TERM
 
 # Continue after a failure so the report identifies every failed gate.
 result=0
+# check runs one validation gate and records failure without preventing later gates.
 check() {
   label=$1
   shift
