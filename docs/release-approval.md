@@ -43,7 +43,7 @@ The separate infrastructure history rewrite still requires final owner approval.
 ```text
 Commit: <40-character commit>
 Tag: v<MAJOR>.<MINOR>.<PATCH>
-Go builder: docker.io/library/golang:1.26.6@sha256:<approved digest>
+Go builder: docker.io/library/golang:1.26.9@sha256:<approved digest>
 BuildKit: docker.io/moby/buildkit@sha256:<approved digest>
 History cleanup evidence: <link-or-id>
 Second gitleaks evidence: <link-or-id>

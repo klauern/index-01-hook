@@ -50,9 +50,10 @@ It does not claim that CodeRabbit reviewed the code. Tests and builds are record
 The signal handler stops later gates. A noninteractive shell can defer the handler until its current foreground command finishes.
 The command does not promise immediate termination of that foreground process.
 
-The corrections are [PR #36](https://github.com/klauern/index-01-hook/pull/36), a child of #35.
-The reviewed correction code is commit `276496bc1526d2ce266d86fef968781ed7db0a29`. The original reviewed heads still contain the findings.
-Use the complete correction stack for acceptance. Do not describe an unchanged parent head as corrected.
+The original corrections are [PR #36](https://github.com/klauern/index-01-hook/pull/36), a child of #35.
+The reviewed correction code is commit `276496bc1526d2ce266d86fef968781ed7db0a29`. Those original reviewed heads contain the findings; their hashes remain historical evidence.
+The October 18 readiness pass applies the same code correction additively at PR #33 in `12b29bf`.
+The original PR #36 correction and review context remain preserved. Current descendants inherit the corrected parent.
 No published branch needs a force-push or history rewrite to apply these corrections.
 
 ## Test evidence
@@ -65,3 +66,12 @@ The correction's PR records exact test commands, results, source revision, and h
 A passing test result does not close a source review finding without review of the correction.
 A source review finding can be resolved while an unrelated security gate remains blocked.
 Keep those states separate in Beads and pull request descriptions.
+
+## October 18 review readiness
+
+A new CodeRabbit COMMENTED review of PR #33 at `cc0dda3` reported the same three defects.
+This was completed source review with findings, distinct from the earlier draft-skip notice.
+The additive parent correction `12b29bf` supplies the fixes and regression tests directly on #33.
+Current review readiness also requires the green-and-ready policy in [pr-readiness.md](pr-readiness.md).
+PR #40 supplies the patched Go toolchain. Local govulncheck and secret scans pass without suppressions.
+Historical failed security results above do not satisfy the new final-head gate.
