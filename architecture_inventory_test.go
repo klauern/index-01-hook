@@ -54,7 +54,7 @@ var boundaryRuntimeContracts = []string{
 	"main.go#runWithEnvironment", "webhook.go#NewHandler",
 }
 
-// Scan source rather than the Git index so new, unstaged surfaces cannot escape coverage.
+// discoverBoundarySurfaces scans source so new, unstaged surfaces cannot escape coverage.
 // Build-tagged Go files are included even when the host does not compile them.
 func discoverBoundarySurfaces(tree fs.FS) (boundaryDiscovery, error) {
 	found := boundaryDiscovery{map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}}
@@ -180,6 +180,8 @@ func discoverBoundarySurfaces(tree fs.FS) (boundaryDiscovery, error) {
 	})
 	return found, err
 }
+
+// argsZero recognizes the root dispatcher argument expression args[0].
 func argsZero(expression ast.Expr) bool {
 	index, ok := expression.(*ast.IndexExpr)
 	if !ok {
@@ -192,6 +194,8 @@ func argsZero(expression ast.Expr) bool {
 	value, ok := index.Index.(*ast.BasicLit)
 	return ok && value.Kind == token.INT && value.Value == "0"
 }
+
+// addBoundaryCommand records a literal command name from the dispatcher.
 func addBoundaryCommand(commands map[string]bool, expression ast.Expr) {
 	literal, ok := expression.(*ast.BasicLit)
 	if !ok || literal.Kind != token.STRING {
@@ -201,6 +205,8 @@ func addBoundaryCommand(commands map[string]bool, expression ast.Expr) {
 		commands[value] = true
 	}
 }
+
+// validateBoundaryInventory checks ownership and completeness against discovered source surfaces.
 func validateBoundaryInventory(inventory boundaryInventory, found boundaryDiscovery) []string {
 	var problems []string
 	if inventory.SchemaVersion != 1 {
@@ -226,7 +232,7 @@ func validateBoundaryInventory(inventory boundaryInventory, found boundaryDiscov
 			problems = append(problems, "unassigned surface "+file)
 		}
 	}
-	entryFunctions := map[string]bool{}
+	entryFunctions := map[string]string{}
 	for name, entry := range inventory.EntryPoints {
 		key := entry.File + "#" + entry.Function
 		if !found.Functions[key] {
@@ -235,10 +241,14 @@ func validateBoundaryInventory(inventory boundaryInventory, found boundaryDiscov
 		if !boundaryOwners[entry.Owner] {
 			problems = append(problems, "unknown entry owner "+name)
 		}
-		entryFunctions[key] = true
+		if owner, assigned := entryFunctions[key]; assigned && owner != entry.Owner {
+			problems = append(problems, "conflicting entry owners "+key)
+		} else {
+			entryFunctions[key] = entry.Owner
+		}
 	}
 	for main := range found.Mains {
-		if !entryFunctions[main] {
+		if _, assigned := entryFunctions[main]; !assigned {
 			problems = append(problems, "unassigned executable "+main)
 		}
 	}
@@ -246,7 +256,7 @@ func validateBoundaryInventory(inventory boundaryInventory, found boundaryDiscov
 		if !found.Functions[contract] {
 			problems = append(problems, "missing runtime contract "+contract)
 		}
-		if !entryFunctions[contract] {
+		if _, assigned := entryFunctions[contract]; !assigned {
 			problems = append(problems, "unassigned runtime contract "+contract)
 		}
 	}
@@ -266,6 +276,8 @@ func validateBoundaryInventory(inventory boundaryInventory, found boundaryDiscov
 	sort.Strings(problems)
 	return problems
 }
+
+// decodeBoundaryInventory accepts one strict inventory value and rejects trailing content.
 func decodeBoundaryInventory(reader io.Reader) (boundaryInventory, error) {
 	var inventory boundaryInventory
 	decoder := json.NewDecoder(reader)
@@ -283,6 +295,7 @@ func decodeBoundaryInventory(reader io.Reader) (boundaryInventory, error) {
 	return inventory, nil
 }
 
+// TestArchitectureBoundaryInventory checks the committed inventory against current repository source.
 func TestArchitectureBoundaryInventory(t *testing.T) {
 	contents, err := os.ReadFile("docs/architecture/boundary-inventory.json")
 	if err != nil {
@@ -301,6 +314,8 @@ func TestArchitectureBoundaryInventory(t *testing.T) {
 	}
 	t.Logf("assigned %d source/asset/script surfaces, %d executable entry points, %d root commands", len(found.Files), len(found.Mains), len(found.Commands))
 }
+
+// TestBoundaryDiscoveryIncludesNewSurfacesAcrossPlatforms checks discovery and missing-assignment failures for new source surfaces.
 func TestBoundaryDiscoveryIncludesNewSurfacesAcrossPlatforms(t *testing.T) {
 	tree := fstest.MapFS{
 		"main.go":                {Data: []byte("package main\n//go:embed assets/*\nvar assets string\nfunc main() {}")},
@@ -331,6 +346,8 @@ func TestBoundaryDiscoveryIncludesNewSurfacesAcrossPlatforms(t *testing.T) {
 		}
 	}
 }
+
+// TestBoundaryInventoryRejectsStaleDuplicateAndInvalidAssignments checks invalid schema, ownership, and stale or duplicate surfaces.
 func TestBoundaryInventoryRejectsStaleDuplicateAndInvalidAssignments(t *testing.T) {
 	found := boundaryDiscovery{Files: map[string]bool{"current.go": true}, Functions: map[string]bool{}, Mains: map[string]bool{}, Commands: map[string]bool{}}
 	inventory := boundaryInventory{SchemaVersion: 2, Surfaces: map[string][]string{"wrong": {"old.go", "current.go", "current.go"}}, EntryPoints: map[string]boundaryEntry{"missing": {File: "old.go", Function: "main", Owner: "wrong"}}, Commands: map[string]string{"old": "wrong"}}
@@ -342,6 +359,7 @@ func TestBoundaryInventoryRejectsStaleDuplicateAndInvalidAssignments(t *testing.
 	}
 }
 
+// TestBoundaryDiscoveryIncludesNestedArtifactNames checks that nested artifact-like names remain discoverable.
 func TestBoundaryDiscoveryIncludesNestedArtifactNames(t *testing.T) {
 	for _, name := range []string{"internal/build/main.go", "internal/generated/main.go", "cmd/target/main.go", "internal/tmp/main.go", "internal/dist/main.go"} {
 		t.Run(name, func(t *testing.T) {
@@ -357,6 +375,7 @@ func TestBoundaryDiscoveryIncludesNestedArtifactNames(t *testing.T) {
 	}
 }
 
+// TestBoundaryInventoryRequiresRuntimeContracts checks explicit assignment of every required runtime constructor.
 func TestBoundaryInventoryRequiresRuntimeContracts(t *testing.T) {
 	contents, err := os.ReadFile("docs/architecture/boundary-inventory.json")
 	if err != nil {
@@ -383,6 +402,7 @@ func TestBoundaryInventoryRequiresRuntimeContracts(t *testing.T) {
 	}
 }
 
+// TestBoundaryInventoryRejectsTrailingJSON checks rejection of extra values and malformed trailing data.
 func TestBoundaryInventoryRejectsTrailingJSON(t *testing.T) {
 	for _, suffix := range []string{" garbage", " {}"} {
 		if _, err := decodeBoundaryInventory(strings.NewReader(`{"schema_version":1}` + suffix)); err == nil {
@@ -394,12 +414,59 @@ func TestBoundaryInventoryRejectsTrailingJSON(t *testing.T) {
 	}
 }
 
+// TestBoundaryDiscoveryRejectsUnsupportedEmbeds checks that unsupported embed syntax fails discovery.
 func TestBoundaryDiscoveryRejectsUnsupportedEmbeds(t *testing.T) {
 	for _, pattern := range []string{`"assets/a.css"`, "`assets/a.css`", "all:assets/*", "assets", "missing/*"} {
 		t.Run(pattern, func(t *testing.T) {
 			tree := fstest.MapFS{"main.go": {Data: []byte("package main\n//go:embed " + pattern + "\nvar assets string")}, "assets/a.css": {Data: []byte("body{}")}}
 			if _, err := discoverBoundarySurfaces(tree); err == nil {
 				t.Fatalf("accepted unsupported embed %q", pattern)
+			}
+		})
+	}
+}
+
+// TestBoundaryInventoryRejectsConflictingEntryOwners checks aliases without permitting conflicting function ownership.
+func TestBoundaryInventoryRejectsConflictingEntryOwners(t *testing.T) {
+	contents, err := os.ReadFile("docs/architecture/boundary-inventory.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found, err := discoverBoundarySurfaces(os.DirFS("."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, conflicting := range []bool{false, true} {
+		t.Run(fmt.Sprintf("conflicting=%t", conflicting), func(t *testing.T) {
+			inventory, err := decodeBoundaryInventory(strings.NewReader(string(contents)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var entry boundaryEntry
+			for _, candidate := range inventory.EntryPoints {
+				if candidate.File == "main.go" && candidate.Function == "main" {
+					entry = candidate
+					break
+				}
+			}
+			if entry.File == "" {
+				t.Fatal("root executable assignment missing")
+			}
+			if conflicting {
+				if entry.Owner == "tooling" {
+					entry.Owner = "runtime"
+				} else {
+					entry.Owner = "tooling"
+				}
+			}
+			inventory.EntryPoints["root_alias"] = entry
+			problems := validateBoundaryInventory(inventory, found)
+			if conflicting {
+				if len(problems) != 1 || problems[0] != "conflicting entry owners main.go#main" {
+					t.Fatalf("conflicting ownership was not rejected: %v", problems)
+				}
+			} else if len(problems) != 0 {
+				t.Fatalf("consistent alias was rejected: %v", problems)
 			}
 		})
 	}
