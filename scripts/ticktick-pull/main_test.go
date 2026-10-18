@@ -23,6 +23,7 @@ func TestParseMarkerStrictAndEmbedded(t *testing.T) {
 	}
 }
 
+// TestJoinAndPrivatePath checks task-marker joins and rejects repository or linked-worktree paths for private output.
 func TestJoinAndPrivatePath(t *testing.T) {
 	d := t.TempDir()
 	fp := strings.Repeat("b", 64)
