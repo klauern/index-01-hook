@@ -79,7 +79,8 @@ The incremental diff contains only the `x/sys` requirement and checksum update.
 The #33 → #35 cumulative stack passed `scripts/validate-offline.sh`, including all six offline gates.
 Focused Markdown, README, and documentation checks passed for the incremental policy change.
 Live provider tests remained disabled in both stacks. Hosted checks are separate from these local results.
-Keep implementation moving on either tested stack while review and merge decisions remain pending.
+Continue only approved ongoing dependent work on either tested stack while review and merge decisions remain pending.
+Do not start new feature slices while an authorized all-PR readiness pass has actionable failures.
 
 ## Green-and-ready repair pass
 
