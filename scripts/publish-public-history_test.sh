@@ -12,13 +12,13 @@ project_dir=$(CDPATH='' cd "$script_dir/.." && pwd -P)
 publisher=$script_dir/publish-public-history.sh
 
 command -v git >/dev/null 2>&1 || fail "git is required"
-command -v go >/dev/null 2>&1 || fail "Go 1.26.6 is required"
+command -v go >/dev/null 2>&1 || fail "Go 1.26.9 is required"
 command -v mktemp >/dev/null 2>&1 || fail "mktemp is required"
 
-version_output=$(go version 2>/dev/null) || fail "Go 1.26.6 is required"
+version_output=$(go version 2>/dev/null) || fail "Go 1.26.9 is required"
 case "$version_output" in
-  'go version go1.26.6 '*) ;;
-  *) fail "Go 1.26.6 is required" ;;
+  'go version go1.26.9 '*) ;;
+  *) fail "Go 1.26.9 is required" ;;
 esac
 
 test_root=$(CDPATH='' cd "$(mktemp -d "${TMPDIR:-/tmp}/publish-public-history-test.XXXXXX")" && pwd -P)

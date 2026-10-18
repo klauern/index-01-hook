@@ -133,7 +133,7 @@ URLs, provider data, cluster data, or personal data.
 Release approval: index-01-hook
 Commit: <40-character commit>
 Tag: v<MAJOR>.<MINOR>.<PATCH>
-Approved Go builder: docker.io/library/golang:1.26.6@sha256:<digest>
+Approved Go builder: docker.io/library/golang:1.26.9@sha256:<digest>
 Approved BuildKit: docker.io/moby/buildkit@sha256:<digest>
 History cleanup: approved by <maintainer>; evidence <link-or-id>
 Second gitleaks scan: pass; evidence <link-or-id>
