@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-// Build the documented CLI instead of bypassing its launcher through a test helper.
+// buildWorkSession builds the documented command so tests exercise the actual launcher.
 func buildWorkSession(t *testing.T) string {
 	t.Helper()
 	binary := filepath.Join(t.TempDir(), "work-session")
@@ -23,6 +23,7 @@ func buildWorkSession(t *testing.T) string {
 	return binary
 }
 
+// git runs a Git command with synthetic identity and no inherited user configuration.
 func git(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	cmd := exec.Command("git", args...)
@@ -33,12 +34,14 @@ func git(t *testing.T, dir string, args ...string) {
 	}
 }
 
+// helper prepares a session command in the specified repository or linked worktree.
 func helper(binary, dir string, args ...string) *exec.Cmd {
 	cmd := exec.Command(binary, args...)
 	cmd.Dir = dir
 	return cmd
 }
 
+// TestWorkSessionExcludesOtherWorktreesAndReleasesAfterExit checks exclusion, child status, and release after normal or killed exits.
 func TestWorkSessionExcludesOtherWorktreesAndReleasesAfterExit(t *testing.T) {
 	binary := buildWorkSession(t)
 	repo := t.TempDir()
@@ -106,6 +109,7 @@ func TestWorkSessionExcludesOtherWorktreesAndReleasesAfterExit(t *testing.T) {
 	}
 }
 
+// TestWorkSessionErrorsReleaseLock checks invalid commands and directories without leaving a held lock.
 func TestWorkSessionErrorsReleaseLock(t *testing.T) {
 	binary := buildWorkSession(t)
 	repo := t.TempDir()
