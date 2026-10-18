@@ -274,3 +274,6 @@ The three PR #33 validation defects originally corrected in PR #36 are now corre
 The source patch comes from `276496bc1526d2ce266d86fef968781ed7db0a29`.
 Regression tests use the compiled session binary, isolate report paths, and verify cancellation stops subsequent gates.
 Preserve the original PR #36 commit and review history while propagating this parent correction through the stack.
+
+For included CodeRabbit review requests, use [free OSS review sessions](free-oss-reviews.md).
+Keep current queue state in Beads. Do not create duplicate schedules.
