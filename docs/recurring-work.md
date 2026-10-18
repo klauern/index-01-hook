@@ -249,7 +249,28 @@ Local govulncheck and complete-history secret scans were not run during this sli
 ## October 18 source status update
 
 The former primary-checkout edits are now independent local commits on `cleanup/worktree-review` at `77b7594`.
-The checkout is clean. The contract stack through [#39](https://github.com/klauern/index-01-hook/pull/39) excludes those commits.
+The checkout is clean. The original contract slice excluded those commits. The readiness repair now carries the scoped export-fixture patch through #40.
 Beads `index-01-hook-b7y.2.1` records health `3411659`, reconciliation `d0ec0f8`, export fixture `a0c99d1`, and related documentation.
 Preserve these contributions and review their publication and baseline selection separately. Do not copy them into an unrelated contract child.
 Earlier pending-source descriptions above are historical snapshots. They do not describe current uncommitted edits.
+
+## Green and ready gate
+
+The [pull request readiness policy](pr-readiness.md) applies to every current and future pull request.
+This current policy supersedes earlier allowances for inherited baseline failures in this document and descendant snapshots.
+Do not finish at submission or accept known inherited security failures as the final result.
+Assess all open PRs, including independent changes and every stacked descendant.
+Require source assessment, terminal green final-head checks, and ready status before the final handoff.
+A draft is temporary. Mark eligible PRs ready so draft-gated checks and reviews can run, then verify their results.
+A successful skipped-review notice does not establish completed source review.
+Record exact heads, bases, dependency edges, merge order, incremental and cumulative test results, and unresolved reviews.
+Fix legitimate findings. Do not disable checks, lower thresholds, add blanket exclusions, or change protection settings to obtain green.
+Pending, canceled, stale, and failure-induced skipped checks do not pass this gate.
+Report external or manual blockers precisely. Continue unaffected repair work without inventing a pass.
+Keep new feature slices paused while the all-PR readiness pass has actionable failures.
+Review readiness does not establish integration or epic completion on `main`.
+
+The three PR #33 validation defects originally corrected in PR #36 are now corrected additively at this parent.
+The source patch comes from `276496bc1526d2ce266d86fef968781ed7db0a29`.
+Regression tests use the compiled session binary, isolate report paths, and verify cancellation stops subsequent gates.
+Preserve the original PR #36 commit and review history while propagating this parent correction through the stack.

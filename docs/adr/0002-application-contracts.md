@@ -391,3 +391,14 @@ The new signatures do not establish adapter conversion parity or completion on `
 
 The evidence/read child is [PR #39](https://github.com/klauern/index-01-hook/pull/39), based on #38.
 Its reviewed implementation revision is `a6c4970`. Recheck final-head CI before acceptance.
+
+
+## Green-and-ready baseline update
+
+The all-PR repair adds shared prerequisite [#40](https://github.com/klauern/index-01-hook/pull/40).
+It changes the compiler and builder pins to patched Go 1.26.9 without changing application behavior.
+It carries Nick's scoped export-fixture fix `a0c99d1` with provenance as `daeb20b`.
+Earlier exclusions of that fixture patch describe the original contract slices, before this repair.
+Health `3411659`, reconciliation `d0ec0f8`, and the independent primary documentation remain preserved and outside this stack.
+The [readiness policy](../pr-readiness.md) now requires green final-head checks and ready status for every PR.
+This gate supersedes the earlier temporary security-baseline tolerance. It does not close the remaining contract work or merge the stack.
