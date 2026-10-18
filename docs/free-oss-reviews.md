@@ -22,6 +22,23 @@ Use `@coderabbitai rate limit` to query availability without starting a review.
 Do not change authors, accounts, repository identity, or settings to bypass a limit.
 A rate-limited check can succeed when no review ran.
 
+## Author entitlement
+
+Available rate capacity does not establish review entitlement for the PR author.
+On October 18, the manual #29 request was skipped despite confirmed available capacity.
+The [bot notice](https://github.com/klauern/index-01-hook/pull/29#issuecomment-6048264884) requires an assigned review seat for `app/dependabot`.
+The same author owns #26, #27, #31, and #32. Their shared-author impact is inferred; they were not retried.
+Keep all five original PRs in the queue as unreviewed while this blocker applies.
+
+An hourly wait or a full-review command does not establish the missing author entitlement.
+Under the free-only scope, do not assign seats, change billing, replace PRs, or change author identities.
+[Seat management](https://docs.coderabbit.ai/management/seat-assignment) can have billing effects.
+Beads `index-01-hook-b7y.25.6.2` records the required entitlement and cost verification before a retry.
+
+For this review queue, defer #34 until its parent #29 can receive a review.
+Continue eligible independent original PRs, such as the human-authored #35 after verified parent #33.
+This does not count the blocked parent as reviewed or transfer its review through another author.
+
 ## Serialized requests
 
 1. Hold the common-directory session lock. Read repository instructions and current Beads state.
