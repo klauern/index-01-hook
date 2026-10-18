@@ -47,7 +47,7 @@ Run:
 ./scripts/public-infrastructure_test.sh
 ```
 
-The suite requires Docker, Kind, `kubectl`, `kubeconform`, and Go 1.26.6.
+The suite requires Docker, Kind, `kubectl`, `kubeconform`, and Go 1.26.9.
 It builds `index-01-hook:local` from the current tree.
 It validates Caddy with no network and a read-only root.
 Caddy drops `NET_RAW` and uses `no-new-privileges`.

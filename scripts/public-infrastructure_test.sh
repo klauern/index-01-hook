@@ -13,10 +13,10 @@ for required_command in docker kind kubectl kubeconform go mktemp realpath od; d
   command -v "$required_command" >/dev/null 2>&1 || fail "$required_command is required"
 done
 
-version_output=$(go version 2>/dev/null) || fail "Go 1.26.6 is required"
+version_output=$(go version 2>/dev/null) || fail "Go 1.26.9 is required"
 case "$version_output" in
-  'go version go1.26.6 '*) ;;
-  *) fail "Go 1.26.6 is required" ;;
+  'go version go1.26.9 '*) ;;
+  *) fail "Go 1.26.9 is required" ;;
 esac
 docker info >/dev/null 2>&1 || fail "Docker daemon is unavailable"
 docker_context=$(docker context show 2>/dev/null) || fail "Docker context is unavailable"
