@@ -245,3 +245,11 @@ The pending checkout already changes this test. Preserve that work under the bas
 The initial export attempt and the attempt after staging both failed. Staging did not resolve the baseline failure.
 Container-based public end-to-end deployment and disposable-cluster infrastructure tests were not run.
 Local govulncheck and complete-history secret scans were not run during this slice. Check remote CI for their results.
+
+## October 18 source status update
+
+The former primary-checkout edits are now independent local commits on `cleanup/worktree-review` at `77b7594`.
+The checkout is clean. The contract stack through [#39](https://github.com/klauern/index-01-hook/pull/39) excludes those commits.
+Beads `index-01-hook-b7y.2.1` records health `3411659`, reconciliation `d0ec0f8`, export fixture `a0c99d1`, and related documentation.
+Preserve these contributions and review their publication and baseline selection separately. Do not copy them into an unrelated contract child.
+Earlier pending-source descriptions above are historical snapshots. They do not describe current uncommitted edits.

@@ -39,7 +39,7 @@ The original #30 branch remains unchanged at `b63a6d2`.
 The dependency edges are:
 
 - `main` → #29 → #34 (`x/sys` child).
-- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections) → [#37](https://github.com/klauern/index-01-hook/pull/37) (boundary inventory) → [#38](https://github.com/klauern/index-01-hook/pull/38) (core contracts).
+- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections) → [#37](https://github.com/klauern/index-01-hook/pull/37) (boundary inventory) → [#38](https://github.com/klauern/index-01-hook/pull/38) (core contracts) → [#39](https://github.com/klauern/index-01-hook/pull/39) (evidence writes and aggregate reads).
 - `main` → #26, #27, #31, and #32 independently.
 
 Review each child relative to its immediate base. Review the cumulative module stack with SQLite 1.60.1 and `x/sys` 0.49.0.
@@ -116,3 +116,18 @@ Hosted CI remains a separate gate. The parent security baseline has 11 standard-
 `index-01-hook-b7y.1.2` remains open for the secondary contracts listed in ADR-0002.
 Next: specify lease-checked active-verification evidence and typed redacted reads on this child when required.
 No claim of completed extraction or completion on `main` follows from this specification.
+
+## October 18 evidence and read continuation
+
+[PR #39](https://github.com/klauern/index-01-hook/pull/39) starts from #38 at `7dd99c7`.
+Its reviewed implementation is `a6c4970`. No parent merged and no new human review finding appeared on #38.
+The slice adds the active verification evidence write and typed aggregate read specification.
+Real SQLite tests check lease lifecycle, evidence preservation, rejected completion, and read-only aggregate redaction.
+The registry has 18 invariant entries. Typed consumers compile without transport or SQL imports.
+Five independent local reviewers found no concrete defects. Two checked final typed-reason and failed-transition refinements.
+Incremental focused tests and the cumulative six offline gates passed. Synthetic container volume/backup/restore checks also passed.
+ShellCheck, actionlint, and diff checks passed. Hosted CI remains a separate gate.
+The primary checkout is clean at local `77b7594`. Its source-fix and documentation commits remain independent and excluded.
+Health `3411659`, reconciliation `d0ec0f8`, and export fixture `a0c99d1` require separate baseline review before package extraction.
+Continue `.1.2` with typed recording/dashboard reads and exact-ID retry/retention contracts.
+Keep the issue and parent epic open. This stack is not completion on `main`.

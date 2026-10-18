@@ -388,3 +388,6 @@ Live provider and deployment end-to-end checks were not run. Hosted CI remains a
 
 The remaining `.1.2` work includes recording/dashboard reads, operator retry and retention, observation/export, and runtime contracts.
 The new signatures do not establish adapter conversion parity or completion on `main`.
+
+The evidence/read child is [PR #39](https://github.com/klauern/index-01-hook/pull/39), based on #38.
+Its reviewed implementation revision is `a6c4970`. Recheck final-head CI before acceptance.
