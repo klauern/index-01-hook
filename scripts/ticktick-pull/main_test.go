@@ -57,7 +57,14 @@ func TestJoinAndPrivatePath(t *testing.T) {
 	if got.Summary.Joined != 1 || got.Summary.ByStatus["missing"] != 1 {
 		t.Fatalf("duplicate marker changed summary: %+v", got.Summary)
 	}
-	if err := privatePath("."); err == nil {
+	repository := filepath.Join(d, "repository")
+	if err := os.Mkdir(repository, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(repository, ".git"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := privatePath(filepath.Join(repository, "private.json")); err == nil {
 		t.Fatal("repository path accepted")
 	}
 	linkedWorktree := filepath.Join(d, "linked-worktree")

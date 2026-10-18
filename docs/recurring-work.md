@@ -10,11 +10,12 @@ Use Beads for scope, dependencies, claims, and completion evidence. Pull request
 4. Start the session command under the shared lock:
 
    ```sh
-   go run ./scripts/work-session sh
+   go build -o dist/work-session ./scripts/work-session && ./dist/work-session sh
    ```
 
    Run all remaining session commands inside this shell. Exit the shell when the session ends.
    An automation can replace `sh` with its implementation command and arguments.
+   Invoke the compiled binary directly. `go run` masks nonzero child statuses, including lock contention.
    Do not lock only the test command. Hold the lock through issue updates, commits, pushes, and pull request creation.
 5. Verify read access with `gh repo view` and `gh pr list --state open`.
 6. Run `bd prime`, `bd ready --json`, and `bd list --status in_progress --json`.
@@ -49,13 +50,14 @@ Keep product policy changes separate from package moves.
 Run the focused tests first. Then run:
 
 ```sh
-task validate-offline
+task --exit-code validate-offline
 ```
 
 This command runs uncached Go tests, uncached race tests, vet, Task checks, offline evaluation, and a temporary binary build.
-It disables inherited live-test opt-ins, provider tokens, calibration approval, and private corpus selection.
+It disables inherited live-test opt-ins, provider tokens, calibration approval, private corpus selection, and external report destinations.
 It prints one result for each gate and returns failure if any gate fails. Later gates still run after a failure.
-It writes offline evaluation reports under `dist/evaluation`.
+It writes offline evaluation reports under `dist/evaluation`. Cancellation stops later gates.
+HUP, INT, and TERM return 129, 130, and 143. Task requires `--exit-code` to preserve these statuses.
 It does not isolate network access at the operating system level. Synthetic integration tests can use local HTTP servers.
 The command uses the installed Go toolchain and dependencies. Normal Go module downloads can occur if dependencies are missing.
 
@@ -232,3 +234,24 @@ The pending checkout already changes this test. Preserve that work under the bas
 The initial export attempt and the attempt after staging both failed. Staging did not resolve the baseline failure.
 Container-based public end-to-end deployment and disposable-cluster infrastructure tests were not run.
 Local govulncheck and complete-history secret scans were not run during this slice. Check remote CI for their results.
+
+## Green and ready gate
+
+The [pull request readiness policy](pr-readiness.md) applies to every current and future pull request.
+This current policy supersedes earlier allowances for inherited baseline failures in this document and descendant snapshots.
+Do not finish at submission or accept known inherited security failures as the final result.
+Assess all open PRs, including independent changes and every stacked descendant.
+Require source assessment, terminal green final-head checks, and ready status before the final handoff.
+A draft is temporary. Mark eligible PRs ready so draft-gated checks and reviews can run, then verify their results.
+A successful skipped-review notice does not establish completed source review.
+Record exact heads, bases, dependency edges, merge order, incremental and cumulative test results, and unresolved reviews.
+Fix legitimate findings. Do not disable checks, lower thresholds, add blanket exclusions, or change protection settings to obtain green.
+Pending, canceled, stale, and failure-induced skipped checks do not pass this gate.
+Report external or manual blockers precisely. Continue unaffected repair work without inventing a pass.
+Keep new feature slices paused while the all-PR readiness pass has actionable failures.
+Review readiness does not establish integration or epic completion on `main`.
+
+The three PR #33 validation defects originally corrected in PR #36 are now corrected additively at this parent.
+The source patch comes from `276496bc1526d2ce266d86fef968781ed7db0a29`.
+Regression tests use the compiled session binary, isolate report paths, and verify cancellation stops subsequent gates.
+Preserve the original PR #36 commit and review history while propagating this parent correction through the stack.
