@@ -98,7 +98,8 @@ go test -count=1 -run '^Test(ArchitectureBoundaryInventory|Boundary)' -v .
 
 The repository test scans source rather than the Git index. New unstaged source cannot bypass assignment checks.
 It includes build-tagged Go files across platforms, executable shebang scripts, current embedded file globs, and root dispatcher commands.
-It rejects missing paths, stale paths, duplicate assignments, unknown owners, stale entry functions, and unassigned executable entry points.
+It rejects missing paths, stale paths, duplicate surface assignments, unknown owners, stale entry functions, and unassigned executable entry points.
+Entry-point aliases can share a function only when their owners agree.
 Six explicit runtime contracts also require assignments and existing source functions.
 Renaming or removing these contracts requires a guard update. New runtime constructors still require source review.
 The decoder rejects trailing JSON values and invalid content.
@@ -122,7 +123,10 @@ They found two completeness defects and one JSON parsing defect.
 The corrections restrict exclusions to root artifact paths, require six runtime contracts, and reject trailing JSON content.
 Regression tests reproduce all three defects. Unsupported embed patterns also have rejection tests.
 Two reviewers inspected the corrections and reported no remaining concrete findings.
-Source review remains separate from test and hosted CI results. No external review service was requested.
+Source review remains separate from test and hosted CI results. No external review result informed that initial local source review.
+CodeRabbit was subsequently invoked for PR #37. Its review found conflicting entry-point ownership and stale review-history wording.
+The correction rejects different owners for one function and adds a regression for conflicting and consistent aliases.
+Inventory functions now have adjacent documentation. External coverage measurements remain separate from source inspection.
 
 ## Repeatable continuation
 
