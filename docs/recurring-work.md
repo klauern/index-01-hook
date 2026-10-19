@@ -83,6 +83,12 @@ Manifest validation requires kubeconform and its schemas. Security checks requir
 Record missing tools, downloads, failed checks, skipped tests, and baseline failures separately.
 Do not run live provider tests, deployments, releases, credential changes, or merges without separate authorization.
 
+## Native stack registration
+
+Use the official `gh stack` extension for dependency registration and future dependent layers.
+Follow [the native stack workflow](gh-stack-workflow.md) for the registered graph, isolated worktrees, and history-preserving commands.
+Version0.2.1 stack push uses force-with-lease. Use normal Git pushes and PR-number-only stack links under the current authorization.
+
 ## Continue before review or merge
 
 Review and merge timing do not block implementation. Keep advancing the approved epic scope while pull requests remain open.

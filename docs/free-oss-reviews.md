@@ -39,6 +39,13 @@ For this review queue, defer #34 until its parent #29 can receive a review.
 Continue eligible independent original PRs, such as the human-authored #35 after verified parent #33.
 This does not count the blocked parent as reviewed or transfer its review through another author.
 
+## Native stacks and review state
+
+Use [native stack maintenance](gh-stack-workflow.md) to preserve the registered PR graph.
+Creating native stack objects refreshed CodeRabbit notices during the October19 adoption.
+A fresh capacity reply still controls admission. Native stack membership does not replace review evidence or remove author gates.
+Preserve completed exact-head reviews and pending originals when a stack event refreshes a notice.
+
 ## Serialized requests
 
 1. Hold the common-directory session lock. Read repository instructions and current Beads state.
