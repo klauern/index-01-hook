@@ -410,4 +410,3 @@ It requires one recording, one extraction job, one evidence row, and the full re
 Injected capture and queue failures must roll back recording, job, and evidence rows together.
 A retry after each injected failure must accept one complete intake without a duplicate receipt.
 These regressions use synthetic input and SQLite triggers. They do not change production transaction behavior.
-
