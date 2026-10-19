@@ -228,7 +228,8 @@ func TestWorkerExtractionCarriesClaimAttempt(t *testing.T) {
 	ctx := context.Background()
 	store, clock := newQueueStore(t)
 	saveQueueRecording(t, store, "synthetic worker fencing")
-	worker := newTestWorker(t, store, &fakeExtractor{results: []extractionResult{{value: FrozenExtraction{Provider: "fixture", Model: "fixture"}}}}, &fakeDeliverer{})
+	fixture := extractionResult{value: FrozenExtraction{Provider: "fixture", Model: "fixture"}}
+	worker := newTestWorker(t, store, &fakeExtractor{results: []extractionResult{fixture, fixture}}, &fakeDeliverer{})
 	first, err := store.ClaimExtraction(ctx, worker.config.Owner, worker.config.LeaseDuration)
 	if err != nil || first == nil {
 		t.Fatalf("first claim = %v, %v", first, err)
@@ -243,6 +244,17 @@ func TestWorkerExtractionCarriesClaimAttempt(t *testing.T) {
 	}
 	if err := worker.processExtraction(ctx, second); err != nil {
 		t.Fatalf("current worker = %v", err)
+	}
+	status, err := store.RecordingStatus(ctx, second.RecordingID)
+	if err != nil || status.State != "complete" {
+		t.Fatalf("current zero-item worker state = %+v, %v, want complete", status, err)
+	}
+	var extractions, attempts, completedAttempt int
+	if err := store.db.QueryRow(`SELECT (SELECT count(*) FROM extractions), count(*), coalesce(max(attempt_number), 0) FROM extraction_attempts`).Scan(&extractions, &attempts, &completedAttempt); err != nil {
+		t.Fatal(err)
+	}
+	if extractions != 1 || attempts != 1 || completedAttempt != second.AttemptNumber {
+		t.Fatalf("current freeze counts = extractions:%d attempts:%d attempt:%d", extractions, attempts, completedAttempt)
 	}
 }
 
