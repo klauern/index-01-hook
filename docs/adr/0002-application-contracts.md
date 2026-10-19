@@ -216,6 +216,69 @@ type ProviderSnapshot struct {
 type OperationalReader interface {
     OperationalStatus(context.Context) (OperationalSnapshot, error)
 }
+// Recording status is private operator data, separate from dashboard summaries.
+type RecordingStatus struct {
+    ID RecordingID
+    Fingerprint Fingerprint
+    State string
+    AttemptCount int
+    LastOutcome Outcome
+    Provider, Model, ProviderResponseID string
+    UpdatedAt time.Time
+    NextAttemptAt *time.Time
+    Deliveries []RecordingDeliveryStatus
+    Verification []ActiveVerificationEvidence
+}
+type RecordingDeliveryStatus struct {
+    ID DeliveryID
+    Index int
+    Kind ItemKind
+    State string
+    AttemptCount int
+    LastOutcome Outcome
+    Marker string
+    Remote RemoteIdentity
+    UpdatedAt time.Time
+    NextAttemptAt *time.Time
+}
+type RecordingLookup struct { Found bool; Status RecordingStatus }
+type RecordingReader interface {
+    RecordingStatus(context.Context, RecordingID) (RecordingLookup, error)
+}
+// Inbound parsing normalizes raw query values before calling the dashboard port.
+type RecordingFilter struct { Page, PageSize int; Client, Trigger, State string }
+type RecordingSummary struct {
+    ID RecordingID
+    RecordedAt, FirstReceivedAt time.Time
+    Client, Trigger string
+    AudioBytes, TranscriptionCharacters, ReceiveCount, DeliveryCount int64
+    HasExtractionJob bool
+    ExtractionState string
+}
+type RecordingPage struct { Rows []RecordingSummary; Total int64 }
+type RecordingDetail struct {
+    Summary RecordingSummary
+    LastReceivedAt time.Time
+    Provider, Model string
+    CompletedDeliveries int64
+    Deliveries []DashboardDelivery
+}
+type DashboardDelivery struct {
+    ID DeliveryID
+    Index int
+    Kind ItemKind
+    State string
+    AttemptCount int
+    LastOutcome Outcome
+    Remote RemoteIdentity
+    CompletedAt *time.Time
+    UpdatedAt time.Time
+}
+type RecordingDetailLookup struct { Found bool; Detail RecordingDetail }
+type DashboardReader interface {
+    Recordings(context.Context, RecordingFilter) (RecordingPage, error)
+    Recording(context.Context, RecordingID) (RecordingDetailLookup, error)
+}
 type ShadowEvidenceRepository interface {
     SaveShadow(context.Context, RecordingID, []AssessmentResult) error
 }
@@ -315,6 +378,44 @@ On October 18, the formerly pending source changes were separate local commits o
 Health `3411659`, reconciliation `d0ec0f8`, export fixture `a0c99d1`, and their documentation remain excluded from this stack.
 The primary checkout is clean. Review and publish those contributions separately before selecting the migration behavior baseline.
 
+## Recording and dashboard read semantics
+
+`RecordingReader` returns private operator status. It can contain the fingerprint, delivery marker, and active verification evidence.
+Do not expose this model through aggregate health responses or dashboard rendering.
+Keep provider response identity and verification order compatible with current operator serialization.
+An absent extraction job returns `Found=false`, including an existing audio-only recording without a job.
+An existing job with no deliveries returns an empty delivery list. Delivery status follows item-index order.
+Storage and evidence-decoding errors remain errors. Do not map them to a missing recording.
+
+`DashboardReader` returns metadata and counts without transcript text, audio filenames, fingerprints, markers, or private verification detail.
+Its detail model includes existing remote object/project identifiers and provider/model names for private operator display.
+The inbound adapter owns HTML escaping, evidence phrases, timestamp formatting, and previous/next URLs.
+The persistence adapter computes character counts with SQLite `length`; these are Unicode character counts, not UTF-8 byte counts.
+`HasExtractionJob` distinguishes an erased transcript from an audio-only receipt when the character count is zero.
+This distinction reports evidence presence. It does not prove that all retained private copies were erased.
+
+The inbound adapter parses `page` and `page_size`, with defaults 1 and 25.
+Invalid or out-of-range values use the defaults. Page bounds are 1 through 1,000,000; size bounds are 1 through 100.
+Trim client, trigger, and state filters, then preserve the current 200-byte truncation rule.
+The legacy `status` query supplies state only when the raw `state` query is empty, before trimming.
+The port receives these normalized values. It does not accept URLs or query maps.
+Client, trigger, and workflow-state filters combine with AND and use exact, parameterized equality.
+Do not substitute extraction lease states for workflow states. A missing job has workflow state `not-started`.
+List rows use descending recording ID. Total counts use the same filters before LIMIT/OFFSET pagination.
+An empty page returns an empty list and the matching total, including a page beyond the last result.
+Detail deliveries use ascending item index, then delivery ID. Counts retain all deliveries and completed workflow states.
+An absent recording returns `Found=false`; the inbound adapter maps this result to its existing 404 response.
+Audio-only recordings remain visible in dashboard detail even when `RecordingReader` reports no extraction job.
+Unexpected database errors remain errors and retain the existing safe 500 response.
+
+Both ports perform reads only. They do not refresh leases, evidence expiry, worker health, or receive counts.
+Dashboard composition must use `openDashboardDatabase`, with `mode=ro`, regular-file checks, and schema validation.
+It must reject symlinks, missing files, and incompatible schemas without creating files or running migrations.
+Do not pass normal writable `OpenStore` to dashboard composition.
+Keep GET/HEAD restrictions, loopback binding, host validation, security headers, and cost projection in inbound adapters.
+These multi-query reads retain current consistency behavior. They do not promise a transaction-wide snapshot.
+The future adapter maps storage absence to the explicit lookup result; `sql.ErrNoRows` must not cross the port.
+
 ## Remaining boundary contracts
 
 The core signatures above are the first bounded part of `.1.2`.
@@ -323,7 +424,7 @@ The following consumers require the stated remaining work before this task can c
 | Consumer | Required contract work | Migration owner |
 | --- | --- | --- |
 | Active verification evidence | Write signature and lease lifecycle specified here. Provider encoding conversion and adapter extraction remain unimplemented. | Application policy and persistence |
-| Status, dashboard, and health | Aggregate operational snapshot specified. Recording details, dashboard queries, and schema-compatible adapter conversion remain open. | Inbound interface and application policy |
+| Status, dashboard, and health | Aggregate, private recording, and dashboard read signatures are specified. Schema-compatible adapter conversion and extraction remain open. | Inbound interface and application policy |
 | Operator retry and retention | Exact-ID retry restrictions, purge counts, original evidence expiry, no product retention changes. | Application policy and persistence |
 | Observation and export | Versioned evidence values, chronology, read-only export selection, explicit file delivery boundary. | Application policy and persistence |
 | Backup, restore, and runtime | Keep database and file safety in adapters; specify shutdown, worker health, and storage-last close ordering. | Runtime and persistence |

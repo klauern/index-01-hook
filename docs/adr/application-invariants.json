@@ -146,5 +146,15 @@
       "verification_contract_test.go#TestOperationalAggregateReadsExcludeVerificationEvidenceAndDoNotWrite",
       "health_test.go#TestStatuszReturnsSafeAggregateData"
     ]
+  },
+  {
+    "id": "recording-dashboard-reads",
+    "owner": "inbound_interface",
+    "rule": "Recording and dashboard reads preserve distinct missing-job semantics, filtered pagination, detail ordering, redaction, and read-only storage.",
+    "tests": [
+      "recording_read_contract_test.go#TestDashboardReadContractFiltersPaginationAndDetail",
+      "recording_read_contract_test.go#TestDashboardReadContractRejectsUnsafeDatabaseInputs",
+      "dashboard_test.go#TestDashboardReadOnlyAndRedactedHTML"
+    ]
   }
 ]

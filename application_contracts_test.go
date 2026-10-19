@@ -63,6 +63,16 @@ func prepareActiveEvidence(result AssessmentResult) ActiveVerificationEvidence {
 func persistActive(ctx context.Context, repository ActiveVerificationRepository, id RecordingID, owner ExtractionFence, evidence []ActiveVerificationEvidence) error {
  return repository.SaveActiveVerification(ctx, id, owner, evidence)
 }
+func readRecording(ctx context.Context, reader RecordingReader, id RecordingID) (bool, Fingerprint, error) {
+ result, err := reader.RecordingStatus(ctx, id)
+ return result.Found, result.Status.Fingerprint, err
+}
+func readDashboard(ctx context.Context, reader DashboardReader, id RecordingID) (int64, bool, error) {
+ page, err := reader.Recordings(ctx, RecordingFilter{Page: 1, PageSize: 25, State: "not-started"})
+ if err != nil { return 0, false, err }
+ detail, err := reader.Recording(ctx, id)
+ return page.Total, detail.Found, err
+}
 func readAggregate(ctx context.Context, reader OperationalReader) (int, error) {
  snapshot, err := reader.OperationalStatus(ctx)
  return snapshot.Queue.Active, err
