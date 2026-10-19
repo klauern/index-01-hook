@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 )
 
+// checkApplicationSpecification type-checks neutral application contract source and rejects adapter imports.
 func checkApplicationSpecification(source string) error {
 	files := token.NewFileSet()
 	parsed, err := parser.ParseFile(files, "contract.go", source, 0)
@@ -40,6 +41,7 @@ func checkApplicationSpecification(source string) error {
 	return err
 }
 
+// TestApplicationContractSpecification checks that the documented contract compiles and exposes typed route selection.
 func TestApplicationContractSpecification(t *testing.T) {
 	content, err := os.ReadFile("docs/adr/0002-application-contracts.md")
 	if err != nil {
@@ -71,6 +73,7 @@ func readAggregate(ctx context.Context, reader OperationalReader) (int, error) {
 	}
 }
 
+// TestApplicationContractRejectsAdapterTypesAndInvalidSignatures checks rejection of adapter imports and invalid declarations.
 func TestApplicationContractRejectsAdapterTypesAndInvalidSignatures(t *testing.T) {
 	for _, source := range []string{
 		`package application; import "database/sql"; type Port interface { Save(*sql.Tx) error }`,
@@ -91,6 +94,7 @@ type applicationInvariant struct {
 	Tests []string `json:"tests"`
 }
 
+// checkApplicationInvariants requires unique invariant identifiers, known owners, rules, and available regression tests.
 func checkApplicationInvariants(invariants []applicationInvariant, available map[string]bool) error {
 	if len(invariants) == 0 {
 		return fmt.Errorf("no invariants")
@@ -113,7 +117,7 @@ func checkApplicationInvariants(invariants []applicationInvariant, available map
 	return nil
 }
 
-// Match Go's Test naming rule and require an ordinary *testing.T signature.
+// runnableContractRegression matches Go test naming rules and requires an ordinary *testing.T signature.
 func runnableContractRegression(file *ast.File, function *ast.FuncDecl) bool {
 	if function.Recv != nil || !strings.HasPrefix(function.Name.Name, "Test") {
 		return false
@@ -160,6 +164,7 @@ func runnableContractRegression(file *ast.File, function *ast.FuncDecl) bool {
 	return false
 }
 
+// TestApplicationRegressionDiscoveryRejectsHelpers distinguishes runnable tests from helpers and invalid signatures.
 func TestApplicationRegressionDiscoveryRejectsHelpers(t *testing.T) {
 	for _, example := range []struct {
 		declaration string
@@ -183,6 +188,7 @@ func TestApplicationRegressionDiscoveryRejectsHelpers(t *testing.T) {
 	}
 }
 
+// TestApplicationInvariantReferences checks documented invariant owners and runnable regression references.
 func TestApplicationInvariantReferences(t *testing.T) {
 	content, err := os.ReadFile("docs/adr/application-invariants.json")
 	if err != nil {
@@ -215,6 +221,7 @@ func TestApplicationInvariantReferences(t *testing.T) {
 	t.Logf("validated %d invariant owners and regression references", len(invariants))
 }
 
+// TestApplicationInvariantsRejectMissingOwnershipAndRegressions checks incomplete ownership and missing or duplicate regression records.
 func TestApplicationInvariantsRejectMissingOwnershipAndRegressions(t *testing.T) {
 	for _, invariants := range [][]applicationInvariant{
 		nil,

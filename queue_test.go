@@ -333,8 +333,12 @@ func TestDeliveryQueueFreshDatabaseAndLegacyUpgrade(t *testing.T) {
 	})
 }
 
+// TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem checks atomic deduplication with evaluation capture enabled.
 func TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem(t *testing.T) {
 	store, _ := newQueueStore(t)
+	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
+		t.Fatal(err)
+	}
 	const workers = 12
 	var wait sync.WaitGroup
 	errorsCh := make(chan error, workers)
@@ -358,11 +362,18 @@ func TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem(t *testing.T) 
 			t.Fatalf("concurrent SaveRecording() error = %v", err)
 		}
 	}
-	var recordings, jobs, receives int
-	_ = store.db.QueryRow(`SELECT count(*), max(receive_count) FROM recordings`).Scan(&recordings, &receives)
-	_ = store.db.QueryRow(`SELECT count(*) FROM extraction_jobs`).Scan(&jobs)
-	if recordings != 1 || jobs != 1 || receives != workers {
-		t.Fatalf("counts = recordings:%d jobs:%d receives:%d, want 1, 1, %d", recordings, jobs, receives, workers)
+	var recordings, jobs, receives, evidence int
+	if err := store.db.QueryRow(`SELECT count(*), max(receive_count) FROM recordings`).Scan(&recordings, &receives); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.db.QueryRow(`SELECT count(*) FROM extraction_jobs`).Scan(&jobs); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.db.QueryRow(`SELECT count(*) FROM evaluation_evidence WHERE recording_fingerprint = ?`, queueTestHash).Scan(&evidence); err != nil {
+		t.Fatal(err)
+	}
+	if recordings != 1 || jobs != 1 || receives != workers || evidence != 1 {
+		t.Fatalf("counts = recordings:%d jobs:%d receives:%d evidence:%d, want 1, 1, %d, 1", recordings, jobs, receives, evidence, workers)
 	}
 }
 
@@ -717,5 +728,47 @@ func TestDeliveryLeaseExpiresAndClassificationsAreConstrained(t *testing.T) {
 	}
 	if _, err := store.db.Exec(`UPDATE delivery_tasks SET last_classification = 'raw provider body' WHERE id = ?`, second.ID); err == nil {
 		t.Fatal("delivery_tasks accepted an unsafe stored classification")
+	}
+}
+
+// TestIntakeAcceptanceRollsBackRecordingJobAndEvidence checks that capture and queue failures cannot leave partial intake state.
+func TestIntakeAcceptanceRollsBackRecordingJobAndEvidence(t *testing.T) {
+	for _, rejectedTable := range []string{"evaluation_evidence", "extraction_jobs"} {
+		t.Run(rejectedTable, func(t *testing.T) {
+			store, _ := configureEvidenceStore(t, 24*time.Hour)
+			if _, err := store.db.Exec(`CREATE TRIGGER reject_acceptance BEFORE INSERT ON ` + rejectedTable + `
+				BEGIN SELECT RAISE(ABORT, 'acceptance rejected'); END`); err != nil {
+				t.Fatal(err)
+			}
+			input := RecordingInput{RecordedAtMillis: 1760000000000, Client: "test", Transcription: "synthetic intake", Fingerprint: queueTestHash}
+			if _, err := store.SaveRecording(context.Background(), input); err == nil || !strings.Contains(err.Error(), "acceptance rejected") {
+				t.Fatalf("intake error = %v, want injected acceptance failure", err)
+			}
+			for _, table := range []string{"recordings", "extraction_jobs", "evaluation_evidence"} {
+				var count int
+				if err := store.db.QueryRow(`SELECT count(*) FROM ` + table).Scan(&count); err != nil {
+					t.Fatal(err)
+				}
+				if count != 0 {
+					t.Fatalf("failed intake left %d rows in %s", count, table)
+				}
+			}
+			if _, err := store.db.Exec(`DROP TRIGGER reject_acceptance`); err != nil {
+				t.Fatal(err)
+			}
+			receipt, err := store.SaveRecording(context.Background(), input)
+			if err != nil || receipt.Duplicate || !receipt.Queued {
+				t.Fatalf("retry receipt = %+v, error = %v", receipt, err)
+			}
+			for _, table := range []string{"recordings", "extraction_jobs", "evaluation_evidence"} {
+				var count int
+				if err := store.db.QueryRow(`SELECT count(*) FROM ` + table).Scan(&count); err != nil {
+					t.Fatal(err)
+				}
+				if count != 1 {
+					t.Fatalf("accepted retry left %d rows in %s, want 1", count, table)
+				}
+			}
+		})
 	}
 }

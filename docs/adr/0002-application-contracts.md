@@ -402,3 +402,12 @@ Earlier exclusions of that fixture patch describe the original contract slices, 
 Health `3411659`, reconciliation `d0ec0f8`, and the independent primary documentation remain preserved and outside this stack.
 The [readiness policy](../pr-readiness.md) now requires green final-head checks and ready status for every PR.
 This gate supersedes the earlier temporary security-baseline tolerance. It does not close the remaining contract work or merge the stack.
+
+## Intake regression coverage
+
+The intake invariant now enables evaluation capture during concurrent identical submissions.
+It requires one recording, one extraction job, one evidence row, and the full receive count.
+Injected capture and queue failures must roll back recording, job, and evidence rows together.
+A retry after each injected failure must accept one complete intake without a duplicate receipt.
+These regressions use synthetic input and SQLite triggers. They do not change production transaction behavior.
+
