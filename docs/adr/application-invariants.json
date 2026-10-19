@@ -4,7 +4,8 @@
     "owner": "persistence",
     "rule": "Deduplication and recording/job/evidence acceptance remain atomic.",
     "tests": [
-      "queue_test.go#TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem"
+      "queue_test.go#TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem",
+      "queue_test.go#TestIntakeAcceptanceRollsBackRecordingJobAndEvidence"
     ]
   },
   {

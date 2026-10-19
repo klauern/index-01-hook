@@ -284,3 +284,11 @@ The published core specification is [PR #38](https://github.com/klauern/index-01
 The reviewed specification revision is `59a9636`. All six offline gates passed after the review corrections.
 ShellCheck, actionlint, and diff checks also passed. Live provider checks remained disabled.
 Check final-head hosted CI separately before acceptance.
+
+## Intake regression coverage
+
+The intake invariant now enables evaluation capture during concurrent identical submissions.
+It requires one recording, one extraction job, one evidence row, and the full receive count.
+Injected capture and queue failures must roll back recording, job, and evidence rows together.
+A retry after each injected failure must accept one complete intake without a duplicate receipt.
+These regressions use synthetic input and SQLite triggers. They do not change production transaction behavior.

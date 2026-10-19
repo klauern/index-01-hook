@@ -38,9 +38,9 @@ The original #30 branch remains unchanged at `b63a6d2`.
 
 The dependency edges are:
 
-- `main` → #29 → #34 (`x/sys` child).
-- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections) → [#37](https://github.com/klauern/index-01-hook/pull/37) (boundary inventory) → [#38](https://github.com/klauern/index-01-hook/pull/38) (core contracts).
-- `main` → #26, #27, #31, and #32 independently.
+- `main` → #40 → #29 → #34 (`x/sys` child).
+- `main` → #40 → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections) → [#37](https://github.com/klauern/index-01-hook/pull/37) (boundary inventory) → [#38](https://github.com/klauern/index-01-hook/pull/38) (core contracts).
+- `main` → #40 → #26, #27, #31, and #32 independently.
 
 Review each child relative to its immediate base. Review the cumulative module stack with SQLite 1.60.1 and `x/sys` 0.49.0.
 The module and tooling stacks can progress independently. Later application slices can branch from either required head before its merge.
@@ -105,7 +105,8 @@ Hosted CI remains a separate gate. Check the actual PR head before accepting or 
 
 ## October 17 contract continuation
 
-[PR #38](https://github.com/klauern/index-01-hook/pull/38) starts from #37 at `72217cd`.
+[PR #38](https://github.com/klauern/index-01-hook/pull/38) originally forked from #37 at `72217cd`.
+Its current immediate base is #37 at `4ca53fb`. Later parent corrections were inherited additively.
 The reviewed core specification is `59a9636`. No parent merged during this session.
 ADR-0002 defines neutral signatures, identity, stage metadata, safe outcomes, and atomic transition ownership.
 Fifteen invariant records reference existing runnable regression tests. The compilation check exercises typed route selection.
