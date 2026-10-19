@@ -3,8 +3,8 @@
 ## Current native stacks
 
 October19 registration uses official `gh-stack`0.2.1 and preserves all original PR numbers.
-Native [stack41](https://github.com/klauern/index-01-hook/stack/41) contains #40 → #33 → #35 → #36 → #37 → #38 → #39, rooted on `main`.
-Native [stack42](https://github.com/klauern/index-01-hook/stack/42) contains #29 → #34, rooted on #40's branch.
+Native [stack41](https://api.github.com/repos/klauern/index-01-hook/stacks/41) contains #40 → #33 → #35 → #36 → #37 → #38 → #39, rooted on `main`.
+Native [stack42](https://api.github.com/repos/klauern/index-01-hook/stacks/42) contains #29 → #34, rooted on #40's branch.
 Independent #26, #27, #31, and #32 retain #40 as their base and separate one-layer local stack entries.
 The graph below records earlier stages; the current shared prerequisite is #40.
 See [native stack maintenance](gh-stack-workflow.md) for commands and constraints.
