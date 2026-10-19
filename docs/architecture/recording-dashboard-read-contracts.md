@@ -4,6 +4,8 @@ Date: 2026-10-19.
 Scope: Beads `index-01-hook-b7y.25.7`, continuing `index-01-hook-b7y.1.2` under architecture sub-epic `.25`.
 The immediate prerequisite is [PR #39](https://github.com/klauern/index-01-hook/pull/39) at `e5314a703ba1eb56528876cb5b3e437bc7d48074`.
 Branch: `codex/recording-dashboard-contracts-20261019`.
+Pull request: [#43](https://github.com/klauern/index-01-hook/pull/43).
+Implementation revision: `6704a6e`.
 
 ## Acceptance evidence
 
@@ -73,11 +75,12 @@ The clean child worktree is `index-01-hook-dashboard-contracts` under the delega
 The installed official `gh-stack 0.2.1` was inspected before use, including its `add` implementation and command help.
 `gh stack add codex/recording-dashboard-contracts-20261019` adopted the isolated branch from the #39 owner worktree.
 No staging flags or checkout transfer were used.
-Use normal Git push. Append the created PR number to native stack41 with `gh stack link`.
+Normal Git push published the branch. `gh stack link --remote origin 41 43` appended #43 to native stack41.
+Post-link checks verified all original heads and bases. The local view reports no rebase need.
 Verify local membership, actual ancestry, and live immediate-parent bases after publication.
 Do not use stack push, submit, sync, rebase, or merge under this authorization.
 
-The required order is #40 → #33 → #35 → #36 → #37 → #38 → #39 → this child.
+The required order is #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43.
 The #29 → #34 stack and four action PRs retain their existing bases and identities.
 No parent branch requires this child for its own validation.
 Keep #39 and #40 documentation diagnostics unresolved unless new provider evidence resolves them.

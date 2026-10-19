@@ -3,7 +3,7 @@
 ## Current native stacks
 
 October 19 registration uses official `gh-stack 0.2.1` and preserves all original PR numbers.
-Native [stack41](https://api.github.com/repos/klauern/index-01-hook/stacks/41) contains #40 → #33 → #35 → #36 → #37 → #38 → #39, rooted on `main`.
+Native [stack41](https://api.github.com/repos/klauern/index-01-hook/stacks/41) contains #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43, rooted on `main`.
 Native [stack42](https://api.github.com/repos/klauern/index-01-hook/stacks/42) contains #29 → #34, rooted on #40's branch.
 Independent #26, #27, #31, and #32 retain #40 as their base and separate one-layer local stack entries.
 The graph below records earlier stages; the current shared prerequisite is #40.
@@ -160,3 +160,19 @@ The source patch is identical; documentation now requires compiled session invoc
 The original skipped-review statuses remain historical evidence. The new #33 COMMENTED review is a completed review with three findings.
 Required checks are `test`, `container`, `manifests`, and `security`. Inspect other checks and review comments as well.
 Verify current exact heads and all terminal results through GitHub. Do not infer readiness from old success or skipped statuses.
+
+
+## October 19 recording and dashboard read continuation
+
+[PR #43](https://github.com/klauern/index-01-hook/pull/43) depends on #39 at `e5314a7`.
+It adds neutral read signatures and SQLite behavior regressions under Beads `index-01-hook-b7y.25.7`.
+The implementation revision is `6704a6e`. Production package extraction remains unimplemented.
+The actual order is #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43.
+Official `gh stack add` adopted the isolated branch. PR-number `gh stack link` appended #43 to native stack41.
+The original thirteen PR heads, bases, identities, and review discussions remain preserved.
+Incremental focused tests and the final cumulative six offline gates pass.
+Security scans, lint, manifest validation, and synthetic container volume/backup/restore checks pass.
+Four disposable negative controls fail as expected. See [the evidence record](architecture/recording-dashboard-read-contracts.md).
+Final-head hosted checks and automated source review remain separate evidence.
+The #39/#40 diagnostics and Dependabot entitlement holds remain unresolved. #34 remains dependency-held behind #29.
+No parent task or epic is complete on `main`. Next: exact-ID retry and retention contracts.

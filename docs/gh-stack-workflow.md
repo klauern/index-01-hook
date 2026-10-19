@@ -36,7 +36,7 @@ Do not follow generic tool suggestions that conflict with these limits.
 The native GitHub [stack41](https://api.github.com/repos/klauern/index-01-hook/stacks/41) has base `main`:
 
 ```text
-main → #40 → #33 → #35 → #36 → #37 → #38 → #39
+main → #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43
 ```
 
 The native GitHub [stack42](https://api.github.com/repos/klauern/index-01-hook/stacks/42) has base `codex/pr-readiness-baseline-20261018`, the branch for #40:
