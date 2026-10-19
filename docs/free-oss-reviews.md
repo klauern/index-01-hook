@@ -42,7 +42,7 @@ This does not count the blocked parent as reviewed or transfer its review throug
 ## Native stacks and review state
 
 Use [native stack maintenance](gh-stack-workflow.md) to preserve the registered PR graph.
-Creating native stack objects refreshed CodeRabbit notices during the October19 adoption.
+Creating native stack objects refreshed CodeRabbit notices during the October 19 adoption.
 A fresh capacity reply still controls admission. Native stack membership does not replace review evidence or remove author gates.
 Preserve completed exact-head reviews and pending originals when a stack event refreshes a notice.
 

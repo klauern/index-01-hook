@@ -37,6 +37,8 @@ type RecordingID int64
 type DeliveryID int64
 type Fingerprint string
 type LeaseOwner string
+type ClaimAttempt int
+type ExtractionFence struct { Owner LeaseOwner; Attempt ClaimAttempt }
 type ItemKind string
 const ( Task ItemKind = "task"; Note ItemKind = "note" )
 type Item struct {
@@ -62,6 +64,7 @@ type ExtractionClaim struct {
     ID RecordingID
     Fingerprint Fingerprint
     Transcript string
+    Fence ExtractionFence
     Attempt Attempt
 }
 type DeliveryClaim struct {
@@ -154,11 +157,11 @@ type DeliveryProvider interface {
 type IntakeRepository interface { Accept(context.Context, Intake) (Receipt, error) }
 type ExtractionRepository interface {
     ClaimExtraction(context.Context, Lease) (*ExtractionClaim, error)
-    FreezeExtraction(context.Context, RecordingID, LeaseOwner, Frozen) error
-    RetryExtraction(context.Context, RecordingID, LeaseOwner, Outcome, time.Time) error
-    ReviewExtraction(context.Context, RecordingID, LeaseOwner, Outcome) error
-    BlockExtraction(context.Context, RecordingID, LeaseOwner, Outcome, string) error
-    CompleteRejectedExtraction(context.Context, RecordingID, LeaseOwner) error
+    FreezeExtraction(context.Context, RecordingID, ExtractionFence, Frozen) error
+    RetryExtraction(context.Context, RecordingID, ExtractionFence, Outcome, time.Time) error
+    ReviewExtraction(context.Context, RecordingID, ExtractionFence, Outcome) error
+    BlockExtraction(context.Context, RecordingID, ExtractionFence, Outcome, string) error
+    CompleteRejectedExtraction(context.Context, RecordingID, ExtractionFence) error
 }
 type DeliveryRepository interface {
     ClaimDelivery(context.Context, Lease) (*DeliveryClaim, error)
@@ -176,7 +179,7 @@ type ActiveVerificationEvidence struct {
     Detail []byte
 }
 type ActiveVerificationRepository interface {
-    SaveActiveVerification(context.Context, RecordingID, LeaseOwner, []ActiveVerificationEvidence) error
+    SaveActiveVerification(context.Context, RecordingID, ExtractionFence, []ActiveVerificationEvidence) error
 }
 // Aggregate read models contain no transcript, item content, or private evidence.
 type OperationalSnapshot struct {
@@ -276,7 +279,10 @@ The assessment result carries a typed reason so the application need not decode 
 Metadata preserves model and prompt version. It must not invent clock or stage values for legacy rows.
 Adapters must preserve existing persisted field names through conversion tests before extraction.
 An empty evidence list is a no-op before lease validation, including a missing recording or canceled context.
-A nonempty write requires the active owner and an unexpired extraction lease. Wrong, expired, or completed leases return lease loss.
+A nonempty write requires the active owner, current claim attempt, and an unexpired extraction lease.
+Wrong, expired, completed, or superseded attempts return lease loss, including same-owner reclaims.
+The durable total attempt number is the per-claim fence. It increases on each claim and survives operator cycle resets.
+All extraction transitions use this fence. No HTTP/CLI interface or database schema changes are required.
 Encoding failure leaves prior evidence unchanged. Saving evidence cannot freeze items or create delivery tasks.
 The write commits before review, rejected completion, or freeze. A later failed transition does not undo that evidence write.
 Rejected completion erases the operational transcript but retains the already saved verification record.
@@ -410,3 +416,10 @@ It requires one recording, one extraction job, one evidence row, and the full re
 Injected capture and queue failures must roll back recording, job, and evidence rows together.
 A retry after each injected failure must accept one complete intake without a duplicate receipt.
 These regressions use synthetic input and SQLite triggers. They do not change production transaction behavior.
+
+## Claim-attempt fencing correction
+
+The legacy owner-and-expiry guard allowed a previous claim to write after the same owner reclaimed an expired lease.
+The current store and worker now require the claimed total attempt for evidence, freeze, retry, review, block, and rejected completion.
+Same-owner reclaim tests reject stale attempts without changing persisted state, then accept the current attempt.
+The worker forwards its claim attempt. Existing empty-evidence no-op behavior remains unchanged.

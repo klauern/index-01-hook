@@ -60,7 +60,7 @@ func selectedRoute(result AssessmentResult) string { return result.Item.ProjectA
 func prepareActiveEvidence(result AssessmentResult) ActiveVerificationEvidence {
  return ActiveVerificationEvidence{Decision: result.Decision, Metadata: result.Metadata, Reason: result.Reason, Detail: result.PrivateDetail}
 }
-func persistActive(ctx context.Context, repository ActiveVerificationRepository, id RecordingID, owner LeaseOwner, evidence []ActiveVerificationEvidence) error {
+func persistActive(ctx context.Context, repository ActiveVerificationRepository, id RecordingID, owner ExtractionFence, evidence []ActiveVerificationEvidence) error {
  return repository.SaveActiveVerification(ctx, id, owner, evidence)
 }
 func readAggregate(ctx context.Context, reader OperationalReader) (int, error) {

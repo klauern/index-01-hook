@@ -139,6 +139,7 @@ type RecordingQueueStatus struct {
 	Verification       []TypeSafeVerificationEvidence `json:"verification,omitempty"`
 }
 
+// ClaimExtraction issues a fresh monotonic attempt number as the extraction claim fence.
 func (s *Store) ClaimExtraction(ctx context.Context, owner string, leaseDuration time.Duration) (*ExtractionClaim, error) {
 	owner = strings.TrimSpace(owner)
 	if owner == "" || leaseDuration <= 0 {
@@ -197,7 +198,8 @@ func (s *Store) ClaimExtraction(ctx context.Context, owner string, leaseDuration
 	return &claim, nil
 }
 
-func (s *Store) FreezeExtraction(ctx context.Context, recordingID int64, owner string, frozen FrozenExtraction) error {
+// FreezeExtraction freezes ordered items only for the current unexpired extraction claim.
+func (s *Store) FreezeExtraction(ctx context.Context, recordingID int64, owner string, attemptNumber int, frozen FrozenExtraction) error {
 	if err := validateFrozenExtraction(frozen); err != nil {
 		return err
 	}
@@ -216,8 +218,8 @@ func (s *Store) FreezeExtraction(ctx context.Context, recordingID int64, owner s
 		SELECT r.payload_fingerprint, j.attempt_count
 		FROM extraction_jobs j
 		JOIN recordings r ON r.id = j.recording_id
-		WHERE j.recording_id = ? AND j.state = 'leased' AND j.lease_owner = ?
-			AND j.lease_expires_at_ms > ?`, recordingID, owner, now.UnixMilli()).Scan(&hash, &attempt)
+		WHERE j.recording_id = ? AND j.state = 'leased' AND j.lease_owner = ? AND j.attempt_count = ?
+			AND j.lease_expires_at_ms > ?`, recordingID, owner, attemptNumber, now.UnixMilli()).Scan(&hash, &attempt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrLeaseLost
 	}
@@ -298,31 +300,35 @@ func (s *Store) FreezeExtraction(ctx context.Context, recordingID int64, owner s
 	return nil
 }
 
-func (s *Store) RetryExtraction(ctx context.Context, recordingID int64, owner string, classification OutcomeClassification, retryAt time.Time) error {
+// RetryExtraction schedules retry only for the current extraction claim attempt.
+func (s *Store) RetryExtraction(ctx context.Context, recordingID int64, owner string, attemptNumber int, classification OutcomeClassification, retryAt time.Time) error {
 	if !validOutcome(classification) || classification == OutcomeSuccess || classification == OutcomeCreated || classification == OutcomeReconciled {
 		return fmt.Errorf("retry classification is invalid")
 	}
-	return s.finishExtractionAttempt(ctx, recordingID, owner, classification, "retry", "retry_wait", retryAt)
+	return s.finishExtractionAttempt(ctx, recordingID, owner, attemptNumber, classification, "retry", "retry_wait", retryAt)
 }
 
-func (s *Store) ReviewExtraction(ctx context.Context, recordingID int64, owner string, classification OutcomeClassification) error {
+// ReviewExtraction marks review only for the current extraction claim attempt.
+func (s *Store) ReviewExtraction(ctx context.Context, recordingID int64, owner string, attemptNumber int, classification OutcomeClassification) error {
 	if !validOutcome(classification) || classification == OutcomeSuccess || classification == OutcomeCreated || classification == OutcomeReconciled {
 		return fmt.Errorf("review classification is invalid")
 	}
-	return s.finishExtractionAttempt(ctx, recordingID, owner, classification, "review", "needs_review", s.now())
+	return s.finishExtractionAttempt(ctx, recordingID, owner, attemptNumber, classification, "review", "needs_review", s.now())
 }
 
-func (s *Store) BlockExtraction(ctx context.Context, recordingID int64, owner string, classification OutcomeClassification, workflowState string) error {
+// BlockExtraction records a terminal block only for the current extraction claim attempt.
+func (s *Store) BlockExtraction(ctx context.Context, recordingID int64, owner string, attemptNumber int, classification OutcomeClassification, workflowState string) error {
 	if classification != OutcomeRetryable && classification != OutcomeAuthentication && classification != OutcomeConfiguration && classification != OutcomeMalformed && classification != OutcomeReview {
 		return fmt.Errorf("terminal extraction classification is invalid")
 	}
 	if workflowState != "blocked_auth" && workflowState != "needs_review" && workflowState != "dead_letter" {
 		return fmt.Errorf("terminal extraction state is invalid")
 	}
-	return s.finishExtractionAttempt(ctx, recordingID, owner, classification, "review", workflowState, s.now())
+	return s.finishExtractionAttempt(ctx, recordingID, owner, attemptNumber, classification, "review", workflowState, s.now())
 }
 
-func (s *Store) SaveExtractionVerification(ctx context.Context, recordingID int64, owner string, evidence []TypeSafeVerificationEvidence) error {
+// SaveExtractionVerification writes nonempty evidence only for the current unexpired claim attempt.
+func (s *Store) SaveExtractionVerification(ctx context.Context, recordingID int64, owner string, attemptNumber int, evidence []TypeSafeVerificationEvidence) error {
 	if len(evidence) == 0 {
 		return nil
 	}
@@ -330,14 +336,15 @@ func (s *Store) SaveExtractionVerification(ctx context.Context, recordingID int6
 	if err != nil {
 		return fmt.Errorf("encode extraction verification: %w", err)
 	}
-	result, err := s.db.ExecContext(ctx, `UPDATE extraction_jobs SET verification_json = ? WHERE recording_id = ? AND state = 'leased' AND lease_owner = ? AND lease_expires_at_ms > ?`, string(encoded), recordingID, strings.TrimSpace(owner), s.now().UTC().UnixMilli())
+	result, err := s.db.ExecContext(ctx, `UPDATE extraction_jobs SET verification_json = ? WHERE recording_id = ? AND state = 'leased' AND lease_owner = ? AND attempt_count = ? AND lease_expires_at_ms > ?`, string(encoded), recordingID, strings.TrimSpace(owner), attemptNumber, s.now().UTC().UnixMilli())
 	if err != nil {
 		return fmt.Errorf("save extraction verification: %w", err)
 	}
 	return requireOneRow(result)
 }
 
-func (s *Store) CompleteRejectedExtraction(ctx context.Context, recordingID int64, owner string) error {
+// CompleteRejectedExtraction completes rejection and erases the transcript only for the current claim attempt.
+func (s *Store) CompleteRejectedExtraction(ctx context.Context, recordingID int64, owner string, attemptNumber int) error {
 	now := s.now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -347,8 +354,8 @@ func (s *Store) CompleteRejectedExtraction(ctx context.Context, recordingID int6
 	var attempt int
 	err = tx.QueryRowContext(ctx, `
 		SELECT attempt_count FROM extraction_jobs
-		WHERE recording_id = ? AND state = 'leased' AND lease_owner = ?
-			AND lease_expires_at_ms > ?`, recordingID, strings.TrimSpace(owner), now.UnixMilli()).Scan(&attempt)
+		WHERE recording_id = ? AND state = 'leased' AND lease_owner = ? AND attempt_count = ?
+			AND lease_expires_at_ms > ?`, recordingID, strings.TrimSpace(owner), attemptNumber, now.UnixMilli()).Scan(&attempt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrLeaseLost
 	}
@@ -377,7 +384,8 @@ func (s *Store) CompleteRejectedExtraction(ctx context.Context, recordingID int6
 	return nil
 }
 
-func (s *Store) finishExtractionAttempt(ctx context.Context, recordingID int64, owner string, classification OutcomeClassification, state, workflowState string, retryAt time.Time) error {
+// finishExtractionAttempt records an outcome after atomically validating the extraction claim fence.
+func (s *Store) finishExtractionAttempt(ctx context.Context, recordingID int64, owner string, attemptNumber int, classification OutcomeClassification, state, workflowState string, retryAt time.Time) error {
 	now := s.now().UTC()
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -387,8 +395,8 @@ func (s *Store) finishExtractionAttempt(ctx context.Context, recordingID int64, 
 	var attempt int
 	err = tx.QueryRowContext(ctx, `
 		SELECT attempt_count FROM extraction_jobs
-		WHERE recording_id = ? AND state = 'leased' AND lease_owner = ?
-			AND lease_expires_at_ms > ?`, recordingID, strings.TrimSpace(owner), now.UnixMilli()).Scan(&attempt)
+		WHERE recording_id = ? AND state = 'leased' AND lease_owner = ? AND attempt_count = ?
+			AND lease_expires_at_ms > ?`, recordingID, strings.TrimSpace(owner), attemptNumber, now.UnixMilli()).Scan(&attempt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrLeaseLost
 	}

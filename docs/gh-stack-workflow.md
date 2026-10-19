@@ -6,7 +6,7 @@ Hold the shared clone session lock during all stack operations.
 
 ## Installed tool and inspected behavior
 
-The October19 adoption used GitHub CLI2.102.0 and pinned `gh-stack`0.2.1.
+The October 19 adoption used GitHub CLI 2.102.0 and pinned `gh-stack 0.2.1`.
 Install this inspected version with:
 
 ```sh
@@ -25,7 +25,7 @@ The [official source](https://github.com/github/gh-stack/tree/v0.2.1) defines th
 - The tool does not create or remove worktrees. It preserves branches checked out in another worktree.
 - Stack chains are linear. Independent siblings need separate stacks, with a shared prerequisite used as their trunk.
 
-`gh stack push`0.2.1 always uses explicit `--force-with-lease` checks.
+`gh stack push` 0.2.1 always uses explicit `--force-with-lease` checks.
 `submit` and `sync` can also push, rebase, or change PR state.
 The current task forbids force pushes and history rewrites. Use normal `git push` and PR-number-only `gh stack link`.
 Do not run `gh stack push`, `submit`, `sync`, `rebase`, `modify`, `merge`, or `unstack` under this authorization.
@@ -47,7 +47,8 @@ The native GitHub [stack42](https://api.github.com/repos/klauern/index-01-hook/s
 
 The four action PRs #26, #27, #31, and #32 each have the same #40 prerequisite.
 Each action branch has its own one-layer local `gh stack` entry. They remain independent on GitHub.
-`gh stack link` requires at least two PR arguments. Do not invent dependencies to create native singleton stacks.
+Creating a native stack with `gh stack link` requires at least two PRs.
+Append mode takes an existing stack number and one or more PRs. Do not invent dependencies to create native singleton stacks.
 All thirteen original PR numbers, contributions, and review discussions remain preserved.
 Native stack membership does not establish source review, author entitlement, CI success, or permission to merge.
 

@@ -93,6 +93,7 @@ func TestShadowVerificationBindsAfterFreezeAndPreservesDeliveryOutcome(t *testin
 	}
 }
 
+// TestEvaluationEvidenceSurvivesCompletionAndQueueRetention checks durable evidence after completion and operational queue retention.
 func TestEvaluationEvidenceSurvivesCompletionAndQueueRetention(t *testing.T) {
 	ctx := context.Background()
 	store, clock := configureEvidenceStore(t, 90*24*time.Hour)
@@ -111,7 +112,7 @@ func TestEvaluationEvidenceSurvivesCompletionAndQueueRetention(t *testing.T) {
 		Evidence: &ExtractionEvidence{Clock: clock.Time(), TimeZone: "UTC", SystemPrompt: "Test prompt",
 			Schema: json.RawMessage(`{"type":"object"}`), SavedOutput: json.RawMessage(`{"items":[]}`)},
 	}
-	if err := store.FreezeExtraction(ctx, claim.RecordingID, "worker", frozen); err != nil {
+	if err := store.FreezeExtraction(ctx, claim.RecordingID, "worker", claim.AttemptNumber, frozen); err != nil {
 		t.Fatal(err)
 	}
 	completeEvidenceDelivery(t, store)
@@ -135,6 +136,7 @@ func TestEvaluationEvidenceSurvivesCompletionAndQueueRetention(t *testing.T) {
 	}
 }
 
+// TestEvaluationEvidenceZeroItemsAndFailedLease checks zero-item evidence and rejection of writes by the wrong owner.
 func TestEvaluationEvidenceZeroItemsAndFailedLease(t *testing.T) {
 	store, clock := configureEvidenceStore(t, 24*time.Hour)
 	receipt := saveQueueRecording(t, store, "There is nothing to do.")
@@ -143,14 +145,14 @@ func TestEvaluationEvidenceZeroItemsAndFailedLease(t *testing.T) {
 		t.Fatalf("claim = %v, %v", claim, err)
 	}
 	frozen := FrozenExtraction{Provider: "deepseek", Model: "model", Items: []QueuedItem{}}
-	if err := store.FreezeExtraction(context.Background(), receipt.ID, "wrong-owner", frozen); !errors.Is(err, ErrLeaseLost) {
+	if err := store.FreezeExtraction(context.Background(), receipt.ID, "wrong-owner", claim.AttemptNumber, frozen); !errors.Is(err, ErrLeaseLost) {
 		t.Fatalf("wrong-owner freeze = %v", err)
 	}
 	if got := readEvidence(t, store); len(got) != 1 || got[0].Extraction != nil {
 		t.Fatalf("failed lease changed evidence: %+v", got)
 	}
 	clock.Advance(time.Second)
-	if err := store.FreezeExtraction(context.Background(), receipt.ID, "worker", frozen); err != nil {
+	if err := store.FreezeExtraction(context.Background(), receipt.ID, "worker", claim.AttemptNumber, frozen); err != nil {
 		t.Fatal(err)
 	}
 	got := readEvidence(t, store)
@@ -159,6 +161,7 @@ func TestEvaluationEvidenceZeroItemsAndFailedLease(t *testing.T) {
 	}
 }
 
+// TestEvaluationEvidenceFailedCaptureRollsBackFreeze checks that failed evidence persistence rolls back extraction freeze.
 func TestEvaluationEvidenceFailedCaptureRollsBackFreeze(t *testing.T) {
 	store, _ := configureEvidenceStore(t, 24*time.Hour)
 	receipt := saveQueueRecording(t, store, "Original input")
@@ -170,7 +173,7 @@ func TestEvaluationEvidenceFailedCaptureRollsBackFreeze(t *testing.T) {
 		BEGIN SELECT RAISE(ABORT, 'capture failed'); END`); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.FreezeExtraction(context.Background(), receipt.ID, "worker", FrozenExtraction{Provider: "deepseek", Model: "model"}); err == nil {
+	if err := store.FreezeExtraction(context.Background(), receipt.ID, "worker", claim.AttemptNumber, FrozenExtraction{Provider: "deepseek", Model: "model"}); err == nil {
 		t.Fatal("freeze succeeded after capture failure")
 	}
 	var count int

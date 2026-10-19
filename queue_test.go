@@ -57,13 +57,14 @@ func saveQueueRecording(t *testing.T, store *Store, transcript string) Receipt {
 	return receipt
 }
 
+// freezeQueueTasks claims and freezes synthetic task fixtures with the current attempt fence.
 func freezeQueueTasks(t *testing.T, store *Store, owner string, tasks []QueuedTask) int64 {
 	t.Helper()
 	claim, err := store.ClaimExtraction(context.Background(), owner, time.Minute)
 	if err != nil || claim == nil {
 		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
 	}
-	if err := store.FreezeExtraction(context.Background(), claim.RecordingID, owner, FrozenExtraction{
+	if err := store.FreezeExtraction(context.Background(), claim.RecordingID, owner, claim.AttemptNumber, FrozenExtraction{
 		Provider:           "deepseek",
 		Model:              "deepseek-v4-flash",
 		ProviderResponseID: "response-1",
@@ -74,13 +75,14 @@ func freezeQueueTasks(t *testing.T, store *Store, owner string, tasks []QueuedTa
 	return claim.RecordingID
 }
 
+// freezeQueueItems claims and freezes synthetic item fixtures with the current attempt fence.
 func freezeQueueItems(t *testing.T, store *Store, owner string, items []QueuedItem) int64 {
 	t.Helper()
 	claim, err := store.ClaimExtraction(context.Background(), owner, time.Minute)
 	if err != nil || claim == nil {
 		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
 	}
-	if err := store.FreezeExtraction(context.Background(), claim.RecordingID, owner, FrozenExtraction{
+	if err := store.FreezeExtraction(context.Background(), claim.RecordingID, owner, claim.AttemptNumber, FrozenExtraction{
 		Provider:           "deepseek",
 		Model:              "deepseek-v4-flash",
 		ProviderResponseID: "response-1",
@@ -377,6 +379,7 @@ func TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem(t *testing.T) 
 	}
 }
 
+// TestCompleteRejectedExtractionClearsTranscript checks transcript erasure after rejection under the current lease.
 func TestCompleteRejectedExtractionClearsTranscript(t *testing.T) {
 	store, _ := newQueueStore(t)
 	receipt := saveQueueRecording(t, store, "private rejected transcript")
@@ -384,7 +387,7 @@ func TestCompleteRejectedExtractionClearsTranscript(t *testing.T) {
 	if err != nil || claim == nil {
 		t.Fatalf("claim = %+v, %v", claim, err)
 	}
-	if err := store.CompleteRejectedExtraction(context.Background(), receipt.ID, "worker"); err != nil {
+	if err := store.CompleteRejectedExtraction(context.Background(), receipt.ID, "worker", claim.AttemptNumber); err != nil {
 		t.Fatal(err)
 	}
 	var transcript, state, workflowState string
@@ -400,6 +403,7 @@ func TestCompleteRejectedExtractionClearsTranscript(t *testing.T) {
 	}
 }
 
+// TestExtractionLeaseRejectsActiveAndPermitsExpiredClaim checks lease expiry, reclaim, and rejection of the prior owner.
 func TestExtractionLeaseRejectsActiveAndPermitsExpiredClaim(t *testing.T) {
 	store, clock := newQueueStore(t)
 	saveQueueRecording(t, store, "private transcript")
@@ -416,13 +420,14 @@ func TestExtractionLeaseRejectsActiveAndPermitsExpiredClaim(t *testing.T) {
 	if err != nil || second == nil || second.RecordingID != first.RecordingID || second.AttemptNumber != 2 {
 		t.Fatalf("expired lease claim = %+v, %v", second, err)
 	}
-	if err := store.FreezeExtraction(context.Background(), first.RecordingID, "worker-one", FrozenExtraction{
+	if err := store.FreezeExtraction(context.Background(), first.RecordingID, "worker-one", first.AttemptNumber, FrozenExtraction{
 		Provider: "deepseek", Model: "model",
 	}); !errors.Is(err, ErrLeaseLost) {
 		t.Fatalf("stale FreezeExtraction() error = %v, want ErrLeaseLost", err)
 	}
 }
 
+// TestFreezeExtractionCommitsTasksAtomically checks that validation failure cannot partially freeze tasks.
 func TestFreezeExtractionCommitsTasksAtomically(t *testing.T) {
 	store, _ := newQueueStore(t)
 	receipt := saveQueueRecording(t, store, "exact transcript")
@@ -431,7 +436,7 @@ func TestFreezeExtractionCommitsTasksAtomically(t *testing.T) {
 		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
 	}
 	invalid := make([]QueuedTask, maxExtractionTasks+1)
-	if err := store.FreezeExtraction(context.Background(), receipt.ID, "extractor", FrozenExtraction{
+	if err := store.FreezeExtraction(context.Background(), receipt.ID, "extractor", claim.AttemptNumber, FrozenExtraction{
 		Provider: "deepseek", Model: "model", Tasks: invalid,
 	}); err == nil {
 		t.Fatal("FreezeExtraction() accepted too many tasks")
@@ -444,7 +449,7 @@ func TestFreezeExtractionCommitsTasksAtomically(t *testing.T) {
 	}
 
 	due := time.Date(2026, time.August, 13, 14, 0, 0, 0, time.UTC)
-	err = store.FreezeExtraction(context.Background(), receipt.ID, "extractor", FrozenExtraction{
+	err = store.FreezeExtraction(context.Background(), receipt.ID, "extractor", claim.AttemptNumber, FrozenExtraction{
 		Provider: "deepseek", Model: "deepseek-v4-flash", ProviderResponseID: "response-1",
 		Tasks: []QueuedTask{
 			{Title: "First", Notes: "one", Priority: 3, Tags: []string{"voice"}},
@@ -586,6 +591,7 @@ func TestFreezeExtractionPersistsAndClaimsMixedItems(t *testing.T) {
 	}
 }
 
+// TestFreezeExtractionRejectsInvalidItemKindsAtomically checks that invalid item kinds leave extraction state unchanged.
 func TestFreezeExtractionRejectsInvalidItemKindsAtomically(t *testing.T) {
 	store, _ := newQueueStore(t)
 	receipt := saveQueueRecording(t, store, "invalid item kind")
@@ -593,7 +599,7 @@ func TestFreezeExtractionRejectsInvalidItemKindsAtomically(t *testing.T) {
 	if err != nil || claim == nil {
 		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
 	}
-	err = store.FreezeExtraction(context.Background(), receipt.ID, "extractor", FrozenExtraction{
+	err = store.FreezeExtraction(context.Background(), receipt.ID, "extractor", claim.AttemptNumber, FrozenExtraction{
 		Provider: "deepseek", Model: "model",
 		Items: []QueuedItem{
 			{Kind: ItemKindTask, Title: "valid", Priority: 0},
