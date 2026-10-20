@@ -1,6 +1,15 @@
 # Pull request dependency map
 
-## Current native stacks
+## October 20 parent-merge recovery
+
+PRs #40 and #33 were squash-merged as `74af6da`. PR #35 was rebased and merged as `bc70071`.
+The active main chain is `main` → #36 → #37 → #38 → #39 → #43 → #44.
+The independent module chain is `main` → #29 → #34. Action PRs #26, #27, #31, and #32 each target `main`.
+Native stack41 retains the closed #40/#33/#35 prefix as history. Native stack42 remains the module chain.
+The tables below describe historical inspections. Use [merge recovery](stack-merge-recovery.md) and current GitHub heads for current order.
+
+
+## Historical native-stack registration
 
 October 19 registration uses official `gh-stack 0.2.1` and preserves all original PR numbers.
 Native [stack41](https://api.github.com/repos/klauern/index-01-hook/stacks/41) contains #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43, rooted on `main`.
