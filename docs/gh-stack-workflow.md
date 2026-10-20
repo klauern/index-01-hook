@@ -34,7 +34,7 @@ Do not follow generic tool suggestions that conflict with these limits.
 
 ## Historical October 19 registration
 
-After the October 20 parent merges, the active order is `main → #36 → #37 → #38 → #39 → #43 → #44`; stack41 keeps its merged prefix. Stack42 is `main → #29 → #34`; #26/#27/#31/#32 independently target main. The registration below is historical.
+After the October 20 parent merges, the active order is `main → #36 → #37 → #38 → #39 → #43 → #44`; stack41 keeps its merged prefix. The intended stack42 root is main, but its actual #40 trunk remains pending explicit approval for native stack replacement. #26/#27/#31/#32 independently target main. The registration below is historical.
 
 ## Registered graph
 
