@@ -158,7 +158,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"actions/setup-go":                "40f1582b2485089dde7abd97c1529aa768e1baff",
 		"actions/upload-artifact":         "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
 		"actions/download-artifact":       "9000827ccba6bdab643e8b6fd33ac0654aef8333",
-		"docker/setup-buildx-action":      "37fe631027851001ddb9b187196cc803df7f5f0e",
+		"docker/setup-buildx-action":      "f87e5991a6d7451dcb8d9637bfbc97413f497069",
 		"docker/login-action":             "c94ce9fb468520275223c153574b00df6fe4bcc9",
 		"docker/build-push-action":        "c3c9e263c25d99ce0380d002d59b67737d91b0dc",
 		"sigstore/cosign-installer":       "d58896d6a1865668819e1d91763c7751a165e159",
