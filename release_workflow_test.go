@@ -74,7 +74,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"spdx-json=dist/release/index-01-hook-source.spdx.json",
 		`jq -e '.spdxVersion and (.packages | type == "array") and (.packages | length > 0)'`,
 		"sha256sum --check checksums.txt",
-		"actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+		"actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
 		"skip-decompress: false",
 		"digest-mismatch: error",
 		"environment: public-release",
@@ -156,7 +156,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 	pins := map[string]string{
 		"actions/checkout":                "11d5960a326750d5838078e36cf38b85af677262",
 		"actions/setup-go":                "40f1582b2485089dde7abd97c1529aa768e1baff",
-		"actions/upload-artifact":         "ea165f8d65b6e75b540449e92b4886f43607fa02",
+		"actions/upload-artifact":         "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
 		"actions/download-artifact":       "9000827ccba6bdab643e8b6fd33ac0654aef8333",
 		"docker/setup-buildx-action":      "37fe631027851001ddb9b187196cc803df7f5f0e",
 		"docker/login-action":             "c94ce9fb468520275223c153574b00df6fe4bcc9",
