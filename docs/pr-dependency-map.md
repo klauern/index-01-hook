@@ -1,5 +1,13 @@
 # Pull request dependency map
 
+## October 20 parent-merge recovery
+
+PRs #40 and #33 were squash-merged as `74af6da`. PR #35 was rebased and merged as `bc70071`.
+The active main chain is `main` → #36 → #37 → #38 → #39 → #43 → #44.
+The independent module chain is `main` → #29 → #34. Action PRs #26, #27, #31, and #32 each target `main`.
+Native stack41 retains the closed #40/#33/#35 prefix as history. Native stack42 remains the module chain.
+The tables below describe historical inspections. Use [merge recovery](stack-merge-recovery.md) and current GitHub heads for current order.
+
 This map records the inspected pull requests and safe review order on 2026-10-16.
 Beads remains the task tracker. Read current pull request heads and bases before changing a stack.
 Review and merge timing do not stop implementation. Continue from an unmerged prerequisite when its code is required.
