@@ -8,6 +8,7 @@ tasks:
     desc: Run the local test suite
     cmds:
       - go test ./...
+      - ./scripts/validate-offline_test.sh
       - ./scripts/compose-config_test.sh
       - ./scripts/compose-production_test.sh
       - ./scripts/compose-operations_test.sh
@@ -19,6 +20,11 @@ tasks:
       - ./scripts/backup-export_test.sh
       - ./scripts/kubernetes-maintenance-lock_test.sh
       - ./scripts/restore-external-backup_test.sh
+
+  validate-offline:
+    desc: Run all offline validation gates with live provider opt-ins disabled
+    cmds:
+      - ./scripts/validate-offline.sh
 
   test-compose-runtime:
     desc: Build and test the local image with a fresh Docker volume
