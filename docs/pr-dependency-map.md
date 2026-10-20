@@ -3,7 +3,7 @@
 ## Current native stacks
 
 October 19 registration uses official `gh-stack 0.2.1` and preserves all original PR numbers.
-Native [stack41](https://api.github.com/repos/klauern/index-01-hook/stacks/41) contains #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43, rooted on `main`.
+Native [stack41](https://api.github.com/repos/klauern/index-01-hook/stacks/41) contains #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43 → #44, rooted on `main`.
 Native [stack42](https://api.github.com/repos/klauern/index-01-hook/stacks/42) contains #29 → #34, rooted on #40's branch.
 Independent #26, #27, #31, and #32 retain #40 as their base and separate one-layer local stack entries.
 The graph below records earlier stages; the current shared prerequisite is #40.
@@ -176,3 +176,19 @@ Four disposable negative controls fail as expected. See [the evidence record](ar
 Final-head hosted checks and automated source review remain separate evidence.
 The #39/#40 diagnostics and Dependabot entitlement holds remain unresolved. #34 remains dependency-held behind #29.
 No parent task or epic is complete on `main`. Next: exact-ID retry and retention contracts.
+
+
+## October 20 operator and retention continuation
+
+[PR #44](https://github.com/klauern/index-01-hook/pull/44) depends on #43 at `67712f4`.
+Beads `index-01-hook-b7y.25.8` owns the neutral retry/retention contracts and chronological retention correction.
+Implementation `a01f906` fixes raw timestamp ordering without changing retention policy, schema, or stored values.
+Review and integration order: #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43 → #44.
+Actual `gh stack add` and PR-number `gh stack link` registered this layer in native stack41.
+All original fourteen heads, bases, contributions, and review discussions remain preserved.
+The full child stack passes all six final offline gates, focused tests, lint, security scans, manifests, and synthetic container integration.
+Five disposable negative controls fail in their intended named tests.
+See [the committed evidence](architecture/operator-retention-contracts.md) for scope, commands, earlier failed regressions, and unrun live checks.
+Final-head hosted CI and automated review remain separate evidence.
+The original bounded review queue retains its documentation and author-entitlement blockers.
+Parent contracts and migration epics remain open. Next: observation/export and backup/runtime lifecycle contracts.

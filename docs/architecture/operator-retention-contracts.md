@@ -4,6 +4,8 @@ Date: 2026-10-20.
 Scope: Beads `index-01-hook-b7y.25.8`, continuing contract task `.1.2` under architecture sub-epic `.25`.
 Immediate prerequisite: [PR #43](https://github.com/klauern/index-01-hook/pull/43) at `67712f4a670947e52ba9b516041cf072d2c368b1`.
 Branch: `codex/operator-retention-contracts-20261020`.
+Pull request: [#44](https://github.com/klauern/index-01-hook/pull/44).
+Implementation revision: `a01f906b7f438a8af549eb91d399ad686713831e`.
 
 ## Delivered criteria
 
@@ -92,10 +94,11 @@ The compiled common-directory lock covers issue updates, code changes, validatio
 The isolated worktree is `index-01-hook-operator-contracts` under the delegated task workspace.
 Installed `gh-stack 0.2.1` version and `add`/`link` help were inspected.
 `gh stack add codex/operator-retention-contracts-20261020` adopted the isolated branch from #43's owner worktree.
-Use normal Git push and PR-number-only `gh stack link` to append the created PR to native stack41.
+Normal Git push published the branch. `gh stack link --remote origin 41 44` appended #44 to native stack41.
+Post-link checks preserve every original head and base. The local view reports no rebase need.
 Verify immediate bases and actual ancestry after registration. Do not use commands that force-push or rewrite published history.
 
-The required order is #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43 → this child.
+The required order is #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43 → #44.
 The module stack #29 → #34 remains above #40. Four action PRs remain independent above #40.
 The original fourteen PR heads, discussions, and contributions remain preserved.
 The bounded older CodeRabbit queue stays separate. Its #39/#40 diagnostics and Dependabot entitlement holds remain unresolved.
