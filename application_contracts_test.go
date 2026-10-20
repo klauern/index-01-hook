@@ -73,6 +73,20 @@ func readDashboard(ctx context.Context, reader DashboardReader, id RecordingID) 
  detail, err := reader.Recording(ctx, id)
  return page.Total, detail.Found, err
 }
+func retryOne(ctx context.Context, repository ManualRetryRepository, id DeliveryID, clock Clock) error {
+ return repository.RetryDelivery(ctx, id, clock.Now())
+}
+func purgeWithExplicitTime(ctx context.Context, repository RetentionRepository, clock Clock, retention time.Duration) (int64, error) {
+ at := clock.Now()
+ recordings, err := repository.PurgeRecordingsBefore(ctx, at.Add(-retention))
+ if err != nil { return 0, err }
+ _, err = repository.PurgeEvaluationEvidenceThrough(ctx, at)
+ return recordings, err
+}
+func retryThroughService(ctx context.Context, service ManualRetryService, id RecordingID) (RecordingID, error) {
+ result, err := service.RetryRecording(ctx, id)
+ return result.ID, err
+}
 func readAggregate(ctx context.Context, reader OperationalReader) (int, error) {
  snapshot, err := reader.OperationalStatus(ctx)
  return snapshot.Queue.Active, err

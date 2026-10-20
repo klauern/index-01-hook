@@ -156,5 +156,32 @@
       "recording_read_contract_test.go#TestDashboardReadContractRejectsUnsafeDatabaseInputs",
       "dashboard_test.go#TestDashboardReadOnlyAndRedactedHTML"
     ]
+  },
+  {
+    "id": "manual-retry-exact-state",
+    "owner": "persistence",
+    "rule": "Manual retry checks an exact ID and allowed state, preserves total attempts and history, and does not alter siblings or evidence.",
+    "tests": [
+      "operator_contract_test.go#TestManualRetryContractGuardsAndHistory",
+      "verification_contract_test.go#TestExtractionFenceSurvivesOperatorRetry"
+    ]
+  },
+  {
+    "id": "manual-retry-ambiguous",
+    "owner": "application_policy",
+    "rule": "Manual delivery retry preserves ambiguous classification and reconciles before create without recreating completed siblings.",
+    "tests": [
+      "operator_contract_test.go#TestManualRetryContractReconcilesAmbiguousWrite"
+    ]
+  },
+  {
+    "id": "retention-chronological-cutoff",
+    "owner": "persistence",
+    "rule": "Retention compares UTC timestamps chronologically at full stored precision and keeps exact-cutoff rows and independently retained evidence.",
+    "tests": [
+      "operator_contract_test.go#TestRetentionContractMixedPrecisionBoundaries",
+      "operator_contract_test.go#TestRetentionContractStrictCutoffAndIndependentEvidence",
+      "retention_test.go#TestPurgeExpiredRecordingsDeletesOnlyExpiredTerminalWork"
+    ]
   }
 ]

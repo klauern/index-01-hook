@@ -279,6 +279,26 @@ type DashboardReader interface {
     Recordings(context.Context, RecordingFilter) (RecordingPage, error)
     Recording(context.Context, RecordingID) (RecordingDetailLookup, error)
 }
+// Manual retry and retention keep policy time explicit at the persistence boundary.
+type RecordingRetryResult struct { ID RecordingID; State string }
+type DeliveryRetryResult struct { ID DeliveryID; State string }
+type PurgeResult struct { Deleted int64 }
+type ManualRetryService interface {
+    RetryRecording(context.Context, RecordingID) (RecordingRetryResult, error)
+    RetryDelivery(context.Context, DeliveryID) (DeliveryRetryResult, error)
+}
+type ManualRetryRepository interface {
+    RetryRecording(context.Context, RecordingID, time.Time) error
+    RetryDelivery(context.Context, DeliveryID, time.Time) error
+}
+type RetentionService interface {
+    PurgeRecordings(context.Context, time.Duration) (PurgeResult, error)
+    PurgeEvaluationEvidence(context.Context) (PurgeResult, error)
+}
+type RetentionRepository interface {
+    PurgeRecordingsBefore(context.Context, time.Time) (int64, error)
+    PurgeEvaluationEvidenceThrough(context.Context, time.Time) (int64, error)
+}
 type ShadowEvidenceRepository interface {
     SaveShadow(context.Context, RecordingID, []AssessmentResult) error
 }
@@ -416,6 +436,53 @@ Keep GET/HEAD restrictions, loopback binding, host validation, security headers,
 These multi-query reads retain current consistency behavior. They do not promise a transaction-wide snapshot.
 The future adapter maps storage absence to the explicit lookup result; `sql.ErrNoRows` must not cross the port.
 
+## Exact-ID retry and retention semantics
+
+`ManualRetryService` accepts one durable recording or delivery ID. The command adapter still validates positive decimal arguments.
+Only `blocked_auth`, `needs_review`, and `dead_letter` can return to pending work.
+Recording retry returns workflow state `received`; delivery retry returns `extracted`.
+Missing IDs and all other workflow states return the errors.Is-compatible manual-retry-not-allowed sentinel.
+Do not reopen completed work, active leases, frozen extraction, or scheduled automatic retries.
+Storage errors and canceled contexts remain errors. A failed or disallowed retry must not change persisted rows.
+
+The application obtains one instant from `Clock` and passes that instant to the repository.
+Each repository method atomically checks the state and changes exactly the specified row.
+Recording retry resets cycle attempts, next-attempt time, lease fields, last classification, and completion time.
+Delivery retry also resets reconciliation attempts. It preserves an `ambiguous` classification and clears other last classifications.
+The next claim must reconcile an ambiguous write before another create attempt.
+Both retries preserve total attempt counts, attempt history, recording identity, item identity, payloads, and existing evidence.
+Delivery retry preserves remote object/project IDs and completed siblings.
+Neither retry renews the original evidence deadline, recaptures expired evidence, or changes retention configuration.
+The existing total extraction attempt remains the claim fence across cycle resets.
+Keep current command names, JSON field names, state values, safe error behavior, and status privacy in inbound adapters.
+
+`RetentionService` validates positive retention before computing a cutoff from the injected clock.
+The existing command still uses 30 days and its exact confirmation string. These signatures add no retention setting.
+`PurgeRecordingsBefore` uses strict chronological comparisons, including the fractional part of UTC timestamps.
+At the exact cutoff, retain the recording. A single later nanosecond can make otherwise eligible work old enough.
+The receipt must be older than the cutoff. A recent duplicate receipt protects the recording.
+An audio-only receipt with no extraction job needs no further queue-state condition.
+With a job, `received`, `extracting`, and `retry_wait` prevent deletion.
+The extraction job must be older than the cutoff.
+Any delivery in `extracted`, `creating`, or `retry_wait` prevents deletion.
+Any delivery updated at or after the cutoff also prevents deletion, including terminal deliveries.
+Keep the selection and delete within the existing atomic SQL statement.
+Return the deleted recording count, excluding dependent cascade rows. A repeated purge returns zero when nothing else qualifies.
+
+Operational deletion cascades through dispatches, extraction jobs, extraction results, attempts, and delivery rows.
+Evaluation evidence uses its own original deadline and is not a recording foreign-key child.
+Queue retention can erase the operational row while private evaluation evidence remains retained until its own expiry.
+`PurgeEvaluationEvidenceThrough` deletes evidence whose deadline is at or before the supplied instant.
+Its dependent evaluation deliveries, observations, and shadow evidence follow existing foreign-key cleanup.
+Keep recording purge and evidence purge as separate operations. No combined transaction or all-private-copy erasure is promised.
+Adapters map the recording count to current `recordings_deleted` output and retain the current retention-days field.
+
+The current SQLite adapter writes canonical UTC RFC3339Nano timestamps.
+Whole seconds omit a fraction. Comparing the raw strings misorders `...00Z` and `...00.000000001Z`.
+The bounded correction removes the trailing UTC suffix during retention comparisons, preserving full fractional precision and strict boundaries.
+It leaves stored timestamps, schema, retention duration, queue guards, and evidence expiry unchanged.
+The behavior regressions demonstrate both premature deletion and missed deletion in the previous query.
+
 ## Remaining boundary contracts
 
 The core signatures above are the first bounded part of `.1.2`.
@@ -425,7 +492,7 @@ The following consumers require the stated remaining work before this task can c
 | --- | --- | --- |
 | Active verification evidence | Write signature and lease lifecycle specified here. Provider encoding conversion and adapter extraction remain unimplemented. | Application policy and persistence |
 | Status, dashboard, and health | Aggregate, private recording, and dashboard read signatures are specified. Schema-compatible adapter conversion and extraction remain open. | Inbound interface and application policy |
-| Operator retry and retention | Exact-ID retry restrictions, purge counts, original evidence expiry, no product retention changes. | Application policy and persistence |
+| Operator retry and retention | Exact-ID retry, purge count, cutoff, and original evidence-expiry signatures are specified. Adapter extraction and CLI parity remain open. | Application policy and persistence |
 | Observation and export | Versioned evidence values, chronology, read-only export selection, explicit file delivery boundary. | Application policy and persistence |
 | Backup, restore, and runtime | Keep database and file safety in adapters; specify shutdown, worker health, and storage-last close ordering. | Runtime and persistence |
 
