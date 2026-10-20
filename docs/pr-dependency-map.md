@@ -4,7 +4,9 @@
 
 PRs #40 and #33 were squash-merged as `74af6da`. PR #35 was rebased and merged as `bc70071`.
 The active main chain is `main` → #36 → #37 → #38 → #39 → #43 → #44.
-The independent module chain is `main` → #29 → #34. Action PRs #26, #27, #31, and #32 each target `main`.
+The intended module chain is `main` → #29 → #34. Native stack42 still uses #40's branch because GitHub rejected its base change.
+Automatic approval review blocked remote unstack/recreation. Keep stack42 intact until explicit approval.
+Action PRs #26, #27, #31, and #32 each target `main`.
 Native stack41 retains the closed #40/#33/#35 prefix as history. Native stack42 remains the module chain.
 The tables below describe historical inspections. Use [merge recovery](stack-merge-recovery.md) and current GitHub heads for current order.
 
