@@ -28,8 +28,13 @@ The [official source](https://github.com/github/gh-stack/tree/v0.2.1) defines th
 `gh stack push` 0.2.1 always uses explicit `--force-with-lease` checks.
 `submit` and `sync` can also push, rebase, or change PR state.
 The current task forbids force pushes and history rewrites. Use normal `git push` and PR-number-only `gh stack link`.
-Do not run `gh stack push`, `submit`, `sync`, `rebase`, `modify`, `merge`, or `unstack` under this authorization.
+Do not run `gh stack push`, `submit`, `sync`, `rebase`, `modify`, `merge`, or remote `unstack` under this authorization.
+For parent-merge recovery only, inspected `unstack --local` may remove local catalog tracking before explicit re-adoption; it preserves Git branches, commits, and GitHub stacks. See [merge recovery](stack-merge-recovery.md).
 Do not follow generic tool suggestions that conflict with these limits.
+
+## Historical October 19 registration
+
+After the October 20 parent merges, the active order is `main → #36 → #37 → #38 → #39 → #43 → #44`; stack41 keeps its merged prefix. Stack42 is `main → #29 → #34`; #26/#27/#31/#32 independently target main. The registration below is historical.
 
 ## Registered graph
 

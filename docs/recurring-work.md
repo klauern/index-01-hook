@@ -291,3 +291,17 @@ Preserve the original PR #36 commit and review history while propagating this pa
 
 For included CodeRabbit review requests, use [free OSS review sessions](free-oss-reviews.md).
 Keep current queue state in Beads. Do not create duplicate schedules.
+
+
+## Continue after parent merges
+
+Inspect the actual merge commits and remote branch heads before changing descendants.
+A squash or rebase can remove commit ancestry while preserving source content.
+Use isolated integration branches and additive merges when published history must remain intact.
+Resolve each conflict from source intent. Preserve review evidence and all parent corrections.
+Validate the integration candidates before a normal, non-forced push to the existing PR branches.
+Retarget open roots to current `main`. Keep dependent PRs based on their immediate open parent.
+Use the supported `gh stack` workflow in [merge recovery](stack-merge-recovery.md) to reconcile real remote and local metadata.
+Keep merged native-stack entries as history. Do not attempt to remerge them.
+Treat old-head review, byte-identical source, local conflict assessment, and new hosted checks as separate evidence.
+Do not request unavailable bot-author reviews or repeat diagnostic requests after a merge-only update.
