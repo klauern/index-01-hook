@@ -1,0 +1,187 @@
+[
+  {
+    "id": "intake",
+    "owner": "persistence",
+    "rule": "Deduplication and recording/job/evidence acceptance remain atomic.",
+    "tests": [
+      "queue_test.go#TestConcurrentIdenticalIntakeCreatesOneRecordingAndQueueItem",
+      "queue_test.go#TestIntakeAcceptanceRollsBackRecordingJobAndEvidence"
+    ]
+  },
+  {
+    "id": "lease",
+    "owner": "persistence",
+    "rule": "Only active lease owners can change leased work.",
+    "tests": [
+      "queue_test.go#TestExtractionLeaseRejectsActiveAndPermitsExpiredClaim"
+    ]
+  },
+  {
+    "id": "freeze",
+    "owner": "persistence",
+    "rule": "Freeze all ordered items and evidence atomically.",
+    "tests": [
+      "queue_test.go#TestFreezeExtractionCommitsTasksAtomically",
+      "queue_test.go#TestFreezeExtractionPersistsAndClaimsMixedItems",
+      "evaluation_evidence_test.go#TestEvaluationEvidenceFailedCaptureRollsBackFreeze"
+    ]
+  },
+  {
+    "id": "rollback",
+    "owner": "persistence",
+    "rule": "Failed evidence capture rolls back extraction freeze.",
+    "tests": [
+      "evaluation_evidence_test.go#TestEvaluationEvidenceFailedCaptureRollsBackFreeze"
+    ]
+  },
+  {
+    "id": "identity",
+    "owner": "application_policy",
+    "rule": "Uncertain create reconciles before another create with the same identity.",
+    "tests": [
+      "delivery_security_test.go#TestUncertainTickTickCreateReconcilesBeforeAnotherPost"
+    ]
+  },
+  {
+    "id": "siblings",
+    "owner": "application_policy",
+    "rule": "Retry preserves completed siblings and erases the transcript only at completion.",
+    "tests": [
+      "queue_test.go#TestDeliveryRetryPreservesCompletedSiblingAndErasesTranscriptAtCompletion"
+    ]
+  },
+  {
+    "id": "restart",
+    "owner": "application_policy",
+    "rule": "Restart resumes only unfinished items.",
+    "tests": [
+      "worker_test.go#TestWorkerRestartsOnlyTheUnfinishedNote"
+    ]
+  },
+  {
+    "id": "zero-items",
+    "owner": "persistence",
+    "rule": "Zero-item completion erases the operational transcript.",
+    "tests": [
+      "queue_test.go#TestZeroTaskExtractionErasesTranscript"
+    ]
+  },
+  {
+    "id": "shadow",
+    "owner": "application_policy",
+    "rule": "Shadow assessments cannot change delivery authority or outcomes.",
+    "tests": [
+      "worker_test.go#TestWorkerShadowIsolatedFromDeliveryAndPersistsOutcomes"
+    ]
+  },
+  {
+    "id": "expiry",
+    "owner": "persistence",
+    "rule": "Duplicates and late extraction cannot renew evidence expiry.",
+    "tests": [
+      "evaluation_evidence_test.go#TestEvaluationEvidenceExpiryDoesNotRenewOnDuplicateOrLateExtraction"
+    ]
+  },
+  {
+    "id": "chronology",
+    "owner": "persistence",
+    "rule": "Observation updates preserve known chronology across gaps.",
+    "tests": [
+      "evaluation_evidence_test.go#TestEvaluationEvidencePreservesObservationChronologyAcrossGaps"
+    ]
+  },
+  {
+    "id": "read-only",
+    "owner": "inbound_interface",
+    "rule": "Dashboard reads remain read-only and redacted.",
+    "tests": [
+      "dashboard_test.go#TestDashboardReadOnlyAndRedactedHTML"
+    ]
+  },
+  {
+    "id": "retry",
+    "owner": "inbound_interface",
+    "rule": "Manual retry uses exact IDs and preserves redaction.",
+    "tests": [
+      "operator_test.go#TestOperatorStatusAndExactIDRetryAreRedacted"
+    ]
+  },
+  {
+    "id": "restore",
+    "owner": "persistence",
+    "rule": "Invalid restore preserves the current database.",
+    "tests": [
+      "operator_test.go#TestOperatorRestoreFromInvalidInputPreservesCurrentDatabase"
+    ]
+  },
+  {
+    "id": "shutdown",
+    "owner": "runtime",
+    "rule": "Graceful shutdown leaves recoverable leases and redacted status.",
+    "tests": [
+      "worker_test.go#TestWorkerStatusIsRedactedAndGracefulShutdownLeavesLease"
+    ]
+  },
+  {
+    "id": "active-evidence-lease",
+    "owner": "persistence",
+    "rule": "Nonempty active verification evidence writes require an active lease and preserve earlier evidence on failure.",
+    "tests": [
+      "verification_contract_test.go#TestActiveVerificationEvidenceLeaseAndLifecycle"
+    ]
+  },
+  {
+    "id": "active-evidence-empty",
+    "owner": "persistence",
+    "rule": "Empty active verification evidence is a no-op before lease and context validation.",
+    "tests": [
+      "verification_contract_test.go#TestActiveVerificationEmptyEvidenceIsNoOp"
+    ]
+  },
+  {
+    "id": "aggregate-read",
+    "owner": "inbound_interface",
+    "rule": "Operational aggregate reads do not write or expose transcripts and private verification evidence.",
+    "tests": [
+      "verification_contract_test.go#TestOperationalAggregateReadsExcludeVerificationEvidenceAndDoNotWrite",
+      "health_test.go#TestStatuszReturnsSafeAggregateData"
+    ]
+  },
+  {
+    "id": "recording-dashboard-reads",
+    "owner": "inbound_interface",
+    "rule": "Recording and dashboard reads preserve distinct missing-job semantics, filtered pagination, detail ordering, redaction, and read-only storage.",
+    "tests": [
+      "recording_read_contract_test.go#TestDashboardReadContractFiltersPaginationAndDetail",
+      "recording_read_contract_test.go#TestDashboardReadContractRejectsUnsafeDatabaseInputs",
+      "dashboard_test.go#TestDashboardReadOnlyAndRedactedHTML"
+    ]
+  },
+  {
+    "id": "manual-retry-exact-state",
+    "owner": "persistence",
+    "rule": "Manual retry checks an exact ID and allowed state, preserves total attempts and history, and does not alter siblings or evidence.",
+    "tests": [
+      "operator_contract_test.go#TestManualRetryContractGuardsAndHistory",
+      "verification_contract_test.go#TestExtractionFenceSurvivesOperatorRetry"
+    ]
+  },
+  {
+    "id": "manual-retry-ambiguous",
+    "owner": "application_policy",
+    "rule": "Manual delivery retry preserves ambiguous classification and reconciles before create without recreating completed siblings.",
+    "tests": [
+      "operator_contract_test.go#TestManualRetryContractReconcilesAmbiguousWrite"
+    ]
+  },
+  {
+    "id": "retention-chronological-cutoff",
+    "owner": "persistence",
+    "rule": "Retention compares UTC timestamps chronologically at full stored precision and keeps exact-cutoff rows and independently retained evidence.",
+    "tests": [
+      "operator_contract_test.go#TestRetentionContractMixedPrecisionBoundaries",
+      "operator_contract_test.go#TestRetentionContractStrictCutoffAndIndependentEvidence",
+      "retention_test.go#TestPurgeExpiredRecordingsDeletesOnlyExpiredTerminalWork"
+    ]
+  }
+]

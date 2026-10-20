@@ -15,7 +15,7 @@ Use Beads for scope, dependencies, claims, and completion evidence. Pull request
 
    Run all remaining session commands inside this shell. Exit the shell when the session ends.
    An automation can replace `sh` with its implementation command and arguments.
-   Invoke the compiled binary directly. `go run` masks nonzero child statuses, including lock contention.
+   Invoke the compiled executable directly. `go run` changes nonzero command statuses to status 1.
    Do not lock only the test command. Hold the lock through issue updates, commits, pushes, and pull request creation.
 5. Verify read access with `gh repo view` and `gh pr list --state open`.
 6. Run `bd prime`, `bd ready --json`, and `bd list --status in_progress --json`.
@@ -64,8 +64,8 @@ task --exit-code validate-offline
 This command runs uncached Go tests, uncached race tests, vet, Task checks, offline evaluation, and a temporary binary build.
 It disables inherited live-test opt-ins, provider tokens, calibration approval, private corpus selection, and external report destinations.
 It prints one result for each gate and returns failure if any gate fails. Later gates still run after a failure.
-It writes offline evaluation reports under `dist/evaluation`. Cancellation stops later gates.
-HUP, INT, and TERM return 129, 130, and 143. Task requires `--exit-code` to preserve these statuses.
+The validation command sets `INDEX01_EVAL_REPORT_DIR` to `dist/evaluation` for all gates. Cancellation stops later gates.
+The script returns status 129, 130, or 143 for HUP, INT, or TERM. Use Task with `--exit-code` to preserve that status.
 It does not isolate network access at the operating system level. Synthetic integration tests can use local HTTP servers.
 The command uses the installed Go toolchain and dependencies. Normal Go module downloads can occur if dependencies are missing.
 
@@ -82,6 +82,12 @@ Container runtime tests require a Docker daemon and the pinned builder image.
 Manifest validation requires kubeconform and its schemas. Security checks require the versions listed in `CONTRIBUTING.md`.
 Record missing tools, downloads, failed checks, skipped tests, and baseline failures separately.
 Do not run live provider tests, deployments, releases, credential changes, or merges without separate authorization.
+
+## Native stack registration
+
+Use the official `gh stack` extension for dependency registration and future dependent layers.
+Follow [the native stack workflow](gh-stack-workflow.md) for the registered graph, isolated worktrees, and history-preserving commands.
+Version0.2.1 stack push uses force-with-lease. Use normal Git pushes and PR-number-only stack links under the current authorization.
 
 ## Continue before review or merge
 
@@ -100,6 +106,17 @@ Keep the issue open while required acceptance evidence remains unverified.
 Distinguish implementation evidence, review state, merge readiness, and epic completion in the handoff.
 A draft can contain tested work that future slices use. An open pull request does not prove acceptance.
 See [the pull request dependency map](pr-dependency-map.md) for the current branch order and overlap decisions.
+
+## Record review separately
+
+Record the reviewed base and head, reviewer source, scope, findings, and unresolved limits.
+Check whether an automated reviewer completed a review or only reported a skip.
+Do not treat passing tests, builds, CodeQL, or a successful skip status as completed source review.
+Record regression tests separately from the source review that found and checked a defect.
+After a correction, record the correction revision and the follow-up review scope.
+A child correction does not change the original parent head. State which complete stack contains the fix.
+Keep draft status while required acceptance or security gates remain unresolved.
+See [the first-slice review evidence](first-slice-review.md) for the initial review and findings.
 
 ## Publish and resume
 
@@ -243,6 +260,14 @@ The initial export attempt and the attempt after staging both failed. Staging di
 Container-based public end-to-end deployment and disposable-cluster infrastructure tests were not run.
 Local govulncheck and complete-history secret scans were not run during this slice. Check remote CI for their results.
 
+## October 18 source status update
+
+The former primary-checkout edits are now independent local commits on `cleanup/worktree-review` at `77b7594`.
+The checkout is clean. The original contract slice excluded those commits. The readiness repair now carries the scoped export-fixture patch through #40.
+Beads `index-01-hook-b7y.2.1` records health `3411659`, reconciliation `d0ec0f8`, export fixture `a0c99d1`, and related documentation.
+Preserve these contributions and review their publication and baseline selection separately. Do not copy them into an unrelated contract child.
+Earlier pending-source descriptions above are historical snapshots. They do not describe current uncommitted edits.
+
 ## Green and ready gate
 
 The [pull request readiness policy](pr-readiness.md) applies to every current and future pull request.
@@ -263,3 +288,20 @@ The three PR #33 validation defects originally corrected in PR #36 are now corre
 The source patch comes from `276496bc1526d2ce266d86fef968781ed7db0a29`.
 Regression tests use the compiled session binary, isolate report paths, and verify cancellation stops subsequent gates.
 Preserve the original PR #36 commit and review history while propagating this parent correction through the stack.
+
+For included CodeRabbit review requests, use [free OSS review sessions](free-oss-reviews.md).
+Keep current queue state in Beads. Do not create duplicate schedules.
+
+
+## Continue after parent merges
+
+Inspect the actual merge commits and remote branch heads before changing descendants.
+A squash or rebase can remove commit ancestry while preserving source content.
+Use isolated integration branches and additive merges when published history must remain intact.
+Resolve each conflict from source intent. Preserve review evidence and all parent corrections.
+Validate the integration candidates before a normal, non-forced push to the existing PR branches.
+Retarget open roots to current `main`. Keep dependent PRs based on their immediate open parent.
+Use the supported `gh stack` workflow in [merge recovery](stack-merge-recovery.md) to reconcile real remote and local metadata.
+Keep merged native-stack entries as history. Do not attempt to remerge them.
+Treat old-head review, byte-identical source, local conflict assessment, and new hosted checks as separate evidence.
+Do not request unavailable bot-author reviews or repeat diagnostic requests after a merge-only update.

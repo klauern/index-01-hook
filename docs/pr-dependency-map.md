@@ -1,5 +1,25 @@
 # Pull request dependency map
 
+## October 20 parent-merge recovery
+
+PRs #40 and #33 were squash-merged as `74af6da`. PR #35 was rebased and merged as `bc70071`.
+The active main chain is `main` → #36 → #37 → #38 → #39 → #43 → #44.
+The intended module chain is `main` → #29 → #34. Native stack42 still uses #40's branch because GitHub rejected its base change.
+Automatic approval review blocked remote unstack/recreation. Keep stack42 intact until explicit approval.
+Action PRs #26, #27, #31, and #32 each target `main`.
+Native stack41 retains the closed #40/#33/#35 prefix as history. Native stack42 remains the module chain.
+The tables below describe historical inspections. Use [merge recovery](stack-merge-recovery.md) and current GitHub heads for current order.
+
+
+## Historical native-stack registration
+
+October 19 registration uses official `gh-stack 0.2.1` and preserves all original PR numbers.
+Native [stack41](https://api.github.com/repos/klauern/index-01-hook/stacks/41) contains #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43 → #44, rooted on `main`.
+Native [stack42](https://api.github.com/repos/klauern/index-01-hook/stacks/42) contains #29 → #34, rooted on #40's branch.
+Independent #26, #27, #31, and #32 retain #40 as their base and separate one-layer local stack entries.
+The graph below records earlier stages; the current shared prerequisite is #40.
+See [native stack maintenance](gh-stack-workflow.md) for commands and constraints.
+
 This map records the inspected pull requests and safe review order on 2026-10-16.
 Beads remains the task tracker. Read current pull request heads and bases before changing a stack.
 Review and merge timing do not stop implementation. Continue from an unmerged prerequisite when its code is required.
@@ -38,9 +58,10 @@ The original #30 branch remains unchanged at `b63a6d2`.
 
 The dependency edges are:
 
-- `main` → #29 → #34 (`x/sys` child).
-- `main` → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) (workflow-policy child).
-- `main` → #26, #27, #31, and #32 independently.
+- `main` → #40 → #29 → #34 (`x/sys` child).
+- `main` → #40 → #33 → [#35](https://github.com/klauern/index-01-hook/pull/35) → [#36](https://github.com/klauern/index-01-hook/pull/36) (review corrections) → [#37](https://github.com/klauern/index-01-hook/pull/37) (boundary inventory) → [#38](https://github.com/klauern/index-01-hook/pull/38) (core contracts) → [#39](https://github.com/klauern/index-01-hook/pull/39) (evidence writes and aggregate reads).
+- `main` → #40 → #26, #27, #31, and #32 independently.
+
 
 Review each child relative to its immediate base. Review the cumulative module stack with SQLite 1.60.1 and `x/sys` 0.49.0.
 The module and tooling stacks can progress independently. Later application slices can branch from either required head before its merge.
@@ -82,6 +103,58 @@ Live provider tests remained disabled in both stacks. Hosted checks are separate
 Continue only approved ongoing dependent work on either tested stack while review and merge decisions remain pending.
 Do not start new feature slices while an authorized all-PR readiness pass has actionable failures.
 
+
+## Original source review state (historical)
+
+CodeRabbit skipped draft review on #33, #34, and #35. A successful skip status is not completed review.
+Independent local source review found three P2 defects in #33. Those original parent heads were unchanged during that review.
+[PR #36](https://github.com/klauern/index-01-hook/pull/36) corrects the defects on the cumulative tooling stack.
+Its reviewed code revision is `276496bc1526d2ce266d86fef968781ed7db0a29`.
+That historical review required the complete #33 → #35 → #36 stack. The current parent correction is recorded below.
+PR #34 had no concrete finding within its focused module-diff review.
+See [the review evidence](first-slice-review.md) for scope, reproductions, corrections, test evidence, and limits.
+
+## Boundary inventory continuation
+
+[PR #37](https://github.com/klauern/index-01-hook/pull/37) starts from #36 at `1f8548f`.
+Its reviewed implementation is `12b34b4`. It inventories the complete tooling stack and the committed application baseline.
+The slice assigns 91 surfaces, 11 executables, six runtime contracts, and 16 root commands.
+Five independent local reviewers inspected the slice. Two reviewers inspected corrections to three guard defects.
+The corrected slice passed all six offline gates, focused regression tests, ShellCheck, and actionlint.
+The next contract slice can use #37 when it requires this inventory. Keep unrelated module changes independent.
+Hosted CI remains a separate gate. Check the actual PR head before accepting or continuing the stack.
+
+## October 17 contract continuation
+
+[PR #38](https://github.com/klauern/index-01-hook/pull/38) originally forked from #37 at `72217cd`.
+Its current immediate base is #37 at `4ca53fb`. Later parent corrections were inherited additively.
+The reviewed core specification is `59a9636`. No parent merged during this session.
+ADR-0002 defines neutral signatures, identity, stage metadata, safe outcomes, and atomic transition ownership.
+Fifteen invariant records reference existing runnable regression tests. The compilation check exercises typed route selection.
+Five independent reviewers found three substantive gaps. Three reviewers inspected corrections with no remaining concrete findings in scope.
+The corrected cumulative stack passed full uncached Go tests, race tests, vet, Task checks, offline evaluation, and build.
+Incremental specification, negative guard, invariant reference, inventory, and Markdown checks passed.
+A unique container image passed synthetic volume, backup, and restore integration checks.
+That initial parent security baseline had 11 standard-library findings and skipped secret scans. The current repair pass is recorded below.
+`index-01-hook-b7y.1.2` remains open for the secondary contracts listed in ADR-0002.
+Next: specify lease-checked active-verification evidence and typed redacted reads on this child when required.
+No claim of completed extraction or completion on `main` follows from this specification.
+
+## October 18 evidence and read continuation
+
+[PR #39](https://github.com/klauern/index-01-hook/pull/39) starts from #38 at `7dd99c7`.
+Its reviewed implementation is `a6c4970`. No parent merged and no new human review finding appeared on #38.
+The slice adds the active verification evidence write and typed aggregate read specification.
+Real SQLite tests check lease lifecycle, evidence preservation, rejected completion, and read-only aggregate redaction.
+The registry has 18 invariant entries. Typed consumers compile without transport or SQL imports.
+Five independent local reviewers found no concrete defects. Two checked final typed-reason and failed-transition refinements.
+Incremental focused tests and the cumulative six offline gates passed. Synthetic container volume/backup/restore checks also passed.
+ShellCheck, actionlint, and diff checks passed. Hosted CI remains a separate gate.
+The primary checkout is clean at local `77b7594`. Its source-fix and documentation commits remain independent and excluded.
+Health `3411659` and reconciliation `d0ec0f8` still require separate baseline review. The scoped export-fixture patch is now preserved through #40.
+Continue `.1.2` with typed recording/dashboard reads and exact-ID retry/retention contracts.
+Keep the issue and parent epic open. This stack is not completion on `main`.
+
 ## Green-and-ready repair pass
 
 Nick now requires every current and future PR to have source assessment, ready status, and green final-head checks.
@@ -98,3 +171,35 @@ The source patch is identical; documentation now requires compiled session invoc
 The original skipped-review statuses remain historical evidence. The new #33 COMMENTED review is a completed review with three findings.
 Required checks are `test`, `container`, `manifests`, and `security`. Inspect other checks and review comments as well.
 Verify current exact heads and all terminal results through GitHub. Do not infer readiness from old success or skipped statuses.
+
+
+## October 19 recording and dashboard read continuation
+
+[PR #43](https://github.com/klauern/index-01-hook/pull/43) depends on #39 at `e5314a7`.
+It adds neutral read signatures and SQLite behavior regressions under Beads `index-01-hook-b7y.25.7`.
+The implementation revision is `6704a6e`. Production package extraction remains unimplemented.
+The actual order is #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43.
+Official `gh stack add` adopted the isolated branch. PR-number `gh stack link` appended #43 to native stack41.
+The original thirteen PR heads, bases, identities, and review discussions remain preserved.
+Incremental focused tests and the final cumulative six offline gates pass.
+Security scans, lint, manifest validation, and synthetic container volume/backup/restore checks pass.
+Four disposable negative controls fail as expected. See [the evidence record](architecture/recording-dashboard-read-contracts.md).
+Final-head hosted checks and automated source review remain separate evidence.
+The #39/#40 diagnostics and Dependabot entitlement holds remain unresolved. #34 remains dependency-held behind #29.
+No parent task or epic is complete on `main`. Next: exact-ID retry and retention contracts.
+
+
+## October 20 operator and retention continuation
+
+[PR #44](https://github.com/klauern/index-01-hook/pull/44) depends on #43 at `67712f4`.
+Beads `index-01-hook-b7y.25.8` owns the neutral retry/retention contracts and chronological retention correction.
+Implementation `a01f906` fixes raw timestamp ordering without changing retention policy, schema, or stored values.
+Review and integration order: #40 → #33 → #35 → #36 → #37 → #38 → #39 → #43 → #44.
+Actual `gh stack add` and PR-number `gh stack link` registered this layer in native stack41.
+All original fourteen heads, bases, contributions, and review discussions remain preserved.
+The full child stack passes all six final offline gates, focused tests, lint, security scans, manifests, and synthetic container integration.
+Five disposable negative controls fail in their intended named tests.
+See [the committed evidence](architecture/operator-retention-contracts.md) for scope, commands, earlier failed regressions, and unrun live checks.
+Final-head hosted CI and automated review remain separate evidence.
+The original bounded review queue retains its documentation and author-entitlement blockers.
+Parent contracts and migration epics remain open. Next: observation/export and backup/runtime lifecycle contracts.

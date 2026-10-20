@@ -160,6 +160,7 @@ func (w *Worker) RunOnce(ctx context.Context) (worked bool, cycleErr error) {
 	return false, nil
 }
 
+// processExtraction carries the claimed attempt through every extraction write and transition.
 func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) error {
 	started := time.Now()
 	if screener, ok := w.config.Verifier.(ExtractionSecurityScreener); ok {
@@ -168,12 +169,12 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 		w.recordProviderLatency(ctx, "typesafe", time.Since(screenStarted), screenErr != nil)
 		if screenErr != nil {
 			if classifyTypeSafeError(screenErr) == TypeSafeErrorRetryable && claim.CycleAttemptNumber < w.config.ExtractionMaxAttempts {
-				return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
+				return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
 			}
-			return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview)
+			return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeReview)
 		}
 		if injected {
-			return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview)
+			return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeReview)
 		}
 	}
 	extraction, err := w.extractor.Extract(ctx, claim.Transcription, w.config.ProjectAliases)
@@ -191,11 +192,11 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 				if verificationErr != nil {
 					if classifyTypeSafeError(verificationErr) == TypeSafeErrorRetryable {
 						if claim.CycleAttemptNumber >= w.config.ExtractionMaxAttempts {
-							return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable)
+							return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeRetryable)
 						}
-						return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
+						return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
 					}
-					return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview)
+					return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeReview)
 				}
 				verifications = append(verifications, result.Evidence)
 				switch result.Decision {
@@ -208,14 +209,14 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 					needsReview = true
 				}
 			}
-			if err := w.store.SaveExtractionVerification(ctx, claim.RecordingID, w.config.Owner, verifications); err != nil {
+			if err := w.store.SaveExtractionVerification(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, verifications); err != nil {
 				return err
 			}
 			if needsReview {
-				return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview)
+				return w.store.ReviewExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeReview)
 			}
 			if len(accepted) == 0 {
-				return w.store.CompleteRejectedExtraction(ctx, claim.RecordingID, w.config.Owner)
+				return w.store.CompleteRejectedExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber)
 			}
 			extraction.Items = accepted
 			extraction.Verifications = verifications
@@ -230,7 +231,7 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 			}
 			extraction.Evidence.Routing = &routing
 		}
-		if err := w.store.FreezeExtraction(ctx, claim.RecordingID, w.config.Owner, extraction); err != nil {
+		if err := w.store.FreezeExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, extraction); err != nil {
 			return err
 		}
 		if w.config.ShadowVerifier != nil {
@@ -242,18 +243,18 @@ func (w *Worker) processExtraction(ctx context.Context, claim *ExtractionClaim) 
 	kind := classifyDeepSeekError(err)
 	switch kind {
 	case DeepSeekErrorAuthentication:
-		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeAuthentication, "blocked_auth")
+		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeAuthentication, "blocked_auth")
 	case DeepSeekErrorReview:
-		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeReview, "needs_review")
+		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeReview, "needs_review")
 	case DeepSeekErrorMalformed, DeepSeekErrorTerminal:
-		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeMalformed, "dead_letter")
+		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeMalformed, "dead_letter")
 	case DeepSeekErrorRetryable:
 		if claim.CycleAttemptNumber >= w.config.ExtractionMaxAttempts {
-			return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable, "dead_letter")
+			return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeRetryable, "dead_letter")
 		}
-		return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
+		return w.store.RetryExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeRetryable, w.retryAt(claim.CycleAttemptNumber))
 	default:
-		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, OutcomeMalformed, "dead_letter")
+		return w.store.BlockExtraction(ctx, claim.RecordingID, w.config.Owner, claim.AttemptNumber, OutcomeMalformed, "dead_letter")
 	}
 }
 

@@ -26,6 +26,7 @@ func TestDashboardListenAddressRequiresLoopback(t *testing.T) {
 	}
 }
 
+// TestDashboardReadOnlyAndRedactedHTML checks dashboard redaction and read-only rendering.
 func TestDashboardReadOnlyAndRedactedHTML(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "index01.db")
 	receivedAt := time.Date(2026, time.August, 30, 14, 10, 0, 0, time.UTC)
@@ -55,7 +56,7 @@ func TestDashboardReadOnlyAndRedactedHTML(t *testing.T) {
 	if err != nil || claim == nil {
 		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
 	}
-	if err := store.FreezeExtraction(context.Background(), receipt.ID, "dashboard-test", FrozenExtraction{
+	if err := store.FreezeExtraction(context.Background(), receipt.ID, "dashboard-test", claim.AttemptNumber, FrozenExtraction{
 		Provider: "deepseek", Model: "deepseek-chat", Items: []QueuedItem{{
 			Kind: ItemKindTask, Title: "private title", Content: "private notes",
 		}},

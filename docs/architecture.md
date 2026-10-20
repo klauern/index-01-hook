@@ -3,6 +3,8 @@
 Index 01 Hook has one process, one worker, and one SQLite database. The process
 runs the HTTP receiver and the worker. The worker uses durable SQLite queues.
 
+See the [boundary inventory](architecture/boundary-inventory.md) for source ownership and runtime entry points before package migration.
+
 ## Data flow
 
 1. Index 01 sends an authenticated `multipart/form-data` request.

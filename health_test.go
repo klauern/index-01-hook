@@ -36,6 +36,7 @@ func TestOperationalStatusReportsHealthyWorkerAndProviderLatency(t *testing.T) {
 	}
 }
 
+// TestOperationalStatusReportsQueueFailureStates checks aggregate health for delayed, retry, and blocked queue states.
 func TestOperationalStatusReportsQueueFailureStates(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -59,8 +60,8 @@ func TestOperationalStatusReportsQueueFailureStates(t *testing.T) {
 		{
 			name: "retry",
 			transition: func(t *testing.T, store *Store, clock *adjustableClock, recordingID int64) {
-				claimQueueExtraction(t, store, recordingID)
-				if err := store.RetryExtraction(context.Background(), recordingID, "queue-worker", OutcomeRetryable, clock.Time().Add(time.Minute)); err != nil {
+				claim := claimQueueExtraction(t, store, recordingID)
+				if err := store.RetryExtraction(context.Background(), recordingID, "queue-worker", claim.AttemptNumber, OutcomeRetryable, clock.Time().Add(time.Minute)); err != nil {
 					t.Fatalf("RetryExtraction() error = %v", err)
 				}
 			},
@@ -74,8 +75,8 @@ func TestOperationalStatusReportsQueueFailureStates(t *testing.T) {
 		{
 			name: "blocked authentication",
 			transition: func(t *testing.T, store *Store, _ *adjustableClock, recordingID int64) {
-				claimQueueExtraction(t, store, recordingID)
-				if err := store.BlockExtraction(context.Background(), recordingID, "queue-worker", OutcomeAuthentication, "blocked_auth"); err != nil {
+				claim := claimQueueExtraction(t, store, recordingID)
+				if err := store.BlockExtraction(context.Background(), recordingID, "queue-worker", claim.AttemptNumber, OutcomeAuthentication, "blocked_auth"); err != nil {
 					t.Fatalf("BlockExtraction() error = %v", err)
 				}
 			},
@@ -89,8 +90,8 @@ func TestOperationalStatusReportsQueueFailureStates(t *testing.T) {
 		{
 			name: "review",
 			transition: func(t *testing.T, store *Store, _ *adjustableClock, recordingID int64) {
-				claimQueueExtraction(t, store, recordingID)
-				if err := store.BlockExtraction(context.Background(), recordingID, "queue-worker", OutcomeReview, "needs_review"); err != nil {
+				claim := claimQueueExtraction(t, store, recordingID)
+				if err := store.BlockExtraction(context.Background(), recordingID, "queue-worker", claim.AttemptNumber, OutcomeReview, "needs_review"); err != nil {
 					t.Fatalf("BlockExtraction() error = %v", err)
 				}
 			},
@@ -104,8 +105,8 @@ func TestOperationalStatusReportsQueueFailureStates(t *testing.T) {
 		{
 			name: "dead letter",
 			transition: func(t *testing.T, store *Store, _ *adjustableClock, recordingID int64) {
-				claimQueueExtraction(t, store, recordingID)
-				if err := store.BlockExtraction(context.Background(), recordingID, "queue-worker", OutcomeMalformed, "dead_letter"); err != nil {
+				claim := claimQueueExtraction(t, store, recordingID)
+				if err := store.BlockExtraction(context.Background(), recordingID, "queue-worker", claim.AttemptNumber, OutcomeMalformed, "dead_letter"); err != nil {
 					t.Fatalf("BlockExtraction() error = %v", err)
 				}
 			},
@@ -362,12 +363,14 @@ func completeHealthCycle(t *testing.T, store *Store, owner string) {
 	}
 }
 
-func claimQueueExtraction(t *testing.T, store *Store, recordingID int64) {
+// claimQueueExtraction returns a synthetic queue claim including its current attempt fence.
+func claimQueueExtraction(t *testing.T, store *Store, recordingID int64) *ExtractionClaim {
 	t.Helper()
 	claim, err := store.ClaimExtraction(context.Background(), "queue-worker", time.Minute)
 	if err != nil || claim == nil || claim.RecordingID != recordingID {
 		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
 	}
+	return claim
 }
 
 func hasReason(reasons []string, expected string) bool {

@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// TestPurgeExpiredRecordingsDeletesOnlyExpiredTerminalWork checks retention boundaries for terminal and active recordings.
 func TestPurgeExpiredRecordingsDeletesOnlyExpiredTerminalWork(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -31,8 +32,8 @@ func TestPurgeExpiredRecordingsDeletesOnlyExpiredTerminalWork(t *testing.T) {
 			name: "terminal extraction",
 			prepare: func(t *testing.T, store *Store, clock *adjustableClock) int64 {
 				receipt := saveQueueRecording(t, store, "terminal private transcript")
-				claimQueueExtraction(t, store, receipt.ID)
-				if err := store.BlockExtraction(context.Background(), receipt.ID, "queue-worker", OutcomeMalformed, "dead_letter"); err != nil {
+				claim := claimQueueExtraction(t, store, receipt.ID)
+				if err := store.BlockExtraction(context.Background(), receipt.ID, "queue-worker", claim.AttemptNumber, OutcomeMalformed, "dead_letter"); err != nil {
 					t.Fatalf("BlockExtraction() error = %v", err)
 				}
 				clock.Advance(terminalRecordRetention + time.Hour)
@@ -88,8 +89,8 @@ func TestPurgeExpiredRecordingsDeletesOnlyExpiredTerminalWork(t *testing.T) {
 			prepare: func(t *testing.T, store *Store, clock *adjustableClock) int64 {
 				clock.Advance(terminalRecordRetention + time.Hour)
 				receipt := saveQueueRecording(t, store, "recent terminal transcript")
-				claimQueueExtraction(t, store, receipt.ID)
-				if err := store.BlockExtraction(context.Background(), receipt.ID, "queue-worker", OutcomeMalformed, "dead_letter"); err != nil {
+				claim := claimQueueExtraction(t, store, receipt.ID)
+				if err := store.BlockExtraction(context.Background(), receipt.ID, "queue-worker", claim.AttemptNumber, OutcomeMalformed, "dead_letter"); err != nil {
 					t.Fatalf("BlockExtraction() error = %v", err)
 				}
 				return receipt.ID
@@ -100,8 +101,8 @@ func TestPurgeExpiredRecordingsDeletesOnlyExpiredTerminalWork(t *testing.T) {
 			name: "recent duplicate receipt",
 			prepare: func(t *testing.T, store *Store, clock *adjustableClock) int64 {
 				receipt := saveQueueRecording(t, store, "duplicate terminal transcript")
-				claimQueueExtraction(t, store, receipt.ID)
-				if err := store.BlockExtraction(context.Background(), receipt.ID, "queue-worker", OutcomeMalformed, "dead_letter"); err != nil {
+				claim := claimQueueExtraction(t, store, receipt.ID)
+				if err := store.BlockExtraction(context.Background(), receipt.ID, "queue-worker", claim.AttemptNumber, OutcomeMalformed, "dead_letter"); err != nil {
 					t.Fatalf("BlockExtraction() error = %v", err)
 				}
 				clock.Advance(terminalRecordRetention + time.Hour)

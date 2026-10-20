@@ -18,6 +18,7 @@ import (
 	"time"
 )
 
+// TestOperatorStatusAndExactIDRetryAreRedacted checks private-data redaction and exact-recording retry behavior.
 func TestOperatorStatusAndExactIDRetryAreRedacted(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "operator.db")
 	store, err := OpenStore(context.Background(), path)
@@ -35,7 +36,7 @@ func TestOperatorStatusAndExactIDRetryAreRedacted(t *testing.T) {
 	if err != nil || claim == nil {
 		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
 	}
-	if err := store.BlockExtraction(context.Background(), receipt.ID, "operator-test", OutcomeReview, "needs_review"); err != nil {
+	if err := store.BlockExtraction(context.Background(), receipt.ID, "operator-test", claim.AttemptNumber, OutcomeReview, "needs_review"); err != nil {
 		t.Fatalf("BlockExtraction() error = %v", err)
 	}
 	if err := store.Close(); err != nil {

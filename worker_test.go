@@ -269,6 +269,7 @@ func TestWorkerBoundsConcurrentShadowExtractions(t *testing.T) {
 	worker.WaitForShadow()
 }
 
+// TestWorkerPersistsShadowEvidenceAfterCancellation checks bounded shadow persistence after caller cancellation.
 func TestWorkerPersistsShadowEvidenceAfterCancellation(t *testing.T) {
 	store, _ := newQueueStore(t)
 	if err := store.ConfigureEvaluationCapture(24 * time.Hour); err != nil {
@@ -280,7 +281,7 @@ func TestWorkerPersistsShadowEvidenceAfterCancellation(t *testing.T) {
 		t.Fatalf("ClaimExtraction() = %+v, %v", claim, err)
 	}
 	items := []QueuedItem{{Kind: ItemKindTask, Title: "persist shadow result"}}
-	if err := store.FreezeExtraction(context.Background(), receipt.ID, "test-worker", FrozenExtraction{Provider: "deepseek", Model: "deepseek-model", Items: items}); err != nil {
+	if err := store.FreezeExtraction(context.Background(), receipt.ID, "test-worker", claim.AttemptNumber, FrozenExtraction{Provider: "deepseek", Model: "deepseek-model", Items: items}); err != nil {
 		t.Fatal(err)
 	}
 	worker := newTestWorker(t, store, &fakeExtractor{}, &fakeDeliverer{})

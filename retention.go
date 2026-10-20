@@ -21,6 +21,8 @@ func (s *Store) PurgeExpiredEvaluationEvidence(ctx context.Context) (int64, erro
 	return count, nil
 }
 
+// PurgeExpiredRecordings removes inactive recordings strictly older than the retention cutoff.
+// Stored UTC timestamps omit zero fractions; trimming Z preserves chronological text order.
 func (s *Store) PurgeExpiredRecordings(ctx context.Context, retention time.Duration) (int64, error) {
 	if retention <= 0 {
 		return 0, fmt.Errorf("retention must be positive")
@@ -32,12 +34,12 @@ func (s *Store) PurgeExpiredRecordings(ctx context.Context, retention time.Durat
 			SELECT r.id
 			FROM recordings r
 			LEFT JOIN extraction_jobs j ON j.recording_id = r.id
-			WHERE r.last_received_at < ?
+			WHERE rtrim(r.last_received_at, 'Z') < rtrim(?, 'Z')
 				AND (
 					j.recording_id IS NULL
 					OR (
 						j.workflow_state NOT IN ('received', 'extracting', 'retry_wait')
-						AND j.updated_at < ?
+						AND rtrim(j.updated_at, 'Z') < rtrim(?, 'Z')
 						AND NOT EXISTS (
 							SELECT 1 FROM delivery_tasks active
 							WHERE active.recording_id = r.id
@@ -45,7 +47,7 @@ func (s *Store) PurgeExpiredRecordings(ctx context.Context, retention time.Durat
 						)
 						AND NOT EXISTS (
 							SELECT 1 FROM delivery_tasks recent
-							WHERE recent.recording_id = r.id AND recent.updated_at >= ?
+							WHERE recent.recording_id = r.id AND rtrim(recent.updated_at, 'Z') >= rtrim(?, 'Z')
 						)
 					)
 				)
