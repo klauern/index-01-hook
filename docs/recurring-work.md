@@ -83,6 +83,24 @@ Manifest validation requires kubeconform and its schemas. Security checks requir
 Record missing tools, downloads, failed checks, skipped tests, and baseline failures separately.
 Do not run live provider tests, deployments, releases, credential changes, or merges without separate authorization.
 
+## Continue before review or merge
+
+Review and merge timing do not block implementation. Keep advancing the approved epic scope while pull requests remain open.
+Use an unmerged prerequisite branch as the base when the next slice needs that code.
+Keep independent work on separate branches based on the default branch.
+Do not create artificial dependencies because pull requests change the same file.
+Inspect changed lines, module constraints, public contracts, and tests before assigning a dependency.
+
+Test the incremental child change and the cumulative stack. Record both results in the child pull request.
+A known baseline failure blocks the affected acceptance gate. It does not block unrelated implementation or independently testable descendants.
+Do not carry an unexplained failure forward. Establish its baseline and record its effect on each descendant.
+Do not enable deployment, live providers, verification authority, or credential changes to bypass a blocked gate.
+
+Keep the issue open while required acceptance evidence remains unverified.
+Distinguish implementation evidence, review state, merge readiness, and epic completion in the handoff.
+A draft can contain tested work that future slices use. An open pull request does not prove acceptance.
+See [the pull request dependency map](pr-dependency-map.md) for the current branch order and overlap decisions.
+
 ## Publish and resume
 
 1. Inspect the final diff and untracked files. Exclude private payloads, credentials, and unrelated edits.
@@ -104,7 +122,13 @@ Set the dependent pull request base to the prerequisite branch.
 Document the prerequisite link and review order in both pull request descriptions.
 Keep each child diff limited to its own issue. Run the full tests on the combined stack.
 If the base changes, inspect the new diff and repeat affected validation.
-Do not force-push or rewrite another branch to repair a stack.
+Preserve published history when a prerequisite changes. Do not force-push shared branches.
+If a reviewable child needs a new head, create a replacement child from the required base.
+Link the old and replacement pull requests in both descriptions. Preserve the original branch and discussion.
+Close a superseded pull request only after its replacement preserves its complete scope and validation evidence.
+Record whether human reviews exist before replacing a pull request.
+If preserving both history and a reviewable diff requires an unauthorized action, request approval for that specific action.
+Do not merge pull requests as part of stack maintenance.
 
 ## Initial implementation evidence
 
