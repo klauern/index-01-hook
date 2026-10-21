@@ -15,3 +15,15 @@ Use Go1.26.10, pinned builders, lint, manifests, vulnerability and secret scans.
 Live providers and private calibration remain outside these synthetic checks.
 Record exact heads, source coverage, review limits and final hosted checks in Beads.
 The dependent layer owns semantic date resolution with explicit time and location.
+
+## Explicit-clock resolution
+
+Beads `index-01-hook-b7y.3.3` owns the dependent semantic resolution layer.
+The application package resolves absolute, relative and weekday dates with caller-supplied time and location.
+The root resolver delegates to this policy. Its compatibility name and result shape remain unchanged.
+The former unused validator now also requires explicit time and location. No hidden wall-clock call remains in this date boundary.
+The existing missing-confidence treatment, confidence threshold, year window and weekday rules remain unchanged.
+The provider prompt and live verification policy remain unchanged. This extraction does not enable TypeSafe date authority.
+Regression tests cover frozen clocks, midnight, spring/fall DST, impossible dates, year bounds and confidence precedence.
+A disposable mutation that replaces supplied time with wall-clock time must fail the explicit-clock table.
+Typed failure categories, remaining application validation, use cases and ports remain separate acceptance work.
