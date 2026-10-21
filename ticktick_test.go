@@ -573,6 +573,7 @@ func TestTickTickCreateNoteTreatsReadBackStatusAsAmbiguous(t *testing.T) {
 	}
 }
 
+// TestTickTickReconcileUsesOneExactMarkerLine rejects embedded and duplicate marker evidence.
 func TestTickTickReconcileUsesOneExactMarkerLine(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":4]"
 	expectedContent := marker + "\\n\\nexpected content"
@@ -620,6 +621,7 @@ func TestTickTickReconcileUsesOneExactMarkerLine(t *testing.T) {
 	}
 }
 
+// TestTickTickReconcileNoteRequiresNoteKindAndExactMarker confirms only the intended note identity.
 func TestTickTickReconcileNoteRequiresNoteKindAndExactMarker(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":5]"
 	expectedContent := marker + "\\n\\ncontent"
@@ -659,6 +661,7 @@ func TestTickTickReconcileNoteRequiresNoteKindAndExactMarker(t *testing.T) {
 	}
 }
 
+// TestTickTickReconcileRejectsMissingTaskList requires review when project visibility is incomplete.
 func TestTickTickReconcileRejectsMissingTaskList(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":6]"
 	for _, body := range []string{`{}`, `{"tasks":null}`} {

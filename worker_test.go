@@ -779,6 +779,7 @@ func TestWorkerBoundsAmbiguousReconciliation(t *testing.T) {
 	}
 }
 
+// TestWorkerReviewsUnconfirmedAmbiguousCreateWithoutSecondPost checks the durable review state and create count.
 func TestWorkerReviewsUnconfirmedAmbiguousCreateWithoutSecondPost(t *testing.T) {
 	store, clock := newQueueStore(t)
 	receipt := saveQueueRecording(t, store, "Ambiguous create loop")

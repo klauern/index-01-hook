@@ -398,6 +398,7 @@ func (w *Worker) processDelivery(ctx context.Context, claim *DeliveryClaim) erro
 	return w.handleDeliveryError(ctx, claim, err)
 }
 
+// reconcileDelivery confirms the original remote item or preserves ambiguity without another create.
 func (w *Worker) reconcileDelivery(ctx context.Context, claim *DeliveryClaim) error {
 	started := time.Now()
 	result, err := w.deliverer.ReconcileItem(ctx, TickTickReconciliationInput{

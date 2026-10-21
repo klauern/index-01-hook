@@ -563,6 +563,7 @@ func normalizeTickTickTags(tags []string) ([]string, error) {
 	return result, nil
 }
 
+// ReconcileItem scans bounded visible projects and requires review when an ambiguous create cannot be confirmed.
 func (r *TickTickRouter) ReconcileItem(ctx context.Context, input TickTickReconciliationInput) (TickTickReconciliationResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, tickTickReconcileTimeout)
 	defer cancel()

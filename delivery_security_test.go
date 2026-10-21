@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// TestUncertainTickTickCreateRequiresReviewWithoutAnotherPost preserves ambiguity when no marker is confirmed.
 func TestUncertainTickTickCreateRequiresReviewWithoutAnotherPost(t *testing.T) {
 	tests := []struct {
 		name      string

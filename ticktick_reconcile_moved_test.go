@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// TestTickTickReconcileMovedItem checks moved items, alias changes, edits, and duplicate markers.
 func TestTickTickReconcileMovedItem(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":8]"
 	content := marker + "\n\noriginal content"
@@ -60,6 +61,7 @@ func TestTickTickReconcileMovedItem(t *testing.T) {
 	}
 }
 
+// TestTickTickReconcileBoundsProjectScan rejects incomplete reconciliation beyond the project bound.
 func TestTickTickReconcileBoundsProjectScan(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":10]"
 	for _, count := range []int{100, 101} {
@@ -91,6 +93,7 @@ func TestTickTickReconcileBoundsProjectScan(t *testing.T) {
 	}
 }
 
+// TestTickTickReconcileDeadlineAndLateFailure bounds reads and retains ambiguity on late failures.
 func TestTickTickReconcileDeadlineAndLateFailure(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":11]"
 	for _, callerShorter := range []bool{false, true} {
@@ -131,13 +134,16 @@ type contextBlockingBody struct {
 	ctx context.Context
 }
 
+// Read waits for cancellation to model a stalled reconciliation response.
 func (b contextBlockingBody) Read([]byte) (int, error) {
 	<-b.ctx.Done()
 	return 0, b.ctx.Err()
 }
 
+// Close satisfies the synthetic response body contract.
 func (contextBlockingBody) Close() error { return nil }
 
+// TestTickTickReconcileDecodeDeadlineIsRetryable preserves retries when response decoding exceeds the deadline.
 func TestTickTickReconcileDecodeDeadlineIsRetryable(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":13]"
 	for _, stage := range []string{"project list", "project data"} {
@@ -165,6 +171,7 @@ func TestTickTickReconcileDecodeDeadlineIsRetryable(t *testing.T) {
 	}
 }
 
+// TestTickTickReconcileWhitespaceProjectRequiresReview rejects noncanonical remote project identities.
 func TestTickTickReconcileWhitespaceProjectRequiresReview(t *testing.T) {
 	for _, projectID := range []string{" old", "old "} {
 		t.Run(fmt.Sprintf("%q", projectID), func(t *testing.T) {
@@ -187,6 +194,7 @@ func TestTickTickReconcileWhitespaceProjectRequiresReview(t *testing.T) {
 	}
 }
 
+// TestTickTickReconcileIncompleteScanRequiresReview prevents confirmation before every candidate project is checked.
 func TestTickTickReconcileIncompleteScanRequiresReview(t *testing.T) {
 	marker := "[index01:" + testRecordingHash + ":9]"
 	cases := []struct {

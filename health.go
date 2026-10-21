@@ -284,6 +284,7 @@ func providerLatencyStatus(latency sql.NullInt64, observedAt sql.NullString, fai
 	return status
 }
 
+// healthReasons derives readiness reasons from current queue, worker, and fresh provider observations.
 func healthReasons(status OperationalStatus) []string {
 	reasons := make([]string, 0, 8)
 	switch {

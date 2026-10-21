@@ -305,3 +305,10 @@ Use the supported `gh stack` workflow in [merge recovery](stack-merge-recovery.m
 Keep merged native-stack entries as history. Do not attempt to remerge them.
 Treat old-head review, byte-identical source, local conflict assessment, and new hosted checks as separate evidence.
 Do not request unavailable bot-author reviews or repeat diagnostic requests after a merge-only update.
+
+
+## October 21 source baseline
+
+The former local health and moved-item corrections are published through a dedicated parent before package extraction.
+See [selected source baseline](architecture/source-baseline.md) for preserved revisions, exclusions, regression evidence, and remaining scope.
+The temporary original-13 review queue remains closed. Daily implementation continues under Beads and the shared lock.

@@ -203,6 +203,7 @@ func TestOperationalStatusReportsStoppedStaleFailedAndSlowWorker(t *testing.T) {
 	}
 }
 
+// TestOperationalStatusExpiresSlowProviderObservation verifies that stale latency no longer blocks readiness.
 func TestOperationalStatusExpiresSlowProviderObservation(t *testing.T) {
 	store, clock := newQueueStore(t)
 	startHealthyWorker(t, store, "health-worker")
@@ -236,6 +237,7 @@ func TestOperationalStatusExpiresSlowProviderObservation(t *testing.T) {
 	}
 }
 
+// TestOperationalStatusSlowFailedProviderCallStaysDegraded preserves failure diagnostics after latency expires.
 func TestOperationalStatusSlowFailedProviderCallStaysDegraded(t *testing.T) {
 	store, clock := newQueueStore(t)
 	startHealthyWorker(t, store, "health-worker")

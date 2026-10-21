@@ -508,6 +508,7 @@ func TestItemAcceptanceRedactsCapturedLogsAndStatus(t *testing.T) {
 	}
 }
 
+// TestItemAcceptanceRestartDoesNotRepeatCompletedSibling preserves completed deliveries after an ambiguous sibling restarts.
 func TestItemAcceptanceRestartDoesNotRepeatCompletedSibling(t *testing.T) {
 	output := `{"items":[` + validDeepSeekTask("Completed sibling") + `,` + validDeepSeekNote("Restarted note", "Restarted content") + `]}`
 	environment := newItemAcceptanceEnvironment(t, output, func(transport *itemAcceptanceTickTickTransport) {
