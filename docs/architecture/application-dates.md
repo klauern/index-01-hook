@@ -27,3 +27,24 @@ The provider prompt and live verification policy remain unchanged. This extracti
 Regression tests cover frozen clocks, midnight, spring/fall DST, impossible dates, year bounds and confidence precedence.
 A disposable mutation that replaces supplied time with wall-clock time must fail the explicit-clock table.
 Typed failure categories, remaining application validation, use cases and ports remain separate acceptance work.
+
+## Registered graph and parent-merge gate
+
+Native stack52 contains PR50 then PR51. Its base is PR47's application-values branch.
+Native stack49 remains unchanged. PR48's identity policy is independent of the date implementation.
+Merge PR46 and PR47 into main before merging the date chain.
+After PR47 merges, inspect its actual merge commit and the current main tree.
+Retarget native stack52 to main before merging PR50. Do not merge date work into an already merged parent branch.
+Use additive integration when needed. Preserve all published commits and contributions.
+Propagate a corrected PR50 into PR51, run incremental and cumulative checks, then push normally.
+Use supported PR-number-only `gh stack link --base main 50 51` to update the existing native stack.
+Verify stack52's identity, its main base, PR50's main base, and PR51's immediate PR50 base.
+Do not use force-push, destructive rebase or remote-unstack.
+If PR48 also merged, preserve its identity inventory entry during any inventory conflict resolution.
+
+The current nested bases are unprotected. No default-setup CodeQL run was scheduled on these date heads at publication.
+[GitHub default-setup triggers](https://docs.github.com/en/code-security/concepts/code-scanning/setup-types) target the default branch or protected bases.
+Record CodeQL as not run on this nested chain. Check scheduling again after readiness and after retargeting main.
+Do not report inherited CodeQL runs from PR47 as scans of new date changes.
+The local vulnerability, secret, lint and manifest scans and hosted security jobs remain required.
+No security configuration was changed.
