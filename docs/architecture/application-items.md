@@ -28,3 +28,12 @@ After the adapter layer exists, use supported `gh stack add` and PR-number-only 
 Use normal Git pushes. Preserve native stacks49 and52 and historical stacks41 and42.
 Merge the prerequisite first. Then reconcile the actual native root and GitHub base to main.
 Do not merge a descendant into an obsolete parent branch.
+
+## Production adoption
+
+The adapter layer follows the policy API layer. Both layers depend on PR #47.
+Queue items use application validation. Legacy tasks keep their error text and representation.
+DeepSeek schema limits and alias normalization use application policy.
+TickTick encoded payload limits and response limits stay in the provider adapter.
+The full suite covers freeze transactions, replay, duplicate markers, routing and synthetic provider requests.
+Keep policy and adapter pull requests in immediate-parent order.
