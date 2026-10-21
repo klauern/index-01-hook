@@ -57,5 +57,10 @@ func FailureOf(err error) (Failure, bool) {
 
 // Valid reports whether the category belongs to the application failure contract.
 func (k FailureKind) Valid() bool {
- switch k {case Authentication,Configuration,Retryable,Malformed,ReviewRequired,AmbiguousWrite,Terminal:return true;default:return false}
+	switch k {
+	case Authentication, Configuration, Retryable, Malformed, ReviewRequired, AmbiguousWrite, Terminal:
+		return true
+	default:
+		return false
+	}
 }

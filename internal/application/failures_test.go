@@ -27,7 +27,9 @@ type failureEnvelope struct{ cause error }
 func TestFailurePortPreservesMetadata(t *testing.T) {
 	kinds := []FailureKind{Authentication, Configuration, Retryable, Malformed, ReviewRequired, AmbiguousWrite, Terminal}
 	for _, kind := range kinds {
- if !kind.Valid(){t.Fatalf("known category %q rejected",kind)}
+		if !kind.Valid() {
+			t.Fatalf("known category %q rejected", kind)
+		}
 		want := Failure{Kind: kind, Operation: "extract items", StatusCode: 429, Reason: "provider_http_error"}
 		original := opaqueFailure{info: want}
 		for _, err := range []error{want, original, failureEnvelope{original}, errors.Join(errors.New("unrelated"), failureEnvelope{original})} {
@@ -50,8 +52,10 @@ func TestFailurePortPreservesMetadata(t *testing.T) {
 
 // TestFailureDiagnosticDoesNotFormatMetadata protects the generic error boundary from supplied text.
 func TestFailureDiagnosticDoesNotFormatMetadata(t *testing.T) {
-	if FailureKind("private-kind").Valid(){t.Fatal("unknown category accepted")}
- f := Failure{Kind: "private-kind", Operation: "private-operation", StatusCode: 401, Reason: "private-body"}
+	if FailureKind("private-kind").Valid() {
+		t.Fatal("unknown category accepted")
+	}
+	f := Failure{Kind: "private-kind", Operation: "private-operation", StatusCode: 401, Reason: "private-body"}
 	if got := f.Error(); got != "application operation failed" {
 		t.Fatalf("unsafe diagnostic %q", got)
 	}
