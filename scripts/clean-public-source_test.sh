@@ -10,15 +10,15 @@ fail() {
 script_dir=$(CDPATH='' cd "$(dirname "$0")" && pwd -P)
 project_dir=$(CDPATH='' cd "$script_dir/.." && pwd -P)
 command -v git >/dev/null 2>&1 || fail "git is required"
-command -v go >/dev/null 2>&1 || fail "Go 1.26.9 is required"
+command -v go >/dev/null 2>&1 || fail "Go 1.26.10 is required"
 command -v mktemp >/dev/null 2>&1 || fail "mktemp is required"
 command -v docker >/dev/null 2>&1 || fail "Docker Compose is required"
 docker compose version >/dev/null 2>&1 || fail "Docker Compose is required"
 
-version_output=$(go version 2>/dev/null) || fail "Go 1.26.9 is required"
+version_output=$(go version 2>/dev/null) || fail "Go 1.26.10 is required"
 case "$version_output" in
-  'go version go1.26.9 '*) ;;
-  *) fail "Go 1.26.9 is required" ;;
+  'go version go1.26.10 '*) ;;
+  *) fail "Go 1.26.10 is required" ;;
 esac
 
 root=$(CDPATH='' cd "$(mktemp -d "${TMPDIR:-/tmp}/index01-clean-source.XXXXXX")" && pwd -P)

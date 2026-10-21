@@ -39,3 +39,10 @@ This baseline does not complete the architecture or delivery epics.
 The integration also preserves blocked_auth for authentication failures during catalog or project reconciliation reads.
 A real-worker/SQLite/HTTP-fixture regression fails before the correction and passes afterward.
 The invariant matrix now names the strengthened no-second-create and authentication regressions.
+
+## October 21 toolchain gate
+
+The current vulnerability database reports GO-2026-6809 in Go 1.26.9.
+The compiler and official multi-platform builders now use Go 1.26.10.
+The builder digest was resolved from the official Docker registry.
+All security checks remain enabled.
