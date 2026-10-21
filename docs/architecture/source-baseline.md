@@ -35,3 +35,7 @@ Record exact final heads and hosted checks in Beads before marking the PR ready.
 
 Application value extraction depends on this selected source baseline. Later slices still own date policy, typed failures, use cases, provider ports, and runtime composition.
 This baseline does not complete the architecture or delivery epics.
+
+The integration also preserves blocked_auth for authentication failures during catalog or project reconciliation reads.
+A real-worker/SQLite/HTTP-fixture regression fails before the correction and passes afterward.
+The invariant matrix now names the strengthened no-second-create and authentication regressions.

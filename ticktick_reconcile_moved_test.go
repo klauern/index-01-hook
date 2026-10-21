@@ -242,6 +242,10 @@ func TestTickTickReconcileIncompleteScanRequiresReview(t *testing.T) {
 				if classifyTickTickError(err) != TickTickErrorRetryable {
 					t.Fatalf("transient scan = %+v, %v; want retryable error", result, err)
 				}
+			} else if tc.data == "failure" {
+				if classifyTickTickError(err) != TickTickErrorAuthentication {
+					t.Fatalf("authentication scan = %+v, %v; want authentication error", result, err)
+				}
 			} else if err != nil || result.Status != TickTickReconciliationReview {
 				t.Fatalf("incomplete scan = %+v, %v; want review", result, err)
 			}
