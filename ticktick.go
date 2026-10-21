@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -525,15 +524,11 @@ func normalizeTickTickTask(projectID string, input TickTickTaskInput) (tickTickC
 
 // tickTickMarker validates the existing delivery identity and encodes its provider marker.
 func tickTickMarker(recordingHash string, taskIndex int) (string, error) {
-	recordingHash = strings.ToLower(strings.TrimSpace(recordingHash))
-	decoded, err := hex.DecodeString(recordingHash)
-	if err != nil || len(decoded) != 32 {
-		return "", malformedError("normalize task", "recording hash is invalid")
+	identity, err := application.NewItemIdentity(recordingHash, taskIndex)
+	if err != nil {
+		return "", malformedError("normalize task", err.Error())
 	}
-	if taskIndex < 0 {
-		return "", malformedError("normalize task", "task index is invalid")
-	}
-	return formatTickTickMarker(application.ItemIdentity{Fingerprint: application.Fingerprint(recordingHash), Index: taskIndex}), nil
+	return formatTickTickMarker(identity), nil
 }
 
 // formatTickTickMarker keeps the provider byte representation outside application values.
