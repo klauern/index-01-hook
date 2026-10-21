@@ -597,7 +597,7 @@ func (r *TickTickRouter) ReconcileItem(ctx context.Context, input TickTickReconc
 		if ctx.Err() != nil {
 			return TickTickReconciliationResult{}, &TickTickError{Kind: TickTickErrorRetryable, Operation: operation}
 		}
-		if classifyTickTickError(err) == TickTickErrorRetryable {
+		if kind := classifyTickTickError(err); kind == TickTickErrorRetryable || kind == TickTickErrorAuthentication {
 			return TickTickReconciliationResult{}, err
 		}
 		return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
@@ -639,7 +639,7 @@ func (r *TickTickRouter) ReconcileItem(ctx context.Context, input TickTickReconc
 			discardResponse(response.Body)
 			ignoreCloseError(response.Body)
 			statusErr := classifyTickTickStatus(operation, response.StatusCode)
-			if classifyTickTickError(statusErr) == TickTickErrorRetryable {
+			if kind := classifyTickTickError(statusErr); kind == TickTickErrorRetryable || kind == TickTickErrorAuthentication {
 				return TickTickReconciliationResult{}, statusErr
 			}
 			return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
