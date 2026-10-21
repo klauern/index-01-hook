@@ -30,14 +30,14 @@ Typed failure categories, remaining application validation, use cases and ports 
 
 ## Registered graph and parent-merge gate
 
-Native stack52 contains PR50 then PR51. Its base is PR47's application-values branch.
+Native stack52 starts with PR50 then PR51. A confidence-validation child follows the semantic policy layer. Its base is PR47's application-values branch.
 Native stack49 remains unchanged. PR48's identity policy is independent of the date implementation.
 Merge PR46 and PR47 into main before merging the date chain.
 After PR47 merges, inspect its actual merge commit and the current main tree.
 Retarget native stack52 to main before merging PR50. Do not merge date work into an already merged parent branch.
 Use additive integration when needed. Preserve all published commits and contributions.
 Propagate a corrected PR50 into PR51, run incremental and cumulative checks, then push normally.
-Use supported PR-number-only `gh stack link --base main 50 51` to update the existing native stack.
+Use supported PR-number-only `gh stack link --base main <all current PR numbers in stack order>` to update the existing native stack.
 Verify stack52's identity, its main base, PR50's main base, and PR51's immediate PR50 base.
 Do not use force-push, destructive rebase or remote-unstack.
 If PR48 also merged, preserve its identity inventory entry during any inventory conflict resolution.
@@ -48,3 +48,20 @@ Record CodeQL as not run on this nested chain. Check scheduling again after read
 Do not report inherited CodeQL runs from PR47 as scans of new date changes.
 The local vulnerability, secret, lint and manifest scans and hosted security jobs remain required.
 No security configuration was changed.
+
+## Supplied-confidence validation
+
+Beads `index-01-hook-b7y.3.4` rejects supplied non-finite probabilities and values outside zero through one.
+Only confidence fields used by the selected semantic mode participate.
+Invalid supplied confidence returns no candidate date, zero confidence and review required.
+Valid low-confidence values retain their existing candidate and review behavior.
+Missing confidence and unused fields retain their existing compatibility behavior.
+The root resolver and explicit-clock validator consume the same guarded policy.
+This change does not activate live verification or rewrite stored dates.
+Failing-before and passing-after regressions cover every used field in absolute, relative and weekday modes.
+
+An optional local CodeQL scan is separate from a hosted CodeQL check.
+Use only public committed source, a verified official bundle and isolated outputs.
+Record the exact source SHA, tool/query versions, commands, findings and exclusions.
+Do not upload results or change scanning configuration to manufacture a hosted pass.
+CodeQL not scheduled on a nested base remains a separate state from a successful local analysis.

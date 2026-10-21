@@ -1,6 +1,7 @@
 package application
 
 import (
+	"math"
 	"strings"
 	"time"
 )
@@ -14,7 +15,10 @@ func ResolveDateParts(parts DateParts, now time.Time, location *time.Location) (
 		location = time.UTC
 	}
 	localNow := now.In(location)
-	confidence := datePartsConfidence(parts)
+	confidence, validConfidence := datePartsConfidence(parts)
+	if !validConfidence {
+		return time.Time{}, 0, true
+	}
 	mode := strings.ToLower(strings.TrimSpace(parts.Mode))
 	switch mode {
 	case "absolute":
@@ -47,8 +51,9 @@ func ResolveDateParts(parts DateParts, now time.Time, location *time.Location) (
 	}
 }
 
-// datePartsConfidence retains the minimum confidence among fields used by the selected mode.
-func datePartsConfidence(parts DateParts) float64 {
+// datePartsConfidence validates supplied probabilities and retains the minimum among used fields.
+// Missing and unused fields retain their existing compatibility behavior.
+func datePartsConfidence(parts DateParts) (float64, bool) {
 	confidence := 1.0
 	used := []string{"mode"}
 	switch strings.ToLower(strings.TrimSpace(parts.Mode)) {
@@ -60,11 +65,16 @@ func datePartsConfidence(parts DateParts) float64 {
 		used = append(used, "weekday")
 	}
 	for _, key := range used {
-		if value, ok := parts.Confidence[key]; ok && value < confidence {
-			confidence = value
+		if value, ok := parts.Confidence[key]; ok {
+			if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 || value > 1 {
+				return 0, false
+			}
+			if value < confidence {
+				confidence = value
+			}
 		}
 	}
-	return confidence
+	return confidence, true
 }
 
 // relativeDayOffset maps supported day anchors without consulting the clock.
