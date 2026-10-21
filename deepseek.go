@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/klauern/index-01-hook/internal/application"
 	"io"
 	"net/http"
 	"sort"
@@ -531,4 +532,42 @@ func classifyDeepSeekStatus(status int) error {
 
 func deepSeekMalformed(operation, detail string) error {
 	return &DeepSeekError{Kind: DeepSeekErrorMalformed, Operation: operation, Detail: detail}
+}
+
+// ApplicationFailure exposes safe metadata without retaining provider detail or a transport cause.
+func (e *DeepSeekError) ApplicationFailure() application.Failure {
+	if e == nil {
+		return application.Failure{Kind: application.Malformed}
+	}
+	return application.Failure{Kind: application.FailureKind(e.Kind), Operation: e.Operation, StatusCode: e.StatusCode, Reason: deepSeekFailureReasonCode(e)}
+}
+
+// deepSeekFailureReasonCode retains static diagnostic codes inside the provider adapter.
+func deepSeekFailureReasonCode(e *DeepSeekError) string {
+	if e.StatusCode != 0 {
+		return "provider_http_error"
+	}
+	switch e.Kind {
+	case DeepSeekErrorAuthentication:
+		return "provider_authentication"
+	case DeepSeekErrorRetryable:
+		return "provider_transport"
+	case DeepSeekErrorReview:
+		return "provider_refusal"
+	case DeepSeekErrorMalformed:
+		switch {
+		case strings.HasPrefix(e.Detail, "structured output"):
+			return "structured_output"
+		case strings.HasPrefix(e.Detail, "success response") || strings.HasPrefix(e.Detail, "response"):
+			return "response_envelope"
+		case strings.Contains(e.Detail, "item") || strings.Contains(e.Detail, "due date"):
+			return "item_validation"
+		default:
+			return "client_validation"
+		}
+	case DeepSeekErrorTerminal:
+		return "provider_terminal"
+	default:
+		return "unknown_provider_error"
+	}
 }

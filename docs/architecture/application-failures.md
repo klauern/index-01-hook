@@ -28,3 +28,12 @@ Register a new local stack with explicit trunk `codex/application-values-2026102
 Use supported gh-stack0.2.1 init/add/link commands, normal Git pushes and immediate-parent PR bases.
 Preserve existing native stacks and published commits. After PR47 merges, reconcile the new native root to main before merging descendants.
 If safe reconciliation needs destructive history changes, stop that action and report the required permission.
+
+## Production consumption
+
+DeepSeek and TickTick expose `FailureSource` without changing their public fields or error strings.
+The worker now classifies wrapped failures through `FailureOf`. Failure decisions no longer inspect concrete provider error structs.
+DeepSeek retains its reason-code mapping inside the adapter. The worker accepts only existing static reason codes for logs.
+Unknown errors keep the malformed fallback. Unknown typed categories keep default state-machine outcomes and cannot become safe retries.
+Scripted adapters can return application failures without constructing provider error classes.
+The functional provider and persistence interfaces remain in the root. This slice does not complete Beads b7y.5.
