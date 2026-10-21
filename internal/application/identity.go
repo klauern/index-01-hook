@@ -31,7 +31,11 @@ func (e *IdentityError) Error() string {
 // NewItemIdentity canonicalizes a payload fingerprint and validates its frozen zero-based index.
 // Identity never depends on routing, remote project IDs, editable content, or item kind.
 func NewItemIdentity(fingerprint string, index int) (ItemIdentity, error) {
-	fingerprint = strings.ToLower(strings.TrimSpace(fingerprint))
+	fingerprint = strings.TrimSpace(fingerprint)
+	if len(fingerprint) != 64 {
+		return ItemIdentity{}, &IdentityError{Field: IdentityFingerprint}
+	}
+	fingerprint = strings.ToLower(fingerprint)
 	decoded, err := hex.DecodeString(fingerprint)
 	if err != nil || len(decoded) != 32 {
 		return ItemIdentity{}, &IdentityError{Field: IdentityFingerprint}
