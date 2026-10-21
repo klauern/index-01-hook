@@ -2,7 +2,9 @@
 
 Date: 2026-10-17
 
-Status: Selected contract specification. Production extraction is not implemented.
+Status: Selected contract specification. Production value extraction has started; use cases and ports remain unextracted.
+
+See [production application values](../architecture/application-values.md) for the first bounded implementation.
 
 Scope: `index-01-hook-b7y.1.2`, following the [boundary inventory](../architecture/boundary-inventory.md).
 The source baseline is PR #37 at `72217cd`. Independent primary-checkout changes remain excluded.

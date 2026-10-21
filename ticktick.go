@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/klauern/index-01-hook/internal/application"
 )
 
 const (
@@ -521,6 +523,7 @@ func normalizeTickTickTask(projectID string, input TickTickTaskInput) (tickTickC
 	return payload, marker, nil
 }
 
+// tickTickMarker validates the existing delivery identity and encodes its provider marker.
 func tickTickMarker(recordingHash string, taskIndex int) (string, error) {
 	recordingHash = strings.ToLower(strings.TrimSpace(recordingHash))
 	decoded, err := hex.DecodeString(recordingHash)
@@ -530,7 +533,12 @@ func tickTickMarker(recordingHash string, taskIndex int) (string, error) {
 	if taskIndex < 0 {
 		return "", malformedError("normalize task", "task index is invalid")
 	}
-	return fmt.Sprintf("[index01:%s:%d]", recordingHash, taskIndex), nil
+	return formatTickTickMarker(application.ItemIdentity{Fingerprint: application.Fingerprint(recordingHash), Index: taskIndex}), nil
+}
+
+// formatTickTickMarker keeps the provider byte representation outside application values.
+func formatTickTickMarker(identity application.ItemIdentity) string {
+	return fmt.Sprintf("[index01:%s:%d]", identity.Fingerprint, identity.Index)
 }
 
 func validTickTickPriority(priority int) bool {
