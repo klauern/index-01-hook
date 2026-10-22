@@ -833,3 +833,11 @@ func configurationError(operation, detail string) error {
 func malformedError(operation, detail string) error {
 	return &TickTickError{Kind: TickTickErrorMalformed, Operation: operation, Detail: detail}
 }
+
+// ApplicationFailure exposes safe metadata while preserving the public provider error contract.
+func (e *TickTickError) ApplicationFailure() application.Failure {
+	if e == nil {
+		return application.Failure{Kind: application.Malformed}
+	}
+	return application.Failure{Kind: application.FailureKind(e.Kind), Operation: e.Operation, StatusCode: e.StatusCode}
+}
