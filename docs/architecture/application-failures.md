@@ -25,7 +25,7 @@ The dependency guard must reject provider, HTTP and SQL imports from the applica
 Run lint, build, security, manifest and synthetic container gates. Verify final-head hosted checks after readiness.
 Record manual CodeQL separately from hosted CodeQL and source review. Live/private validation is not enabled.
 
-The original failure layers used native stack59 with trunk `codex/application-values-20261021`.
+The original failure layers used native stack 59 with trunk `codex/application-values-20261021`.
 That stack is closed after both layers integrated into PR47. Preserve its native history.
 Use supported gh-stack0.2.1 commands, normal Git pushes and immediate-parent PR bases for surviving stacks.
 After PR47 merges, reconcile actual surviving native roots to main before merging descendants.
@@ -42,7 +42,7 @@ The functional provider and persistence interfaces remain in the root. This slic
 
 ## Joined failure recovery
 
-PR57 and PR58 merged into PR47 on October22. Their code is not yet on main.
+PR57 and PR58 merged into PR47 on October 22. Their code is not yet on main.
 Recovery tests reproduce a second create after a durable reopen when a retryable error conceals an ambiguous write.
 The correction preserves ambiguous metadata across both join orders, nested joins and failure wrappers.
 The durable regression requires one create, one reconciliation and a reconciled completion after an actual SQLite close and reopen.
