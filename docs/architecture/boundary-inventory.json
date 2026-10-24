@@ -7,6 +7,7 @@
       "health.go",
       "internal/application/items.go",
       "internal/application/item_policy.go",
+      "internal/application/failures.go",
       "internal/evalcorpus/types.go",
       "typesafe_verification.go",
       "worker.go"
