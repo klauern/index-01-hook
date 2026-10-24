@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/klauern/index-01-hook/internal/application"
 	"io"
 	"net/http"
 	"strings"
