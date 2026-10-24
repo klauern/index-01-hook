@@ -2,20 +2,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/klauern/index-01-hook/internal/application"
 	"strings"
 	"time"
 )
 
-type TypeSafeDateParts struct {
-	Mode       string
-	Month      int
-	Day        int
-	Year       int
-	DayAnchor  string
-	Weekday    string
-	WeekOffset int
-	Confidence map[string]float64
-}
+// TypeSafeDateParts retains the root compatibility name for canonical application date fields.
+type TypeSafeDateParts = application.DateParts
 
 const minimumDateConfidence = 0.50
 
