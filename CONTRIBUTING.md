@@ -9,7 +9,7 @@ The README release status states when the repository is still private.
 
 Install these tools before you work on the project:
 
-- Go 1.26.9 or newer to build and test the service.
+- Go 1.26.10 or newer to build and test the service.
 - Git to clone the repository and manage branches.
 - Task to run commands in `Taskfile.yml`.
 - The Docker CLI with the Docker Compose plugin to run static Compose checks.

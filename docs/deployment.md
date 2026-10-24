@@ -59,7 +59,7 @@ GOTOOLCHAIN=local GOPROXY=off go test -race ./...
 GOTOOLCHAIN=local GOPROXY=off go vet ./...
 GOTOOLCHAIN=local GOPROXY=off task test
 docker build --pull=false --no-cache \
-  --build-arg GO_IMAGE=docker.io/library/golang:1.26.9@sha256:37cfcca63222ec499bec5e8ad7aad52dbf7529db36d5812b8eae2f0621aa92d6 \
+  --build-arg GO_IMAGE=docker.io/library/golang:1.26.10@sha256:3745f1aa11822297b79113f5e84ce2bffeb039734571c39855809cfe9e5d7be6 \
   --tag index-01-hook:local .
 ./scripts/compose-volume_test.sh
 ./scripts/ci-manifests.sh

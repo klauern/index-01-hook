@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/klauern/index-01-hook/internal/application"
 	"github.com/klauern/index-01-hook/internal/evalcorpus"
 )
 
@@ -325,43 +326,23 @@ func (w *Worker) logDeepSeekFailure(recordingID int64, err error) {
 		"classification", kind,
 		"reason_code", deepSeekFailureReason(err),
 	}
-	var providerError *DeepSeekError
-	if errors.As(err, &providerError) && providerError.StatusCode != 0 {
-		attributes = append(attributes, "status_code", providerError.StatusCode)
+	if failure, ok := application.FailureOf(err); ok && failure.StatusCode != 0 {
+		attributes = append(attributes, "status_code", failure.StatusCode)
 	}
 	w.config.Logger.Warn("deepseek extraction failed", attributes...)
 }
 
+// deepSeekFailureReason accepts only existing static reason codes from the neutral failure port.
 func deepSeekFailureReason(err error) string {
-	var providerError *DeepSeekError
-	if !errors.As(err, &providerError) {
+	failure, ok := application.FailureOf(err)
+	if !ok {
 		return "unexpected_error"
 	}
-	if providerError.StatusCode != 0 {
-		return "provider_http_error"
-	}
-	switch providerError.Kind {
-	case DeepSeekErrorAuthentication:
-		return "provider_authentication"
-	case DeepSeekErrorRetryable:
-		return "provider_transport"
-	case DeepSeekErrorReview:
-		return "provider_refusal"
-	case DeepSeekErrorMalformed:
-		switch {
-		case strings.HasPrefix(providerError.Detail, "structured output"):
-			return "structured_output"
-		case strings.HasPrefix(providerError.Detail, "success response") || strings.HasPrefix(providerError.Detail, "response"):
-			return "response_envelope"
-		case strings.Contains(providerError.Detail, "item") || strings.Contains(providerError.Detail, "due date"):
-			return "item_validation"
-		default:
-			return "client_validation"
-		}
-	case DeepSeekErrorTerminal:
-		return "provider_terminal"
+	switch failure.Reason {
+	case "client_validation", "item_validation", "provider_authentication", "provider_http_error", "provider_refusal", "provider_terminal", "provider_transport", "response_envelope", "structured_output", "unexpected_error", "unknown_provider_error":
+		return failure.Reason
 	default:
-		return "unknown_provider_error"
+		return "unexpected_error"
 	}
 }
 
@@ -398,6 +379,7 @@ func (w *Worker) processDelivery(ctx context.Context, claim *DeliveryClaim) erro
 	return w.handleDeliveryError(ctx, claim, err)
 }
 
+// reconcileDelivery confirms the original remote item or preserves ambiguity without another create.
 func (w *Worker) reconcileDelivery(ctx context.Context, claim *DeliveryClaim) error {
 	started := time.Now()
 	result, err := w.deliverer.ReconcileItem(ctx, TickTickReconciliationInput{
@@ -420,10 +402,9 @@ func (w *Worker) reconcileDelivery(ctx context.Context, claim *DeliveryClaim) er
 	case TickTickReconciliationReview:
 		return w.store.BlockDelivery(ctx, claim.ID, w.config.Owner, OutcomeAmbiguous, "needs_review")
 	case TickTickReconciliationUnconfirmed:
-		if claim.CycleAttemptNumber >= w.config.DeliveryMaxAttempts {
-			return w.store.BlockDelivery(ctx, claim.ID, w.config.Owner, OutcomeAmbiguous, "needs_review")
-		}
-		return w.store.RetryDelivery(ctx, claim.ID, w.config.Owner, OutcomeRetryable, w.store.now())
+		// A missing marker does not prove that an ambiguous create failed.
+		// Never issue another POST from this state.
+		return w.store.BlockDelivery(ctx, claim.ID, w.config.Owner, OutcomeAmbiguous, "needs_review")
 	default:
 		return w.store.BlockDelivery(ctx, claim.ID, w.config.Owner, OutcomeMalformed, "dead_letter")
 	}
@@ -496,18 +477,24 @@ func (w *Worker) retryAt(attempt int) time.Time {
 	return w.store.now().UTC().Add(delay + jitter)
 }
 
+// classifyDeepSeekError preserves the root helper while consuming neutral failure metadata.
 func classifyDeepSeekError(err error) DeepSeekErrorKind {
-	var typed *DeepSeekError
-	if errors.As(err, &typed) {
-		return typed.Kind
+	if failure, ok := application.FailureOf(err); ok {
+		if failure.Kind.Valid() {
+			return DeepSeekErrorKind(failure.Kind)
+		}
+		return ""
 	}
 	return DeepSeekErrorMalformed
 }
 
+// classifyTickTickError preserves the root helper while consuming neutral failure metadata.
 func classifyTickTickError(err error) TickTickErrorKind {
-	var typed *TickTickError
-	if errors.As(err, &typed) {
-		return typed.Kind
+	if failure, ok := application.FailureOf(err); ok {
+		if failure.Kind.Valid() {
+			return TickTickErrorKind(failure.Kind)
+		}
+		return ""
 	}
 	return TickTickErrorMalformed
 }

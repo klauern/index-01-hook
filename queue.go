@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/klauern/index-01-hook/internal/application"
 )
 
 const (
@@ -42,23 +44,16 @@ type ExtractionClaim struct {
 	CycleAttemptNumber int
 }
 
-type ItemKind string
+// ItemKind preserves the root API while application owns the canonical item kind.
+type ItemKind = application.ItemKind
 
 const (
-	ItemKindTask ItemKind = "task"
-	ItemKindNote ItemKind = "note"
+	ItemKindTask = application.Task
+	ItemKindNote = application.Note
 )
 
-type QueuedItem struct {
-	Kind         ItemKind
-	Title        string
-	Content      string
-	Due          *time.Time
-	AllDay       bool
-	Priority     int
-	Tags         []string
-	ProjectAlias string
-}
+// QueuedItem preserves the existing root name without duplicating the application model.
+type QueuedItem = application.Item
 
 type QueuedTask struct {
 	Title        string

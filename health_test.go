@@ -203,6 +203,70 @@ func TestOperationalStatusReportsStoppedStaleFailedAndSlowWorker(t *testing.T) {
 	}
 }
 
+// TestOperationalStatusExpiresSlowProviderObservation verifies that stale latency no longer blocks readiness.
+func TestOperationalStatusExpiresSlowProviderObservation(t *testing.T) {
+	store, clock := newQueueStore(t)
+	startHealthyWorker(t, store, "health-worker")
+	slowLatency := providerSlowAfter + time.Second
+	if err := store.RecordProviderLatency(context.Background(), "health-worker", "deepseek", slowLatency, false); err != nil {
+		t.Fatalf("RecordProviderLatency() error = %v", err)
+	}
+
+	status, err := store.OperationalStatus(context.Background())
+	if err != nil {
+		t.Fatalf("OperationalStatus() error = %v", err)
+	}
+	if status.Status != "degraded" || !hasReason(status.Reasons, "deepseek_slow") {
+		t.Fatalf("fresh slow status = %+v, want degraded with deepseek_slow", status)
+	}
+	if status.Providers.DeepSeek.LastLatencyMilliseconds != slowLatency.Milliseconds() {
+		t.Errorf("latency = %d, want %d", status.Providers.DeepSeek.LastLatencyMilliseconds, slowLatency.Milliseconds())
+	}
+
+	clock.Advance(providerSlowRecoverAfter + time.Second)
+	completeHealthCycle(t, store, "health-worker")
+	status, err = store.OperationalStatus(context.Background())
+	if err != nil {
+		t.Fatalf("OperationalStatus() after recovery error = %v", err)
+	}
+	if status.Status != "ok" || len(status.Reasons) != 0 {
+		t.Fatalf("recovered status = %+v, want ok with no reasons", status)
+	}
+	if status.Providers.DeepSeek.LastLatencyMilliseconds != slowLatency.Milliseconds() {
+		t.Errorf("latency after recovery = %d, want %d", status.Providers.DeepSeek.LastLatencyMilliseconds, slowLatency.Milliseconds())
+	}
+}
+
+// TestOperationalStatusSlowFailedProviderCallStaysDegraded preserves failure diagnostics after latency expires.
+func TestOperationalStatusSlowFailedProviderCallStaysDegraded(t *testing.T) {
+	store, clock := newQueueStore(t)
+	startHealthyWorker(t, store, "health-worker")
+	if err := store.RecordProviderLatency(context.Background(), "health-worker", "deepseek", providerSlowAfter+time.Second, true); err != nil {
+		t.Fatalf("RecordProviderLatency() error = %v", err)
+	}
+
+	status, err := store.OperationalStatus(context.Background())
+	if err != nil {
+		t.Fatalf("OperationalStatus() error = %v", err)
+	}
+	if status.Status != "degraded" || !hasReason(status.Reasons, "deepseek_slow") || !status.Providers.DeepSeek.LastFailed {
+		t.Fatalf("failed slow status = %+v, want degraded with deepseek_slow and last_failed", status)
+	}
+
+	clock.Advance(providerSlowRecoverAfter + time.Second)
+	completeHealthCycle(t, store, "health-worker")
+	status, err = store.OperationalStatus(context.Background())
+	if err != nil {
+		t.Fatalf("OperationalStatus() after recovery error = %v", err)
+	}
+	if status.Status != "ok" || len(status.Reasons) != 0 {
+		t.Fatalf("failed status after latency expiry = %+v, want ok with no reasons", status)
+	}
+	if !status.Providers.DeepSeek.LastFailed {
+		t.Fatalf("last_failed flag after latency expiry = %+v, want retained", status.Providers.DeepSeek)
+	}
+}
+
 func TestStatuszReturnsSafeAggregateData(t *testing.T) {
 	store, handler, _ := newTestApp(t, 1<<20)
 	startHealthyWorker(t, store, "private-worker-owner")

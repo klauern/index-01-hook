@@ -508,6 +508,7 @@ func TestItemAcceptanceRedactsCapturedLogsAndStatus(t *testing.T) {
 	}
 }
 
+// TestItemAcceptanceRestartDoesNotRepeatCompletedSibling preserves completed deliveries after an ambiguous sibling restarts.
 func TestItemAcceptanceRestartDoesNotRepeatCompletedSibling(t *testing.T) {
 	output := `{"items":[` + validDeepSeekTask("Completed sibling") + `,` + validDeepSeekNote("Restarted note", "Restarted content") + `]}`
 	environment := newItemAcceptanceEnvironment(t, output, func(transport *itemAcceptanceTickTickTransport) {
@@ -577,21 +578,19 @@ func TestItemAcceptanceRestartDoesNotRepeatCompletedSibling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecordingStatus(restarted) error = %v", err)
 	}
-	if status.State != "complete" || status.Tasks[0].State != "complete" || status.Tasks[1].State != "complete" {
+	if status.State != "extracted" || status.Tasks[0].State != "complete" || status.Tasks[1].State != "needs_review" {
 		t.Fatalf("restarted status = %+v", status)
 	}
 	if environment.deepSeekCalls != 1 || restartedDeepSeekCalls != 0 ||
 		environment.tickTick.taskCreates != 1 || environment.tickTick.noteCreates != 1 ||
-		restartedTickTick.projectLists != 1 || restartedTickTick.taskCreates != 0 ||
-		restartedTickTick.noteCreates != 1 || restartedTickTick.noteReads != 1 {
+		restartedTickTick.projectLists != 2 || restartedTickTick.taskCreates != 0 ||
+		restartedTickTick.noteCreates != 0 || restartedTickTick.noteReads != 0 {
 		t.Fatalf("restart provider calls = initial DeepSeek:%d tasks:%d notes:%d; restarted DeepSeek:%d projects:%d tasks:%d notes:%d note reads:%d",
 			environment.deepSeekCalls, environment.tickTick.taskCreates, environment.tickTick.noteCreates,
 			restartedDeepSeekCalls, restartedTickTick.projectLists, restartedTickTick.taskCreates,
 			restartedTickTick.noteCreates, restartedTickTick.noteReads)
 	}
-	assertItemAcceptancePayloads(t, status.RecordingHash, restartedTickTick, nil, []itemAcceptanceExpectedNote{{
-		index: 1, title: "Restarted note", content: "Restarted content",
-	}})
+	assertItemAcceptancePayloads(t, status.RecordingHash, restartedTickTick, nil, nil)
 	assertItemAcceptanceStatusRedacted(t, status,
 		itemAcceptanceTranscript, "Completed sibling", "Restarted note", "Restarted content", "private synthetic provider body")
 }

@@ -37,9 +37,10 @@
   {
     "id": "identity",
     "owner": "application_policy",
-    "rule": "Uncertain create reconciles before another create with the same identity.",
+    "rule": "Uncertain create is reconciled; unresolved ambiguity requires review without another create.",
     "tests": [
-      "delivery_security_test.go#TestUncertainTickTickCreateReconcilesBeforeAnotherPost"
+      "delivery_security_test.go#TestUncertainTickTickCreateRequiresReviewWithoutAnotherPost",
+      "delivery_security_test.go#TestReconciliationAuthenticationStaysBlocked"
     ]
   },
   {

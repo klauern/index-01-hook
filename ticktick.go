@@ -14,15 +14,19 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/klauern/index-01-hook/internal/application"
 )
 
 const (
-	maxTickTickResponseBytes = 1 << 20
-	maxTickTickTitleBytes    = 500
-	maxTickTickContentBytes  = 64 << 10
-	maxTickTickTags          = 10
-	maxTickTickTagBytes      = 100
-	tickTickInboxProjectID   = "inbox"
+	maxTickTickResponseBytes     = 1 << 20
+	maxTickTickTitleBytes        = 500
+	maxTickTickContentBytes      = 64 << 10
+	maxTickTickTags              = 10
+	maxTickTickReconcileProjects = 100
+	tickTickReconcileTimeout     = 30 * time.Second
+	maxTickTickTagBytes          = 100
+	tickTickInboxProjectID       = "inbox"
 )
 
 type TickTickErrorKind string
@@ -519,6 +523,7 @@ func normalizeTickTickTask(projectID string, input TickTickTaskInput) (tickTickC
 	return payload, marker, nil
 }
 
+// tickTickMarker validates the existing delivery identity and encodes its provider marker.
 func tickTickMarker(recordingHash string, taskIndex int) (string, error) {
 	recordingHash = strings.ToLower(strings.TrimSpace(recordingHash))
 	decoded, err := hex.DecodeString(recordingHash)
@@ -528,7 +533,12 @@ func tickTickMarker(recordingHash string, taskIndex int) (string, error) {
 	if taskIndex < 0 {
 		return "", malformedError("normalize task", "task index is invalid")
 	}
-	return fmt.Sprintf("[index01:%s:%d]", recordingHash, taskIndex), nil
+	return formatTickTickMarker(application.ItemIdentity{Fingerprint: application.Fingerprint(recordingHash), Index: taskIndex}), nil
+}
+
+// formatTickTickMarker keeps the provider byte representation outside application values.
+func formatTickTickMarker(identity application.ItemIdentity) string {
+	return fmt.Sprintf("[index01:%s:%d]", identity.Fingerprint, identity.Index)
 }
 
 func validTickTickPriority(priority int) bool {
@@ -561,10 +571,19 @@ func normalizeTickTickTags(tags []string) ([]string, error) {
 	return result, nil
 }
 
+// ReconcileItem scans bounded visible projects and requires review when an ambiguous create cannot be confirmed.
 func (r *TickTickRouter) ReconcileItem(ctx context.Context, input TickTickReconciliationInput) (TickTickReconciliationResult, error) {
-	projectID, err := r.ResolveItemProject(input.Kind, input.ProjectAlias)
-	if err != nil {
-		return TickTickReconciliationResult{}, err
+	ctx, cancel := context.WithTimeout(ctx, tickTickReconcileTimeout)
+	defer cancel()
+	switch input.Kind {
+	case ItemKindTask:
+		// The alias may have been removed or remapped after the task was queued.
+	case ItemKindNote:
+		if strings.TrimSpace(input.ProjectAlias) != "" {
+			return TickTickReconciliationResult{}, configurationError("reconcile note", "note project alias is not allowed")
+		}
+	default:
+		return TickTickReconciliationResult{}, configurationError("reconcile item", "item kind is invalid")
 	}
 	operation := "reconcile task"
 	if input.Kind == ItemKindNote {
@@ -581,50 +600,92 @@ func (r *TickTickRouter) ReconcileItem(ctx context.Context, input TickTickReconc
 	if len(expectedContent) > maxTickTickContentBytes {
 		return TickTickReconciliationResult{}, malformedError(operation, "content is too large")
 	}
-	path := "/project/" + url.PathEscape(projectID) + "/data"
-	request, err := r.client.newRequest(ctx, http.MethodGet, path, nil)
+	projects, err := r.client.listProjects(ctx)
 	if err != nil {
-		return TickTickReconciliationResult{}, malformedError(operation, "request cannot be built")
+		if ctx.Err() != nil {
+			return TickTickReconciliationResult{}, &TickTickError{Kind: TickTickErrorRetryable, Operation: operation}
+		}
+		if kind := classifyTickTickError(err); kind == TickTickErrorRetryable || kind == TickTickErrorAuthentication {
+			return TickTickReconciliationResult{}, err
+		}
+		return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
 	}
-	response, err := r.client.httpClient.Do(request)
-	if err != nil {
-		return TickTickReconciliationResult{}, &TickTickError{Kind: TickTickErrorRetryable, Operation: operation}
+	if len(projects) > maxTickTickReconcileProjects {
+		return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
 	}
-	defer ignoreCloseError(response.Body)
-	if response.StatusCode != http.StatusOK {
-		discardResponse(response.Body)
-		return TickTickReconciliationResult{}, classifyTickTickStatus(operation, response.StatusCode)
+	projectIDs := make([]string, 0, len(projects)+1)
+	seen := make(map[string]struct{}, len(projects)+1)
+	for _, project := range projects {
+		if !safeProviderIdentifier(project.ID) || project.ID != strings.TrimSpace(project.ID) || strings.ContainsAny(project.ID, "/\\") || strings.Contains(project.ID, "..") || project.ID == "." {
+			return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
+		}
+		if _, duplicate := seen[project.ID]; duplicate {
+			return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
+		}
+		seen[project.ID] = struct{}{}
+		projectIDs = append(projectIDs, project.ID)
 	}
-	var data tickTickProjectData
-	if err := decodeTickTickJSON(response.Body, &data); err != nil {
-		return TickTickReconciliationResult{}, malformedError(operation, "project response is invalid")
-	}
-	if data.Tasks == nil {
-		return TickTickReconciliationResult{}, malformedError(operation, "project response has no task list")
+	if input.Kind == ItemKindTask {
+		if _, exists := seen[tickTickInboxProjectID]; !exists {
+			projectIDs = append(projectIDs, tickTickInboxProjectID)
+		}
 	}
 	markerMatches := 0
-	matches := make([]string, 0, 2)
-	for _, task := range data.Tasks {
-		kindMatches := input.Kind == ItemKindTask && strings.EqualFold(task.Kind, "TEXT") ||
-			input.Kind == ItemKindNote && strings.EqualFold(task.Kind, "NOTE")
-		if !kindMatches || !hasExactMarkerLine(task.Content, input.Marker) {
-			continue
+	var matchedID, matchedProject string
+	for _, candidate := range projectIDs {
+		path := "/project/" + url.PathEscape(candidate) + "/data"
+		request, requestErr := r.client.newRequest(ctx, http.MethodGet, path, nil)
+		if requestErr != nil {
+			return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
 		}
-		markerMatches++
-		if strings.TrimSpace(task.Title) == title && task.Content == expectedContent {
-			matches = append(matches, strings.TrimSpace(task.ID))
+		response, requestErr := r.client.httpClient.Do(request)
+		if requestErr != nil {
+			return TickTickReconciliationResult{}, &TickTickError{Kind: TickTickErrorRetryable, Operation: operation}
 		}
+		var data tickTickProjectData
+		if response.StatusCode != http.StatusOK {
+			discardResponse(response.Body)
+			ignoreCloseError(response.Body)
+			statusErr := classifyTickTickStatus(operation, response.StatusCode)
+			if kind := classifyTickTickError(statusErr); kind == TickTickErrorRetryable || kind == TickTickErrorAuthentication {
+				return TickTickReconciliationResult{}, statusErr
+			}
+			return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
+		}
+		decodeErr := decodeTickTickJSON(response.Body, &data)
+		ignoreCloseError(response.Body)
+		if decodeErr != nil {
+			if ctx.Err() != nil {
+				return TickTickReconciliationResult{}, &TickTickError{Kind: TickTickErrorRetryable, Operation: operation}
+			}
+			return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
+		}
+		if data.Tasks == nil {
+			return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
+		}
+		for _, task := range data.Tasks {
+			if !hasExactMarkerLine(task.Content, input.Marker) {
+				continue
+			}
+			markerMatches++
+			kindMatches := input.Kind == ItemKindTask && strings.EqualFold(task.Kind, "TEXT") ||
+				input.Kind == ItemKindNote && strings.EqualFold(task.Kind, "NOTE")
+			if !kindMatches {
+				continue
+			}
+			if strings.TrimSpace(task.Title) == title && task.Content == expectedContent && safeProviderIdentifier(task.ID) {
+				matchedID, matchedProject = strings.TrimSpace(task.ID), candidate
+			}
+		}
+	}
+	if ctx.Err() != nil {
+		return TickTickReconciliationResult{}, &TickTickError{Kind: TickTickErrorRetryable, Operation: operation}
 	}
 	switch {
 	case markerMatches == 0:
 		return TickTickReconciliationResult{Status: TickTickReconciliationUnconfirmed}, nil
-	case markerMatches == 1 && len(matches) == 1:
-		if matches[0] == "" {
-			return TickTickReconciliationResult{}, malformedError(operation, "matched item has no ID")
-		}
-		return TickTickReconciliationResult{
-			Status: TickTickReconciliationConfirmed, TaskID: matches[0], ProjectID: projectID,
-		}, nil
+	case markerMatches == 1 && matchedID != "":
+		return TickTickReconciliationResult{Status: TickTickReconciliationConfirmed, TaskID: matchedID, ProjectID: matchedProject}, nil
 	default:
 		return TickTickReconciliationResult{Status: TickTickReconciliationReview}, nil
 	}
@@ -771,4 +832,12 @@ func configurationError(operation, detail string) error {
 
 func malformedError(operation, detail string) error {
 	return &TickTickError{Kind: TickTickErrorMalformed, Operation: operation, Detail: detail}
+}
+
+// ApplicationFailure exposes safe metadata while preserving the public provider error contract.
+func (e *TickTickError) ApplicationFailure() application.Failure {
+	if e == nil {
+		return application.Failure{Kind: application.Malformed}
+	}
+	return application.Failure{Kind: application.FailureKind(e.Kind), Operation: e.Operation, StatusCode: e.StatusCode}
 }

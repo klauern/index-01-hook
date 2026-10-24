@@ -156,7 +156,11 @@ headers.
 The service marks status degraded for a missing or stopped worker, a worker
 heartbeat older than two minutes, a failed worker cycle, an active queue older
 than 15 minutes, blocked authentication, review work, dead-letter work, or
-provider latency above 25 seconds.
+provider latency above 25 seconds. This slow signal degrades readiness only
+while the observation is younger than five minutes.
+An older observation stays in the latency report but no longer degrades
+readiness. A provider failure that is still active surfaces through the
+queue reasons and the worker cycle reason.
 
 A provider `last_failed` flag alone does not necessarily degrade readiness. The
 latency threshold and the other health reasons control the degraded result.
