@@ -2,6 +2,16 @@
 
 Use Beads for scope, dependencies, claims, and completion evidence. Pull requests contain the code review record.
 
+## October24 recovery baseline
+
+The original bounded review queue is closed. Daily implementation and review continue on surviving PRs.
+PR57 and PR58 merged into PR47, not main. Native stack59 is closed and retains both merged layers.
+Local PR47 worktrees can still contain the earlier49cafb1 head. Read the live parent before selecting a recovery baseline.
+Correct joined ambiguous-write classification at PR47. Add tests for both error orders, nested wrappers and durable reopen.
+Propagate required parent changes with additive merges. Reconcile PR54 with PR47 before updating dependent PR55.
+Keep immediate-parent bases and actual native membership. Preserve closed stack59 and historical stacks41/42.
+Old successful checks do not validate a new combined tree. Repeat cumulative validation after integration.
+
 ## Start a session
 
 1. Read `AGENTS.md`, `CONTRIBUTING.md`, and relevant domain documents.
