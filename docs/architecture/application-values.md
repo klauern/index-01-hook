@@ -17,3 +17,19 @@ Full existing provider, queue, retry, retention, evidence, and runtime regressio
 This slice does not extract use cases, date policy, validation limits, typed provider failures, or consumed ports.
 Those acceptance criteria remain open. No routing, schema, active verification, private corpus, or credential policy changes.
 The next dependent slice moves identity normalization and validation into this application boundary.
+
+
+## Stable identity policy extraction
+
+Beads `index-01-hook-b7y.4.1` adds NewItemIdentity above the value-extraction parent.
+The constructor normalizes the 32-byte hexadecimal fingerprint and validates a nonnegative frozen item index.
+Typed errors identify the invalid field without retaining payload values.
+Provider marker formatting stays in the root adapter. It retains `[index01:<fingerprint>:<index>]` exactly.
+The provider wrapper retains its malformed category, operation, diagnostic text, and validation precedence.
+Existing queue freeze, create, reconciliation, and observation callers continue through that wrapper.
+The persisted export formatter remains unchanged for compatibility.
+
+Regression tables cover canonicalization, invalid inputs, error privacy, edited fields, project moves, task/note encoding, and strict marker parsing.
+Earlier moved-item, duplicate-marker, completed-sibling, and restart tests remain required.
+This does not extract provider transport, queue ports, routing validation, date policy, or use cases.
+No stored marker, database row, remote item, configuration, or credential is rewritten.
