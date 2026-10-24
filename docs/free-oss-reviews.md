@@ -4,11 +4,11 @@ Use Beads task `index-01-hook-b7y.25.6` for current requests, results, findings,
 This document defines the workflow. Beads remains the queue state authority.
 Do not create a second scheduler. The parent task manages scheduling.
 
-## October24 recovery queue
+## October 24 recovery queue
 
 The original bounded thirteen-PR queue is closed. All original PRs merged. Do not restart that queue or its schedule.
 Current surviving PR reviews belong to daily epic work. Read live heads, pending requests and Beads before any bot command.
-PR57 and PR58 merged into PR47 on October22. They did not merge into main.
+PR57 and PR58 merged into PR47 on October 22. They did not merge into main.
 Review5617547292 on PR47 reports an unverified joined-error finding. Synthetic recovery tests reproduce the defect.
 Reserve the next eligible included review for the corrected PR47 head before descendant reviews.
 Do not count old-head review coverage or successful skip statuses as review of an updated stack.
