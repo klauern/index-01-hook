@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -121,6 +122,56 @@ func TestApplicationFailureAmbiguitySurvivesReopen(t *testing.T) {
 	status, e = store.RecordingStatus(context.Background(), receipt.ID)
 	if e != nil || status.State != "complete" || len(deliverer.createCalls) != 1 || len(deliverer.reconcileCalls) != 1 || status.Tasks[0].LastClassification != string(OutcomeReconciled) {
 		t.Fatalf("restart duplicated or lost work: %+v %v create=%v reconcile=%v", status, e, deliverer.createCalls, deliverer.reconcileCalls)
+	}
+}
+
+// TestApplicationJoinedFailureAmbiguitySurvivesReopen prevents a second create after a joined ambiguous outcome.
+func TestApplicationJoinedFailureAmbiguitySurvivesReopen(t *testing.T) {
+	ambiguous := application.Failure{Kind: application.AmbiguousWrite, Operation: "create task"}
+	retryable := application.Failure{Kind: application.Retryable, Operation: "create task"}
+	for _, tt := range []struct {
+		name string
+		err  error
+	}{
+		{"retryable_first", errors.Join(retryable, ambiguous)},
+		{"ambiguous_first", errors.Join(ambiguous, retryable)},
+		{"wrapped_join", fmt.Errorf("fixture: %w", errors.Join(retryable, ambiguous))},
+		{"nested_join", errors.Join(retryable, fmt.Errorf("fixture: %w", errors.Join(errors.New("unrelated"), ambiguous)))},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "joined-failure.db")
+			clock := &adjustableClock{now: time.Date(2026, 10, 24, 0, 0, 0, 0, time.UTC)}
+			store, err := openStore(context.Background(), path, clock.Time)
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = store.Close() })
+			receipt := saveQueueRecording(t, store, "synthetic joined outcome")
+			freezeQueueTasks(t, store, "extractor", []QueuedTask{{Title: "Task"}})
+			deliverer := &fakeDeliverer{
+				createResults: []deliveryResult{{err: tt.err}},
+				reconcileResults: []reconciliationResult{{result: TickTickReconciliationResult{
+					Status: TickTickReconciliationConfirmed, TaskID: "confirmed", ProjectID: "fixture",
+				}}},
+			}
+			runWorkerOnce(t, newTestWorker(t, store, &fakeExtractor{}, deliverer))
+			if err := store.Close(); err != nil {
+				t.Fatal(err)
+			}
+			store, err = openStore(context.Background(), path, clock.Time)
+			if err != nil {
+				t.Fatal(err)
+			}
+			clock.Advance(time.Minute)
+			runWorkerOnce(t, newTestWorker(t, store, &fakeExtractor{}, deliverer))
+			status, err := store.RecordingStatus(context.Background(), receipt.ID)
+			if err != nil || status.State != "complete" || len(status.Tasks) != 1 ||
+				status.Tasks[0].LastClassification != string(OutcomeReconciled) ||
+				len(deliverer.createCalls) != 1 || len(deliverer.reconcileCalls) != 1 {
+				t.Fatalf("joined outcome was not reconciled after reopen: status=%+v err=%v create=%d reconcile=%d",
+					status, err, len(deliverer.createCalls), len(deliverer.reconcileCalls))
+			}
+		})
 	}
 }
 

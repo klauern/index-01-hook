@@ -46,13 +46,50 @@ type FailureSource interface {
 }
 
 // FailureOf finds neutral metadata through standard wrapped and joined errors.
+// Ambiguous writes take precedence over other failures. Otherwise the first source wins.
 // It never formats the error. Unknown errors return no classification.
 func FailureOf(err error) (Failure, bool) {
 	var source FailureSource
 	if !errors.As(err, &source) {
 		return Failure{}, false
 	}
-	return source.ApplicationFailure(), true
+	first := source.ApplicationFailure()
+	if first.Kind == AmbiguousWrite {
+		return first, true
+	}
+	if ambiguous, ok := ambiguousFailure(err); ok {
+		return ambiguous, true
+	}
+	return first, true
+}
+
+// ambiguousFailure searches each error node without formatting causes or losing safe metadata.
+func ambiguousFailure(err error) (Failure, bool) {
+	if err == nil {
+		return Failure{}, false
+	}
+	source, ok := err.(FailureSource)
+	if !ok {
+		if matcher, custom := err.(interface{ As(any) bool }); custom {
+			ok = matcher.As(&source)
+		}
+	}
+	if ok {
+		if failure := source.ApplicationFailure(); failure.Kind == AmbiguousWrite {
+			return failure, true
+		}
+	}
+	switch wrapped := err.(type) {
+	case interface{ Unwrap() []error }:
+		for _, child := range wrapped.Unwrap() {
+			if failure, ok := ambiguousFailure(child); ok {
+				return failure, true
+			}
+		}
+	case interface{ Unwrap() error }:
+		return ambiguousFailure(wrapped.Unwrap())
+	}
+	return Failure{}, false
 }
 
 // Valid reports whether the category belongs to the application failure contract.

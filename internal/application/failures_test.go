@@ -67,3 +67,54 @@ func TestFailureDiagnosticDoesNotFormatMetadata(t *testing.T) {
 		t.Fatal("unsafe retry category collapse")
 	}
 }
+
+// TestFailureOfJoinedAmbiguity preserves ambiguous metadata in either order and through nested wrappers.
+func TestFailureOfJoinedAmbiguity(t *testing.T) {
+	ambiguous := Failure{Kind: AmbiguousWrite, Operation: "create task", StatusCode: 504, Reason: "provider_transport"}
+	retryable := Failure{Kind: Retryable, Operation: "retry request", StatusCode: 429, Reason: "provider_http_error"}
+	for _, tt := range []struct {
+		name string
+		err  error
+	}{
+		{"retryable_first", errors.Join(retryable, ambiguous)},
+		{"ambiguous_first", errors.Join(ambiguous, retryable)},
+		{"wrapped_join", failureEnvelope{errors.Join(retryable, ambiguous)}},
+		{"nested_join", errors.Join(retryable, errors.Join(errors.New("unrelated"), failureEnvelope{ambiguous}))},
+		{"outer_failure_source", failureWithCause{Failure: retryable, cause: failureEnvelope{ambiguous}}},
+		{"opaque_sources", errors.Join(opaqueFailure{retryable}, failureEnvelope{opaqueFailure{ambiguous}})},
+		{"custom_as", errors.Join(retryable, failureAlias{ambiguous})},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := FailureOf(tt.err)
+			if !ok || got != ambiguous {
+				t.Fatalf("metadata=%+v found=%v; want ambiguous metadata %+v", got, ok, ambiguous)
+			}
+		})
+	}
+	got, ok := FailureOf(errors.Join(retryable, Failure{Kind: Terminal}))
+	if !ok || got != retryable {
+		t.Fatalf("non-ambiguous first-source behavior changed: %+v found=%v", got, ok)
+	}
+}
+
+type failureWithCause struct {
+	Failure
+	cause error
+}
+
+// Unwrap exposes a nested failure even when this wrapper supplies its own metadata.
+func (f failureWithCause) Unwrap() error { return f.cause }
+
+type failureAlias struct{ info Failure }
+
+// Error detects accidental formatting during custom matching.
+func (failureAlias) Error() string { panic("failure alias must not be formatted") }
+
+// As exposes failure metadata through the standard custom matching hook.
+func (f failureAlias) As(target any) bool {
+	if source, ok := target.(*FailureSource); ok {
+		*source = opaqueFailure{f.info}
+		return true
+	}
+	return false
+}
