@@ -8,6 +8,7 @@ tasks:
     desc: Run the local test suite
     cmds:
       - go test ./...
+      - node --test scripts/*.test.mjs
       - ./scripts/validate-offline_test.sh
       - ./scripts/compose-config_test.sh
       - ./scripts/compose-production_test.sh

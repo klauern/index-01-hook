@@ -1,0 +1,103 @@
+name: Release Drafter
+
+on:
+  workflow_run:
+    workflows: [CI, Release]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Source history retains pending merges if GitHub replaces a pending run.
+concurrency:
+  group: release-drafter-queue
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    name: Prepare the oldest release candidate
+    if: >-
+      vars.RELEASE_DRAFTER_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.conclusion == 'success' &&
+        ((github.event.workflow_run.name == 'CI' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main') ||
+         github.event.workflow_run.name == 'Release')))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: read
+    outputs:
+      pending: ${{ steps.select.outputs.pending }}
+      draft_id: ${{ steps.freeze.outputs.draft_id || steps.select.outputs.draft_id }}
+      version: ${{ steps.freeze.outputs.version || steps.select.outputs.version }}
+      commit: ${{ steps.freeze.outputs.commit || steps.select.outputs.commit }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_BASELINE: ${{ vars.RELEASE_DRAFTER_BASELINE }}
+    steps:
+      - name: Check out trusted main history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: refs/heads/main
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+      - name: Select an exact tested merge
+        id: select
+        run: node scripts/release-candidate.mjs select
+      - name: Draft version and release notes
+        if: steps.select.outputs.create == 'true'
+        id: drafter
+        uses: release-drafter/release-drafter@72967cdc98ddd3160f1fc3dff619de365e137dd0 # v7.9.0
+        with:
+          config-name: release-drafter.yml
+          token: ${{ github.token }}
+          from: ${{ steps.select.outputs.from }}
+          commitish: ${{ steps.select.outputs.commit }}
+          publish: false
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Freeze the release candidate
+        if: steps.select.outputs.create == 'true'
+        id: freeze
+        env:
+          DRAFT_ID: ${{ steps.drafter.outputs.id }}
+          CANDIDATE_COMMIT: ${{ steps.select.outputs.commit }}
+          CANDIDATE_PR: ${{ steps.select.outputs.pr }}
+          BASE_VERSION: ${{ steps.select.outputs.base_version }}
+        run: node scripts/release-candidate.mjs freeze
+
+  dispatch:
+    name: Approve the release tag and dispatch
+    needs: draft
+    if: >-
+      needs.draft.outputs.pending == 'true' &&
+      vars.RELEASE_DRAFTER_PUBLISH == 'true' &&
+      vars.PUBLIC_RELEASE_APPROVED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: public-release
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_BASELINE: ${{ vars.RELEASE_DRAFTER_BASELINE }}
+      DRAFT_ID: ${{ needs.draft.outputs.draft_id }}
+    steps:
+      - name: Check out trusted main history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: refs/heads/main
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+      - name: Create the immutable tag and dispatch its workflow
+        run: node scripts/release-candidate.mjs dispatch

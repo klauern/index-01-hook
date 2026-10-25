@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// TestReleaseWorkflowContainerInputsAreDigestPinned rejects mutable release builder images.
 func TestReleaseWorkflowContainerInputsAreDigestPinned(t *testing.T) {
 	workflow, err := os.ReadFile(".github/workflows/release.yml")
 	if err != nil {
@@ -55,6 +56,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"main_commit=$(git rev-parse refs/remotes/origin/main)",
 		"git merge-base --is-ancestor \"$tag_commit\" \"$main_commit\"",
 		"tag_commit=$(git rev-parse \"refs/tags/$GITHUB_REF_NAME^{commit}\")",
+		"test \"$(git rev-parse HEAD)\" = \"$tag_commit\"",
 		"VERSION=\"$GITHUB_REF_NAME\"",
 		"COMMIT=$(git rev-parse \"refs/tags/$GITHUB_REF_NAME^{commit}\")",
 		"BUILD_DATE=$(date -u",
@@ -112,6 +114,14 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"docker buildx imagetools create",
 		"--format '{{.Manifest.Digest}}'",
 		"gh release create \"$VERSION\" --draft --verify-tag --generate-notes",
+		"workflow_dispatch:\n    inputs:\n      draft_id:",
+		"candidate_commit:",
+		"test \"$GITHUB_REF\" = \"refs/tags/$GITHUB_REF_NAME\"",
+		"Verify frozen dispatched candidate",
+		"if: github.event_name == 'workflow_dispatch'",
+		"node scripts/release-candidate.mjs verify",
+		"gh release upload \"$VERSION\" dist/release/*",
+		"if test -n \"$DRAFT_ID\"; then test \"$release_id\" = \"$DRAFT_ID\"; fi",
 		"gh api \"repos/klauern/index-01-hook/releases?per_page=100\" --paginate",
 		"release_id=$(gh api",
 		"gh api \"repos/klauern/index-01-hook/releases/$release_id\"",
@@ -125,8 +135,23 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		}
 	}
 
+	if strings.Contains(text, "ref: ${{ needs.validate.outputs.commit }}") {
+		t.Error("release workflow checks out a commit from a job output")
+	}
+	for _, job := range []string{"build:", "publish:"} {
+		jobStart := strings.Index(text, job)
+		if jobStart < 0 {
+			t.Fatalf("release workflow does not contain %q", job)
+		}
+		checkout := strings.Index(text[jobStart:], "uses: actions/checkout@")
+		verify := strings.Index(text[jobStart:], "run: test \"$(git rev-parse HEAD)\" = \"$VALIDATED_COMMIT\"")
+		setup := strings.Index(text[jobStart:], "- name: Set up Go")
+		if checkout < 0 || verify < checkout || (setup >= 0 && verify > setup) {
+			t.Errorf("%s does not verify the checked out commit before build or publish operations", job)
+		}
+	}
+
 	forbidden := []string{
-		"workflow_dispatch",
 		"pull_request",
 		"pull_request_target",
 		"ghcr.io/klauern/index-01-hook:latest",
@@ -172,7 +197,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 
 	rejectTag := strings.Index(text, "Reject an existing version image tag")
 	createTag := strings.Index(text, "Create the version image tag")
-	createRelease := strings.Index(text, "Create draft GitHub Release")
+	createRelease := strings.Index(text, "Create or adopt the verified draft GitHub Release")
 	publishRelease := strings.Index(text, "Publish draft GitHub Release")
 	if rejectTag < 0 || createTag <= rejectTag || createRelease <= createTag || publishRelease <= createRelease {
 		t.Error("release publication steps are not in the required immutable order")
