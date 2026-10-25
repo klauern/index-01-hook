@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	maxExtractionTasks   = 10
-	maxQueuedNotesBytes  = 32 << 10
-	maxProjectAliasBytes = 100
+	maxExtractionTasks   = application.MaxItems
+	maxQueuedNotesBytes  = application.MaxContentBytes
+	maxProjectAliasBytes = application.MaxAliasBytes
 	maxProviderIDBytes   = 256
 )
 
@@ -744,38 +744,13 @@ func validateFrozenExtraction(frozen FrozenExtraction) error {
 		return fmt.Errorf("extraction has too many items")
 	}
 	for _, item := range frozen.Items {
-		if item.Kind != ItemKindTask && item.Kind != ItemKindNote {
-			return fmt.Errorf("item kind is invalid")
-		}
-		title := strings.TrimSpace(item.Title)
-		if title == "" || len(title) > maxTickTickTitleBytes {
-			return fmt.Errorf("item title is invalid")
-		}
-		if len(item.Content) > maxQueuedNotesBytes {
-			return fmt.Errorf("item content is too large")
-		}
-		if item.Kind == ItemKindNote {
-			if item.Due != nil || item.AllDay || item.Priority != 0 || len(item.Tags) != 0 || item.ProjectAlias != "" {
-				return fmt.Errorf("note has task fields")
-			}
-			continue
-		}
-		if item.Due == nil && item.AllDay {
-			return fmt.Errorf("all-day task requires a due date")
-		}
-		if !validTickTickPriority(item.Priority) {
-			return fmt.Errorf("task priority is invalid")
-		}
-		if _, err := normalizeTickTickTags(item.Tags); err != nil {
-			return fmt.Errorf("task tags are invalid")
-		}
-		if len(strings.TrimSpace(item.ProjectAlias)) > maxProjectAliasBytes {
-			return fmt.Errorf("project alias is too large")
+		if err := application.ValidateItem(item); err != nil {
+			return err
 		}
 	}
 	for _, task := range frozen.Tasks {
 		title := strings.TrimSpace(task.Title)
-		if title == "" || len(title) > maxTickTickTitleBytes {
+		if title == "" || len(title) > application.MaxTitleBytes {
 			return fmt.Errorf("task title is invalid")
 		}
 		if len(task.Notes) > maxQueuedNotesBytes {
@@ -784,10 +759,10 @@ func validateFrozenExtraction(frozen FrozenExtraction) error {
 		if task.Due == nil && task.AllDay {
 			return fmt.Errorf("all-day task requires a due date")
 		}
-		if !validTickTickPriority(task.Priority) {
+		if !application.ValidPriority(task.Priority) {
 			return fmt.Errorf("task priority is invalid")
 		}
-		if _, err := normalizeTickTickTags(task.Tags); err != nil {
+		if _, err := application.NormalizeTags(task.Tags); err != nil {
 			return fmt.Errorf("task tags are invalid")
 		}
 		if len(strings.TrimSpace(task.ProjectAlias)) > maxProjectAliasBytes {

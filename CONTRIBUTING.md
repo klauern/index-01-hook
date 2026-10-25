@@ -12,10 +12,11 @@ Install these tools before you work on the project:
 - Go 1.26.10 or newer to build and test the service.
 - Git to clone the repository and manage branches.
 - Task to run commands in `Taskfile.yml`.
+- Node.js 20 or newer to test the release automation.
 - The Docker CLI with the Docker Compose plugin to run static Compose checks.
 - Docker Engine to build or run a container image.
 
-The `task test` command requires Task, shell tools, and Docker Compose. A running
+The `task test` command requires Task, Node.js, shell tools, and Docker Compose. A running
 Docker daemon is not required for `task test`. The `task test-compose-runtime`
 command also requires a running Docker daemon.
 

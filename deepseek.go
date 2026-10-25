@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/klauern/index-01-hook/internal/application"
 	"io"
 	"net/http"
-	"sort"
 	"strings"
 	"time"
+
+	"github.com/klauern/index-01-hook/internal/application"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 	deepSeekMaxInputBytes    = 64 << 10
 	deepSeekMaxResponseBytes = 1 << 20
 	deepSeekMaxOutputTokens  = 4096
-	deepSeekMaxItems         = 10
+	deepSeekMaxItems         = application.MaxItems
 	defaultDeepSeekTimeZone  = "UTC"
 )
 
@@ -346,31 +346,13 @@ func decodeDeepSeekItem(raw json.RawMessage) (deepSeekItemOutput, error) {
 	return item, nil
 }
 
+// parseDue maps neutral date-policy failures to existing provider error metadata.
 func (c *DeepSeekClient) parseDue(raw *string, allDay bool) (*time.Time, error) {
-	if raw == nil {
-		if allDay {
-			return nil, deepSeekMalformed("extract items", "all-day task has no due date")
-		}
-		return nil, nil
-	}
-	value := strings.TrimSpace(*raw)
-	if allDay {
-		parsed, err := time.ParseInLocation("2006-01-02", value, c.location)
-		if err != nil {
-			return nil, deepSeekMalformed("extract items", "all-day due date is invalid")
-		}
-		return &parsed, nil
-	}
-	parsed, err := time.Parse(time.RFC3339, value)
+	due, err := application.ParseDue(raw, allDay, c.location)
 	if err != nil {
-		return nil, deepSeekMalformed("extract items", "timed due date is invalid")
+		return nil, deepSeekMalformed("extract items", err.Error())
 	}
-	_, suppliedOffset := parsed.Zone()
-	_, localOffset := parsed.In(c.location).Zone()
-	if suppliedOffset != localOffset {
-		return nil, deepSeekMalformed("extract items", "timed due date has an invalid time zone offset")
-	}
-	return &parsed, nil
+	return due, nil
 }
 
 func deepSeekSystemPrompt(now time.Time, timeZone string, aliases []string) string {
@@ -417,7 +399,7 @@ func deepSeekItemSchema(aliases []string) map[string]any {
 	}
 	commonProperties := map[string]any{
 		"kind":    map[string]any{"type": "string", "enum": []string{string(ItemKindTask), string(ItemKindNote)}},
-		"title":   map[string]any{"type": "string", "minLength": 1, "maxLength": maxTickTickTitleBytes},
+		"title":   map[string]any{"type": "string", "minLength": 1, "maxLength": application.MaxTitleBytes},
 		"content": map[string]any{"type": "string", "maxLength": maxQueuedNotesBytes},
 	}
 	taskProperties := make(map[string]any, len(commonProperties)+5)
@@ -432,7 +414,7 @@ func deepSeekItemSchema(aliases []string) map[string]any {
 	taskProperties["priority"] = map[string]any{"type": "integer", "enum": []int{0, 1, 3, 5}}
 	taskProperties["tags"] = map[string]any{
 		"type": "array", "maxItems": maxTickTickTags,
-		"items": map[string]any{"type": "string", "minLength": 1, "maxLength": maxTickTickTagBytes},
+		"items": map[string]any{"type": "string", "minLength": 1, "maxLength": application.MaxTagBytes},
 	}
 	taskProperties["project_alias"] = aliasSchema
 	noteProperties := make(map[string]any, len(commonProperties))
@@ -467,21 +449,12 @@ func deepSeekItemSchema(aliases []string) map[string]any {
 	}
 }
 
+// normalizeProjectAliases maps canonical alias policy to the safe provider error contract.
 func normalizeProjectAliases(values []string) ([]string, error) {
-	seen := make(map[string]struct{}, len(values))
-	aliases := make([]string, 0, len(values))
-	for _, value := range values {
-		alias := strings.ToLower(strings.TrimSpace(value))
-		if alias == "" || len(alias) > maxProjectAliasBytes || strings.ContainsAny(alias, "\r\n\x00") {
-			return nil, deepSeekMalformed("extract items", "project alias is invalid")
-		}
-		if _, exists := seen[alias]; exists {
-			continue
-		}
-		seen[alias] = struct{}{}
-		aliases = append(aliases, alias)
+	aliases, err := application.NormalizeAliases(values)
+	if err != nil {
+		return nil, deepSeekMalformed("extract items", "project alias is invalid")
 	}
-	sort.Strings(aliases)
 	return aliases, nil
 }
 
