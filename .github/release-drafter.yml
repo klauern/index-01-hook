@@ -34,9 +34,6 @@ categories:
         - chore
         - maintenance
   - title: 'Other changes'
-    when:
-      labels:
-        - '*'
 
 change-template: '- $TITLE (#$NUMBER)'
 

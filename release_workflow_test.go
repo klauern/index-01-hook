@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// TestReleaseWorkflowContainerInputsAreDigestPinned rejects mutable release builder images.
 func TestReleaseWorkflowContainerInputsAreDigestPinned(t *testing.T) {
 	workflow, err := os.ReadFile(".github/workflows/release.yml")
 	if err != nil {

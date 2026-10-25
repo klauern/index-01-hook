@@ -23,7 +23,9 @@ test("note categories do not set release increments", () => {
   assert.match(config, /when:\s+labels:\s+- feature\s+- enhancement/);
   assert.match(config, /when:\s+labels:\s+- bug\s+- fix/);
   assert.match(config, /when:\s+labels:\s+- chore\s+- maintenance/);
-  assert.match(config, /when:\s+labels:\s+- '\*'/);
+  const otherChanges = noteCategories.find((category) => category.includes("title: 'Other changes'"));
+  assert.ok(otherChanges, "Other changes category must exist as the fallback");
+  assert.doesNotMatch(otherChanges, /when:/);
 });
 
 test("workflow pins v7 and bounds comparison and target to selected commits", () => {

@@ -4,6 +4,7 @@ const RELEASE_LABELS = new Set([
   "release:patch",
 ]);
 
+/** Accept well-formed labels with no more than one release increment. */
 export function checkReleaseLabels(labels) {
   if (!Array.isArray(labels) || labels.some((label) =>
     typeof label !== "string" || label.length === 0

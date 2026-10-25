@@ -1,4 +1,5 @@
 import test from "node:test";
+import { execFileSync } from "node:child_process";
 import assert from "node:assert/strict";
 import {
   REPOSITORY, chooseCandidate, dispatchCandidate, expectedVersion, freezeDraft,
@@ -13,16 +14,20 @@ const tagSHA = "d".repeat(40);
 const identity = { full_name: REPOSITORY };
 const frozenArgs = { baseline, commit: commit1, pr: 2, labels: [], baseVersion: "v1.2.2" };
 
+/** Build a synthetic stable draft without frozen metadata. */
 function rawDraft(overrides = {}) {
   return { id: 7, draft: true, prerelease: false, target_commitish: commit1, tag_name: "v1.2.3", body: "Release notes", assets: [], ...overrides };
 }
+/** Build a synthetic frozen candidate for verification tests. */
 function frozenDraft(overrides = {}) {
   const draft = rawDraft();
   return { ...draft, body: freezeDraft(draft, frozenArgs).body, ...overrides };
 }
+/** Create a synthetic HTTP error with a typed status. */
 function apiError(status) {
   return Object.assign(new Error(`Synthetic HTTP ${status}`), { status });
 }
+/** Provide isolated Git and API fixtures that record attempted writes. */
 function fixture({ releases = [], badCI = null, tagExists = false, race = false, dispatchFailure = false } = {}) {
   const writes = [];
   const reads = [];
@@ -247,12 +252,16 @@ test("the real gh adapter handles HTTP 204 and typed failures without leaking re
   assert.equal(await empty("actions/workflows/release.yml/dispatches", "POST", { ref: "v1.2.3" }), null);
   assert.equal(calls[0].args.includes("--include"), true);
   assert.equal(calls[0].options.input, '{"ref":"v1.2.3"}');
-  const json = makeGhClient({ exec: () => "HTTP/2.0 200 OK\nServer: synthetic\n\n{\"id\":7}\n" });
+  assert.equal(calls[0].options.maxBuffer, 64 * 1024 * 1024);
+  const json = makeGhClient({ exec: (command, args, options) => execFileSync(process.execPath, ["-e", "process.stdout.write('HTTP/2.0 200 OK\\nX-Pad: ' + 'x'.repeat(1024 * 1024 + 10) + '\\n\\n{\\\"id\\\":7}\\n')"], options) });
+  assert.deepEqual(await json("releases"), { id: 7 });
   assert.deepEqual(await json("releases/7"), { id: 7 });
   for (const status of [403, 404, 422, 503]) {
     const client = makeGhClient({ exec: () => { throw Object.assign(new Error("private diagnostic"), { status: 1, stdout: `HTTP/2.0 ${status} Synthetic\n\n{\"message\":\"private response\"}` }); } });
     await assert.rejects(client("git/ref/tags/v1.2.3"), (error) => error.status === status && !error.message.includes("private"));
   }
+  const overflow = makeGhClient({ exec: () => { throw Object.assign(new Error("private child output"), { code: "ENOBUFS", stdout: "HTTP/2.0 200 OK\\nprivate response" }); } });
+  await assert.rejects(overflow("releases"), (error) => error.status === null && /status unknown/.test(error.message) && !error.message.includes("private"));
 });
 
 test("partial uploads stop queue selection and redispatch before writes", async () => {
