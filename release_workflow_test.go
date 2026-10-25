@@ -112,6 +112,14 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"docker buildx imagetools create",
 		"--format '{{.Manifest.Digest}}'",
 		"gh release create \"$VERSION\" --draft --verify-tag --generate-notes",
+		"workflow_dispatch:\n    inputs:\n      draft_id:",
+		"candidate_commit:",
+		"test \"$GITHUB_REF\" = \"refs/tags/$GITHUB_REF_NAME\"",
+		"Verify frozen dispatched candidate",
+		"if: github.event_name == 'workflow_dispatch'",
+		"node scripts/release-candidate.mjs verify",
+		"gh release upload \"$VERSION\" dist/release/*",
+		"if test -n \"$DRAFT_ID\"; then test \"$release_id\" = \"$DRAFT_ID\"; fi",
 		"gh api \"repos/klauern/index-01-hook/releases?per_page=100\" --paginate",
 		"release_id=$(gh api",
 		"gh api \"repos/klauern/index-01-hook/releases/$release_id\"",
@@ -126,7 +134,6 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 	}
 
 	forbidden := []string{
-		"workflow_dispatch",
 		"pull_request",
 		"pull_request_target",
 		"ghcr.io/klauern/index-01-hook:latest",
@@ -172,7 +179,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 
 	rejectTag := strings.Index(text, "Reject an existing version image tag")
 	createTag := strings.Index(text, "Create the version image tag")
-	createRelease := strings.Index(text, "Create draft GitHub Release")
+	createRelease := strings.Index(text, "Create or adopt the verified draft GitHub Release")
 	publishRelease := strings.Index(text, "Publish draft GitHub Release")
 	if rejectTag < 0 || createTag <= rejectTag || createRelease <= createTag || publishRelease <= createRelease {
 		t.Error("release publication steps are not in the required immutable order")

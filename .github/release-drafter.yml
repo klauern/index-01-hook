@@ -1,0 +1,46 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+version-template: '$MAJOR.$MINOR.$PATCH'
+
+categories:
+  - type: version-resolver
+    semver-increment: major
+    when:
+      label: release:major
+  - type: version-resolver
+    semver-increment: minor
+    when:
+      label: release:minor
+  - type: version-resolver
+    semver-increment: patch
+    when:
+      label: release:patch
+  - type: version-resolver
+    semver-increment: patch
+  - title: 'Features'
+    when:
+      labels:
+        - feature
+        - enhancement
+  - title: 'Fixes'
+    when:
+      labels:
+        - bug
+        - fix
+  - title: 'Maintenance'
+    when:
+      labels:
+        - chore
+        - maintenance
+  - title: 'Other changes'
+    when:
+      labels:
+        - '*'
+
+change-template: '- $TITLE (#$NUMBER)'
+
+template: |
+  ## Changes
+
+  $CHANGES

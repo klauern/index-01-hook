@@ -1,7 +1,7 @@
 # Releasing
 
 This guide describes the gated public release process. The workflow pushes an
-untagged image digest, signatures, and attestations before it creates a GitHub
+untagged image digest, signatures, and attestations before it publishes a GitHub
 Release. These staging objects are not a supported release. A later failure can
 leave them in GHCR for investigation.
 
@@ -49,7 +49,60 @@ annotated tag object. GitHub must report the tag ref as protected. The tag must 
 
 The workflow creates only the exact image version tag after anonymous digest
 inspection. It does not create `latest`, `stable`, `main`, major, minor, or commit
-tags. It creates a draft GitHub Release only after all other release checks pass.
+tags. For manual tags, the workflow creates a draft only after all release checks pass.
+
+## Automatic releases from merged pull requests
+
+The Release Drafter workflow can prepare one release candidate from merged pull
+requests on `main`. The workflow does not enable itself. An owner must configure
+the repository variables and release environment.
+
+Set `RELEASE_DRAFTER_ENABLED=true` to enable candidate drafting. Set
+`RELEASE_DRAFTER_BASELINE` to the exact 40-character commit SHA on the first-parent
+history of `main`. Set it to the deployment or enablement commit. The workflow
+ignores earlier merges. Do not set these variables as part of this implementation.
+The initial rollout is not authorized here.
+Keep the baseline unchanged after the first candidate is created.
+
+The workflow checks successful CI for the exact merge commit. It examines merged
+`main` history in order and selects the oldest unreleased pull request. Source
+history is the durable queue. A missing or canceled CI run blocks that candidate.
+An owner must rerun CI for its exact commit. The workflow does not skip it.
+
+Release Drafter v7.9.0 is pinned to a verified action SHA. It builds notes from
+the selected merge's first-parent range and uses that merge as the target commit.
+The workflow freezes the draft's notes, labels, baseline, base version, pull
+request, and commit. Later merges cannot change that candidate. Only one candidate
+draft may exist. A matching draft is adopted. An unrelated draft or partial upload
+stops processing; the workflow does not overwrite or remove it.
+
+The default version increment is patch. Use exactly one of `release:major`,
+`release:minor`, or optional `release:patch` to select an increment. Conflicting
+release labels stop processing. Feature and change categories only group notes;
+they do not select a version.
+Create these labels during owner-approved setup. To block conflicting labels before merge,
+make `Check release label conflicts` a required check. This implementation does not change branch protection.
+
+Drafting and publishing require separate owner-controlled settings.
+`RELEASE_DRAFTER_PUBLISH=true` enables dispatch, and
+`PUBLIC_RELEASE_APPROVED=true` confirms approval. The dispatch job also uses the
+`public-release` environment, which must require reviewers. The tag release
+workflow checks approval and protected-tag status. Keep `v*.*.*` tag protection
+and required review. Do not bypass protection or add a token.
+
+After validation, the workflow creates an annotated protected version tag and
+dispatches the release workflow with `GITHUB_TOKEN`. The dispatch uses the tag
+name as its ref, so the release workflow keeps the tag-ref identity. The tag
+release workflow retains the existing fourteen assets, signatures, and
+attestations.
+
+If tag dispatch fails after tag creation, retain the tag. An owner may inspect
+the candidate and approve recovery. Rerun the Release Drafter workflow to dispatch
+the same immutable candidate. Do not overwrite a draft, replace a tag, or retry a
+partial asset upload without owner approval. If an image version was pushed before
+a later failure, stop and inspect it; do not clobber it.
+
+Repository variables, environment reviewers, and protection settings remain owner-only changes. This guide does not authorize live rollout.
 
 ## Verification
 

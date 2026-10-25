@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      draft_id:
+        description: Frozen Release Drafter release ID
+        required: true
+        type: string
+      candidate_commit:
+        description: Exact frozen main merge commit
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -22,10 +32,13 @@ jobs:
     timeout-minutes: 50
     permissions:
       contents: read
+      actions: read
+      pull-requests: read
     outputs:
       version: ${{ steps.metadata.outputs.version }}
       commit: ${{ steps.metadata.outputs.commit }}
       build_date: ${{ steps.metadata.outputs.build_date }}
+      draft_id: ${{ inputs.draft_id }}
     steps:
       - name: Check out full history
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -42,6 +55,7 @@ jobs:
           test "$GITHUB_REPOSITORY" = klauern/index-01-hook
           test "$PUBLIC_RELEASE_APPROVED" = true
           test "$REF_PROTECTED" = true
+          test "$GITHUB_REF" = "refs/tags/$GITHUB_REF_NAME"
       - name: Validate release tag
         run: |
           set -eu
@@ -52,6 +66,15 @@ jobs:
           git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
           main_commit=$(git rev-parse refs/remotes/origin/main)
           git merge-base --is-ancestor "$tag_commit" "$main_commit"
+      - name: Verify frozen dispatched candidate
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BASELINE: ${{ vars.RELEASE_DRAFTER_BASELINE }}
+          DRAFT_ID: ${{ inputs.draft_id }}
+          VERSION: ${{ github.ref_name }}
+          CANDIDATE_COMMIT: ${{ inputs.candidate_commit }}
+        run: node scripts/release-candidate.mjs verify
       - name: Derive immutable metadata
         id: metadata
         run: |
@@ -203,6 +226,8 @@ jobs:
     environment: public-release
     permissions:
       contents: write
+      actions: read
+      pull-requests: read
       packages: write
       id-token: write
       attestations: write
@@ -211,9 +236,18 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ needs.validate.outputs.commit }}
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
           submodules: false
+      - name: Recheck the frozen draft before publishing artifacts
+        if: needs.validate.outputs.draft_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BASELINE: ${{ vars.RELEASE_DRAFTER_BASELINE }}
+          DRAFT_ID: ${{ needs.validate.outputs.draft_id }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          CANDIDATE_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: node scripts/release-candidate.mjs verify
       - name: Download verified release artifacts
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -403,21 +437,32 @@ jobs:
             "ghcr.io/klauern/index-01-hook:$VERSION" \
             --format '{{.Manifest.Digest}}')
           test "$resolved" = "$IMAGE_DIGEST"
-      - name: Create draft GitHub Release
+      - name: Create or adopt the verified draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.validate.outputs.version }}
+          DRAFT_ID: ${{ needs.validate.outputs.draft_id }}
+          RELEASE_BASELINE: ${{ vars.RELEASE_DRAFTER_BASELINE }}
+          CANDIDATE_COMMIT: ${{ needs.validate.outputs.commit }}
         run: |
           set -eu
-          gh release create "$VERSION" --draft --verify-tag --generate-notes --title "$VERSION" dist/release/*
+          if test -n "$DRAFT_ID"; then
+            node scripts/release-candidate.mjs verify
+            test "$(gh api "repos/klauern/index-01-hook/releases/$DRAFT_ID" --jq '.assets | length')" = 0
+            gh release upload "$VERSION" dist/release/*
+          else
+            gh release create "$VERSION" --draft --verify-tag --generate-notes --title "$VERSION" dist/release/*
+          fi
       - name: Verify draft release assets
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.validate.outputs.version }}
+          DRAFT_ID: ${{ needs.validate.outputs.draft_id }}
         run: |
           set -eu
           release_id=$(gh api "repos/klauern/index-01-hook/releases?per_page=100" --paginate --jq ".[] | select(.tag_name == \"$VERSION\" and .draft == true) | .id" | head -n1)
           test -n "$release_id"
+          if test -n "$DRAFT_ID"; then test "$release_id" = "$DRAFT_ID"; fi
           test "$(gh api "repos/klauern/index-01-hook/releases/$release_id" --jq .draft)" = true
           expected=$(printf '%s\n' \
           "THIRD_PARTY_NOTICES.txt" \
@@ -441,7 +486,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.validate.outputs.version }}
-        run: gh release edit "$VERSION" --draft=false
+          DRAFT_ID: ${{ needs.validate.outputs.draft_id }}
+          RELEASE_BASELINE: ${{ vars.RELEASE_DRAFTER_BASELINE }}
+          CANDIDATE_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: |
+          set -eu
+          if test -n "$DRAFT_ID"; then node scripts/release-candidate.mjs verify; fi
+          gh release edit "$VERSION" --draft=false
       - name: Verify published GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
