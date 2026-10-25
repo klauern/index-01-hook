@@ -55,6 +55,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"main_commit=$(git rev-parse refs/remotes/origin/main)",
 		"git merge-base --is-ancestor \"$tag_commit\" \"$main_commit\"",
 		"tag_commit=$(git rev-parse \"refs/tags/$GITHUB_REF_NAME^{commit}\")",
+		"test \"$(git rev-parse HEAD)\" = \"$tag_commit\"",
 		"VERSION=\"$GITHUB_REF_NAME\"",
 		"COMMIT=$(git rev-parse \"refs/tags/$GITHUB_REF_NAME^{commit}\")",
 		"BUILD_DATE=$(date -u",
@@ -130,6 +131,22 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 	for _, part := range required {
 		if !strings.Contains(text, part) {
 			t.Errorf("release workflow does not contain %q", part)
+		}
+	}
+
+	if strings.Contains(text, "ref: ${{ needs.validate.outputs.commit }}") {
+		t.Error("release workflow checks out a commit from a job output")
+	}
+	for _, job := range []string{"build:", "publish:"} {
+		jobStart := strings.Index(text, job)
+		if jobStart < 0 {
+			t.Fatalf("release workflow does not contain %q", job)
+		}
+		checkout := strings.Index(text[jobStart:], "uses: actions/checkout@")
+		verify := strings.Index(text[jobStart:], "run: test \"$(git rev-parse HEAD)\" = \"$VALIDATED_COMMIT\"")
+		setup := strings.Index(text[jobStart:], "- name: Set up Go")
+		if checkout < 0 || verify < checkout || (setup >= 0 && verify > setup) {
+			t.Errorf("%s does not verify the checked out commit before build or publish operations", job)
 		}
 	}
 

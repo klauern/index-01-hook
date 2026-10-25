@@ -63,6 +63,7 @@ jobs:
           git fetch --force --no-tags origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
           test "$(git cat-file -t "refs/tags/$GITHUB_REF_NAME")" = tag
           tag_commit=$(git rev-parse "refs/tags/$GITHUB_REF_NAME^{commit}")
+          test "$(git rev-parse HEAD)" = "$tag_commit"
           git fetch --no-tags origin refs/heads/main:refs/remotes/origin/main
           main_commit=$(git rev-parse refs/remotes/origin/main)
           git merge-base --is-ancestor "$tag_commit" "$main_commit"
@@ -140,10 +141,13 @@ jobs:
       - name: Check out validated commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ needs.validate.outputs.commit }}
           fetch-depth: 1
           persist-credentials: false
           submodules: false
+      - name: Verify checked out validated commit
+        env:
+          VALIDATED_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: test "$(git rev-parse HEAD)" = "$VALIDATED_COMMIT"
       - name: Set up Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
@@ -235,10 +239,13 @@ jobs:
       - name: Check out validated commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
-          ref: ${{ needs.validate.outputs.commit }}
           fetch-depth: 0
           persist-credentials: false
           submodules: false
+      - name: Verify checked out validated commit
+        env:
+          VALIDATED_COMMIT: ${{ needs.validate.outputs.commit }}
+        run: test "$(git rev-parse HEAD)" = "$VALIDATED_COMMIT"
       - name: Recheck the frozen draft before publishing artifacts
         if: needs.validate.outputs.draft_id != ''
         env:
