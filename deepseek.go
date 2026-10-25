@@ -346,31 +346,13 @@ func decodeDeepSeekItem(raw json.RawMessage) (deepSeekItemOutput, error) {
 	return item, nil
 }
 
+// parseDue maps neutral date-policy failures to existing provider error metadata.
 func (c *DeepSeekClient) parseDue(raw *string, allDay bool) (*time.Time, error) {
-	if raw == nil {
-		if allDay {
-			return nil, deepSeekMalformed("extract items", "all-day task has no due date")
-		}
-		return nil, nil
-	}
-	value := strings.TrimSpace(*raw)
-	if allDay {
-		parsed, err := time.ParseInLocation("2006-01-02", value, c.location)
-		if err != nil {
-			return nil, deepSeekMalformed("extract items", "all-day due date is invalid")
-		}
-		return &parsed, nil
-	}
-	parsed, err := time.Parse(time.RFC3339, value)
+	due, err := application.ParseDue(raw, allDay, c.location)
 	if err != nil {
-		return nil, deepSeekMalformed("extract items", "timed due date is invalid")
+		return nil, deepSeekMalformed("extract items", err.Error())
 	}
-	_, suppliedOffset := parsed.Zone()
-	_, localOffset := parsed.In(c.location).Zone()
-	if suppliedOffset != localOffset {
-		return nil, deepSeekMalformed("extract items", "timed due date has an invalid time zone offset")
-	}
-	return &parsed, nil
+	return due, nil
 }
 
 func deepSeekSystemPrompt(now time.Time, timeZone string, aliases []string) string {
