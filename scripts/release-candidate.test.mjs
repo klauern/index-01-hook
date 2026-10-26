@@ -28,7 +28,7 @@ function apiError(status) {
   return Object.assign(new Error(`Synthetic HTTP ${status}`), { status });
 }
 /** Provide isolated Git and API fixtures that record attempted writes. */
-function fixture({ releases = [], badCI = null, tagExists = false, race = false, dispatchFailure = false } = {}) {
+function fixture({ releases = [], badCI = null, tagExists = false, race = false, denyRef = false, missingTagObject = false, dispatchFailure = false } = {}) {
   const writes = [];
   const reads = [];
   const refs = new Map(tagExists ? [["v1.2.3", commit1]] : []);
@@ -68,9 +68,13 @@ function fixture({ releases = [], badCI = null, tagExists = false, race = false,
       if (!refs.has(version)) throw apiError(404);
       return { ref: `refs/tags/${version}`, object: { type: "tag", sha: tagSHA } };
     }
-    if (path === `git/tags/${tagSHA}`) return { tag: "v1.2.3", object: { type: "commit", sha: refs.get("v1.2.3") } };
+    if (path === `git/tags/${tagSHA}`) {
+      if (missingTagObject) throw apiError(404);
+      return { tag: "v1.2.3", object: { type: "commit", sha: refs.get("v1.2.3") } };
+    }
     if (path === "git/tags" && method === "POST") return { sha: tagSHA };
     if (path === "git/refs" && method === "POST") {
+      if (denyRef) throw apiError(422);
       refs.set(body.ref.slice("refs/tags/".length), commit1);
       if (race) throw apiError(422);
       return { object: { type: "tag", sha: tagSHA } };
@@ -114,6 +118,15 @@ test("freezing is idempotent and rejects modified notes, labels, assets, and ver
   assert.throws(() => freezeDraft({ ...draft, assets: [{}] }, frozenArgs), /assets/);
   assert.throws(() => freezeDraft({ ...draft, tag_name: "latest" }, frozenArgs), /version/);
   assert.throws(() => freezeDraft({ ...draft, tag_name: "v2.0.0" }, frozenArgs), /labels/);
+  const placeholder = freezeDraft({ ...draft, tag_name: "v0.0.0" }, { ...frozenArgs, resolvedVersion: "v1.2.3" });
+  assert.equal(placeholder.tag_name, "v1.2.3");
+  assert.throws(() => freezeDraft({ ...draft, tag_name: "other" }, { ...frozenArgs, resolvedVersion: "v1.2.3" }), /safe placeholder/);
+  assert.throws(() => freezeDraft({ ...draft, tag_name: "v0.0.0" }, { ...frozenArgs, resolvedVersion: "v2.0.0" }), /candidate labels/);
+  const observed = "untagged-7a0e8c91a5e9fe00b600";
+  assert.equal(freezeDraft({ ...draft, tag_name: observed }, { ...frozenArgs, resolvedVersion: "v1.2.3" }).tag_name, "v1.2.3");
+  assert.throws(() => freezeDraft({ ...draft, tag_name: observed }, frozenArgs), /candidate labels/);
+  assert.throws(() => freezeDraft({ ...draft, tag_name: "untagged-not-a-hash" }, { ...frozenArgs, resolvedVersion: "v1.2.3" }), /safe placeholder/);
+  assert.throws(() => freezeDraft({ ...draft, tag_name: observed, body: frozen.body }, { ...frozenArgs, resolvedVersion: "v1.2.3" }), /version/);
   assert.throws(() => parseManifest("notes"), /exactly one/);
   assert.throws(() => parseManifest(`${frozen.body}\n${frozen.body}`), /exactly one/);
   assert.throws(() => parseManifest(frozen.body.replace('"pr":2', '"pr":0')), /manifest/);
@@ -200,11 +213,12 @@ test("verification checks ID, version, commit, main PR, frozen notes, and annota
 });
 
 test("freeze mode records only the validated exact draft and repeats without a write", async () => {
-  const f = fixture({ releases: [rawDraft()] });
-  const env = { RELEASE_BASELINE: baseline, DRAFT_ID: "7", CANDIDATE_PR: "2", CANDIDATE_COMMIT: commit1, BASE_VERSION: "v1.2.2" };
+  const f = fixture({ releases: [rawDraft({ tag_name: "v0.0.0" })] });
+  const env = { RELEASE_BASELINE: baseline, DRAFT_ID: "7", CANDIDATE_PR: "2", CANDIDATE_COMMIT: commit1, BASE_VERSION: "v1.2.2", RESOLVED_VERSION: "v1.2.3" };
   await runMode({ ...f, mode: "freeze", env });
   assert.equal(f.writes.length, 1);
   assert.equal(f.writes[0].method, "PATCH");
+  assert.equal(f.writes[0].body.tag_name, "v1.2.3");
   assert.equal(parseManifest(f.releases[0].body).base_version, "v1.2.2");
   await runMode({ ...f, mode: "freeze", env });
   assert.equal(f.writes.length, 1);
@@ -226,6 +240,12 @@ test("dispatch reconciles only an exact tag race and rejects conflicting or ligh
   const draft = frozenDraft();
   const race = fixture({ releases: [draft], race: true });
   await dispatchCandidate({ ...race, draft, baseline, id: 7 });
+  const denied = fixture({ releases: [draft], denyRef: true });
+  await assert.rejects(dispatchCandidate({ ...denied, draft, baseline, id: 7 }), /POST git\/refs status 422; reconciliation GET git\/ref\/tags\/v1\.2\.3 status 404/);
+  assert.deepEqual(denied.writes.map((w) => w.path), ["git/tags", "git/refs"]);
+  const missingObject = fixture({ releases: [draft], tagExists: true, missingTagObject: true });
+  await assert.rejects(dispatchCandidate({ ...missingObject, draft, baseline, id: 7 }), (error) => error.status === 404);
+  assert.equal(missingObject.writes.length, 0);
   const wrong = fixture({ releases: [draft], tagExists: true });
   wrong.refs.set("v1.2.3", commit2);
   await assert.rejects(dispatchCandidate({ ...wrong, draft, baseline, id: 7 }), /different commit/);
@@ -258,7 +278,7 @@ test("the real gh adapter handles HTTP 204 and typed failures without leaking re
   assert.deepEqual(await json("releases/7"), { id: 7 });
   for (const status of [403, 404, 422, 503]) {
     const client = makeGhClient({ exec: () => { throw Object.assign(new Error("private diagnostic"), { status: 1, stdout: `HTTP/2.0 ${status} Synthetic\n\n{\"message\":\"private response\"}` }); } });
-    await assert.rejects(client("git/ref/tags/v1.2.3"), (error) => error.status === status && !error.message.includes("private"));
+    await assert.rejects(client("git/ref/tags/v1.2.3"), (error) => error.status === status && !error.message.includes("private") && (status !== 422 || error.message.includes("GET git/ref/tags/v1.2.3; status 422")));
   }
   const overflow = makeGhClient({ exec: () => { throw Object.assign(new Error("private child output"), { code: "ENOBUFS", stdout: "HTTP/2.0 200 OK\\nprivate response" }); } });
   await assert.rejects(overflow("releases"), (error) => error.status === null && /status unknown/.test(error.message) && !error.message.includes("private"));
