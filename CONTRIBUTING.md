@@ -79,6 +79,20 @@ The CI workflow uses synthetic inputs. It does not use provider credentials or c
 Do not put credentials or private payloads in issues, tests, logs, or commits.
 Redact provider data, webhook data, and other private values from test output.
 
+## Release labels
+
+Select at most one version label before merge:
+
+- `release:major`: breaking changes.
+- `release:minor`: backward-compatible features.
+- `release:patch`: compatible fixes or maintenance. Patch is also the default without a version label.
+
+Change-category labels only group release notes. They do not select the version.
+After owner-approved setup, PR review and merge provide release approval.
+Successful CI on the exact `main` merge starts automatic release processing.
+No separate release environment approval is required. Tag protection and artifact verification still apply.
+See [the release guide](RELEASING.md) for setup, stop conditions, and recovery.
+
 ## Documentation
 
 Document every configuration or behavior change. Update the relevant README or

@@ -12,9 +12,9 @@ Complete every precondition before you push a tag:
 - Complete the approved history cleanup.
 - Run the second `gitleaks` history and directory scan after cleanup.
 - Confirm that `klauern/index-01-hook` is public.
-- Protect `v*.*.*` tags. Require maintainer review for tag creation.
-- Configure the `public-release` environment with required reviewers.
-- Set repository variable `PUBLIC_RELEASE_APPROVED` to `true` for this release.
+- Protect existing `v*.*.*` tags against updates, deletion, and non-fast-forward changes.
+- Keep the `public-release` environment. Normal releases do not require a separate environment approval.
+- Enable `PUBLIC_RELEASE_APPROVED` and `RELEASE_DRAFTER_PUBLISH` only after the owner approves automatic publication.
 - Set Actions workflow permissions to read and write.
 - Confirm that the GHCR package can have public visibility.
 - Record the approved Go builder and BuildKit image digests.
@@ -24,28 +24,30 @@ Complete every precondition before you push a tag:
 The release commit must be an ancestor of `origin/main`. The commit must match the
 annotated tag object. GitHub must report the tag ref as protected. The tag must use the form `vMAJOR.MINOR.PATCH`.
 
-## Exact sequence
+## Normal release sequence
 
-1. Complete history cleanup and obtain maintainer approval.
-2. Run both `gitleaks` scans again after cleanup.
+1. Complete the preconditions and owner-approved automation setup.
+2. Add `release:major`, `release:minor`, or `release:patch` to the pull request.
+3. Review and merge the pull request.
+4. Wait for CI to pass on the exact `main` merge commit.
+5. The workflow freezes the candidate, creates its protected annotated tag, and dispatches the release workflow.
+6. The release workflow validates, builds, signs, verifies, and publishes the release.
+7. Record the immutable image digest and GitHub Release asset list.
+8. Run the verification commands below from a clean operator workstation.
 
-   ```sh
-   gitleaks git --redact --no-banner --exit-code 1 --log-opts="--all" .
-   gitleaks dir --redact --no-banner --exit-code 1 .
-   ```
+PR review and merge provide release approval. No separate environment approval is required.
+Required checks, tag protection, and artifact verification remain in effect.
 
-3. Confirm repository, tag protection, environment reviewers, Actions permissions,
-   and GHCR settings.
-4. Set `PUBLIC_RELEASE_APPROVED=true`.
-5. Create and push one annotated `vMAJOR.MINOR.PATCH` tag through the protected-tag
-   process.
-6. Review the validation, build, artifact, SBOM, signature, and attestation steps.
-7. If the first package push is private, stop. The workflow must stop before it
-   creates the version image tag or the GitHub Release. Set the package visibility to
-   public, then rerun the same tag workflow.
-8. Record the immutable image digest and GitHub Release asset list.
-9. Run the verification commands below from a clean operator workstation.
-10. Remove or rotate the temporary approval variable after the release.
+For owner-approved manual tag recovery, run both history and directory scans first:
+
+```sh
+gitleaks git --redact --no-banner --exit-code 1 --log-opts="--all" .
+gitleaks dir --redact --no-banner --exit-code 1 .
+```
+
+If the first package push is private, stop before creating the version image tag or publishing the GitHub Release.
+Correct package visibility through an owner-approved operation. Retry only the same validated candidate.
+Keep failed staging objects for investigation. Do not replace an existing version tag.
 
 The workflow creates only the exact image version tag after anonymous digest
 inspection. It does not create `latest`, `stable`, `main`, major, minor, or commit
@@ -60,8 +62,7 @@ the repository variables and release environment.
 Set `RELEASE_DRAFTER_ENABLED=true` to enable candidate drafting. Set
 `RELEASE_DRAFTER_BASELINE` to the exact 40-character commit SHA on the first-parent
 history of `main`. Set it to the deployment or enablement commit. The workflow
-ignores earlier merges. Do not set these variables as part of this implementation.
-The initial rollout is not authorized here.
+ignores earlier merges. Configure these variables only during owner-approved setup.
 Keep the baseline unchanged after the first candidate is created.
 
 The workflow checks successful CI for the exact merge commit. It examines merged
@@ -83,12 +84,17 @@ they do not select a version.
 Create these labels during owner-approved setup. To block conflicting labels before merge,
 make `Check release label conflicts` a required check. This implementation does not change branch protection.
 
-Drafting and publishing require separate owner-controlled settings.
-`RELEASE_DRAFTER_PUBLISH=true` enables dispatch, and
-`PUBLIC_RELEASE_APPROVED=true` confirms approval. The dispatch job also uses the
-`public-release` environment, which must require reviewers. The tag release
-workflow checks approval and protected-tag status. Keep `v*.*.*` tag protection
-and required review. Do not bypass protection or add a token.
+Drafting and publishing use persistent owner-controlled settings.
+`RELEASE_DRAFTER_ENABLED=true` enables drafting. `RELEASE_DRAFTER_PUBLISH=true` enables dispatch.
+`PUBLIC_RELEASE_APPROVED=true` records owner approval for automatic publication from trusted `main` merges.
+These variables are enable switches, not per-release approval steps.
+Set either publication variable to `false` to stop publication after a failure.
+The `public-release` environment remains in use without a required-reviewer rule.
+The tag release workflow checks publication approval and protected-tag status.
+The owner-approved tag rules permit new version tags from repository writers and the workflow token.
+Existing version tags remain protected against updates, deletion, and non-fast-forward changes.
+An administrator-only creation rule blocks the workflow token. Keep creation permission separate from existing-tag protection.
+Obtain owner approval before changing these permissions or adding credentials.
 
 After validation, the workflow creates an annotated protected version tag and
 dispatches the release workflow with `GITHUB_TOKEN`. The dispatch uses the tag
@@ -192,8 +198,8 @@ History cleanup: approved by <maintainer>; evidence <link-or-id>
 Second gitleaks scan: pass; evidence <link-or-id>
 Repository visibility: public; evidence <link-or-id>
 GHCR package visibility: public or first-push stop confirmed
-Protected tags: v*.*.*; required review confirmed
-public-release reviewers: <maintainer list>
+Protected tags: v*.*.*; approved automation identity confirmed
+Release approval: reviewed and merged pull request; no separate environment review
 PUBLIC_RELEASE_APPROVED: true; set by <maintainer>
 Actions write permission: confirmed
 Workflow run: <URL>
