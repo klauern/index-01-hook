@@ -34,7 +34,7 @@ test("workflow pins v7 and bounds comparison and target to selected commits", ()
   assert.match(workflow, /from: \$\{\{ steps\.select\.outputs\.from \}\}/);
   assert.match(workflow, /commitish: \$\{\{ steps\.select\.outputs\.commit \}\}/);
   assert.match(workflow, /publish: false/);
-  assert.match(workflow, /RESOLVED_VERSION: \$\{\{ steps\.drafter\.outputs\.tag_name \}\}/);
+  assert.match(workflow, /RESOLVED_VERSION: v\$\{\{ steps\.drafter\.outputs\.resolved_version \}\}/);
   assert.match(workflow, /name: Create the automatic release tag and dispatch/);
   assert.match(workflow, /environment: public-release/);
   assert.match(workflow, /vars\.RELEASE_DRAFTER_PUBLISH == 'true'/);
