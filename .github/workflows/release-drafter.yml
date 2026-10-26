@@ -71,7 +71,7 @@ jobs:
           CANDIDATE_COMMIT: ${{ steps.select.outputs.commit }}
           CANDIDATE_PR: ${{ steps.select.outputs.pr }}
           BASE_VERSION: ${{ steps.select.outputs.base_version }}
-          RESOLVED_VERSION: ${{ steps.drafter.outputs.tag_name }}
+          RESOLVED_VERSION: v${{ steps.drafter.outputs.resolved_version }}
         run: node scripts/release-candidate.mjs freeze
 
   dispatch:
