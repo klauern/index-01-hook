@@ -29,7 +29,7 @@ test("note categories do not set release increments", () => {
 });
 
 test("workflow pins v7 and bounds comparison and target to selected commits", () => {
-  assert.match(workflow, /uses: release-drafter\/release-drafter@72967cdc98ddd3160f1fc3dff619de365e137dd0 # v7\.9\.0/);
+  assert.match(workflow, /uses: release-drafter\/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7\.10\.0/);
   assert.match(workflow, /token: \$\{\{ github\.token \}\}/);
   assert.match(workflow, /from: \$\{\{ steps\.select\.outputs\.from \}\}/);
   assert.match(workflow, /commitish: \$\{\{ steps\.select\.outputs\.commit \}\}/);
