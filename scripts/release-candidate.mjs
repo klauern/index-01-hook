@@ -67,7 +67,7 @@ export function parseManifest(body) {
   return m;
 }
 /** Freeze a draft once, and reject changes on a repeated call. */
-export function freezeDraft(draft, { baseline, commit, pr, labels, baseVersion }) {
+export function freezeDraft(draft, { baseline, commit, pr, labels, baseVersion, resolvedVersion = draft?.tag_name }) {
   if (!draft || draft.draft !== true || draft.prerelease !== false) throw new Error("Release Drafter did not create a stable draft");
   if (draft.target_commitish !== commit) throw new Error("Draft target commit does not match candidate");
   if ((draft.assets ?? []).length) throw new Error("Candidate draft must not contain assets");
@@ -77,10 +77,14 @@ export function freezeDraft(draft, { baseline, commit, pr, labels, baseVersion }
     const parsed = parseManifest(existing);
     const expected = makeManifest({ baseline, commit, pr, version: draft.tag_name, notes: existing.replace(previous[0][0], "").trimEnd(), labels, baseVersion });
     if (JSON.stringify(parsed) !== JSON.stringify(expected)) throw new Error("Frozen candidate cannot be changed");
-    return { body: existing, manifest: parsed };
+    return { body: existing, tag_name: draft.tag_name, manifest: parsed };
   }
-  const manifest = makeManifest({ baseline, commit, pr, version: draft.tag_name, notes: existing, labels, baseVersion });
-  return { body: `${existing.trimEnd()}\n\n${MARKER}${JSON.stringify(manifest)} -->`, manifest };
+  const expected = expectedVersion(baseVersion, labels);
+  if (resolvedVersion !== expected) throw new Error("Release Drafter version does not match the candidate labels");
+  const placeholder = draft.tag_name === "" || draft.tag_name === "v0.0.0" || /^untagged-[a-f0-9]{20}$/.test(draft.tag_name);
+  if (draft.tag_name !== expected && !placeholder) throw new Error("Release Drafter draft tag is not the validated version or a safe placeholder");
+  const manifest = makeManifest({ baseline, commit, pr, version: resolvedVersion, notes: existing, labels, baseVersion });
+  return { body: `${existing.trimEnd()}\n\n${MARKER}${JSON.stringify(manifest)} -->`, tag_name: resolvedVersion, manifest };
 }
 /** Retain a pending candidate or select the oldest unreleased merge. */
 export function chooseCandidate({ merges, pending = null, published = new Set(), baseline }) {
@@ -177,13 +181,26 @@ export async function verifyCandidate({ api, git = run, draft, baseline, id, ver
 export async function dispatchCandidate({ api, git = run, draft, id, baseline, version, commit }) {
   const manifest = await verifyCandidate({ api, git, draft, id, baseline, version, commit, requireTag: false });
   if (!Array.isArray(draft.assets) || draft.assets.length !== 0) throw new Error("Candidate has a partial asset upload; owner recovery is required");
-  let existing;
-  try { await tagCommit(api, manifest.version, manifest.commit); existing = true; }
-  catch (e) { if (e.status !== 404) throw e; }
-  if (!existing) {
+  let refMissing = false;
+  try { await api(`git/ref/tags/${manifest.version}`); }
+  catch (e) { if (e.status !== 404) throw e; refMissing = true; }
+  if (!refMissing) await tagCommit(api, manifest.version, manifest.commit);
+  if (refMissing) {
     const tag = await api("git/tags", "POST", { tag: manifest.version, message: `Release ${manifest.version}`, object: manifest.commit, type: "commit" });
-    try { await api("git/refs", "POST", { ref: `refs/tags/${manifest.version}`, sha: tag.sha }); }
-    catch (e) { if (e.status !== 422) throw e; }
+    try {
+      await api("git/refs", "POST", { ref: `refs/tags/${manifest.version}`, sha: tag.sha });
+    } catch (creationError) {
+      if (creationError.status !== 422) throw creationError;
+      try { await api(`git/ref/tags/${manifest.version}`); }
+      catch (reconcileError) {
+        if (reconcileError.status !== 404) throw reconcileError;
+        const phase = `POST git/refs status ${creationError.status}; reconciliation GET git/ref/tags/${manifest.version} status ${reconcileError.status}`;
+        const error = new Error(`Release tag creation failed (${phase})`);
+        error.status = creationError.status;
+        throw error;
+      }
+      await tagCommit(api, manifest.version, manifest.commit);
+    }
     await tagCommit(api, manifest.version, manifest.commit);
   }
   await api("actions/workflows/release.yml/dispatches", "POST", { ref: manifest.version, inputs: { draft_id: String(id), candidate_commit: manifest.commit } });
@@ -242,8 +259,11 @@ export async function runMode({ mode, api, git = run, env = process.env }) {
     const draft = await api(`releases/${env.DRAFT_ID}`), pr = await api(`pulls/${env.CANDIDATE_PR}`);
     if (String(draft.id) !== String(env.DRAFT_ID)) throw new Error("Draft ID does not match the requested candidate");
     assertPR(pr, env.CANDIDATE_COMMIT);
-    const frozen = freezeDraft(draft, { baseline, commit: env.CANDIDATE_COMMIT, pr: env.CANDIDATE_PR, labels: pr.labels, baseVersion: env.BASE_VERSION });
-    if (frozen.body !== draft.body) await api(`releases/${draft.id}`, "PATCH", { body: frozen.body });
+    const frozen = freezeDraft(draft, { baseline, commit: env.CANDIDATE_COMMIT, pr: env.CANDIDATE_PR, labels: pr.labels, baseVersion: env.BASE_VERSION, resolvedVersion: env.RESOLVED_VERSION ?? draft.tag_name });
+    if (frozen.body !== draft.body || frozen.tag_name !== draft.tag_name) {
+      const persisted = await api(`releases/${draft.id}`, "PATCH", { body: frozen.body, tag_name: frozen.tag_name });
+      if (String(persisted.id) !== String(draft.id) || persisted.tag_name !== frozen.manifest.version || persisted.target_commitish !== frozen.manifest.commit || persisted.body !== frozen.body || persisted.prerelease !== false || persisted.draft !== true) throw new Error("Frozen release candidate was not persisted exactly");
+    }
     return { draft_id: draft.id, version: frozen.manifest.version, commit: frozen.manifest.commit, pr: frozen.manifest.pr };
   }
   if (!["verify", "dispatch"].includes(mode)) throw new Error("Mode must be select, freeze, verify, or dispatch");

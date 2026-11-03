@@ -41,6 +41,19 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 	}
 	text := string(workflow)
 
+	validateStart := strings.Index(text, "  validate:\n")
+	if validateStart < 0 {
+		t.Fatal("release workflow must define validate and build jobs")
+	}
+	validateEnd := strings.Index(text[validateStart+len("  validate:\n"):], "\n  build:")
+	if validateEnd < 0 {
+		t.Fatal("release workflow must define validate and build jobs")
+	}
+	validateJob := text[validateStart : validateStart+len("  validate:\n")+validateEnd]
+	if !regexp.MustCompile(`(?m)^    permissions:\n      contents: write(?:[ \t]+#[^\n]*)?\n`).MatchString(validateJob) {
+		t.Fatal("validate job must grant contents: write to read the private draft release")
+	}
+
 	required := []string{
 		"name: Release",
 		"on:\n  push:\n    tags:\n      - 'v*.*.*'",

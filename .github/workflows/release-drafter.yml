@@ -71,10 +71,11 @@ jobs:
           CANDIDATE_COMMIT: ${{ steps.select.outputs.commit }}
           CANDIDATE_PR: ${{ steps.select.outputs.pr }}
           BASE_VERSION: ${{ steps.select.outputs.base_version }}
+          RESOLVED_VERSION: v${{ steps.drafter.outputs.resolved_version }}
         run: node scripts/release-candidate.mjs freeze
 
   dispatch:
-    name: Approve the release tag and dispatch
+    name: Create the automatic release tag and dispatch
     needs: draft
     if: >-
       needs.draft.outputs.pending == 'true' &&
