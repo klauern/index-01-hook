@@ -73,3 +73,21 @@ The session claimed the scoped Beads records before editing.
 A later Beads read was blocked for unexpected network egress despite the documented telemetry-off environment option.
 No further Beads calls were made after that denial.
 The records remain open. Measurement alone does not satisfy all acceptance criteria.
+
+## November 14 security repair
+
+The first wave was committed as `40d9f7226231b9c6c85e3ada7a20db7a1669725b` and published in PR #70.
+Its security job reported GO-2026-6859 in Go 1.26.10.
+The repair upgrades `go.mod`, builder pins, fixture images, version assertions, and current guidance to Go 1.26.11.
+The official multi-platform image index is `sha256:957952ae74dc010608717144399a59a2c6e82ea03d63be1c7ff6577c5a135f93`.
+Registry inspection confirmed Linux amd64 and arm64 manifests.
+
+Local validation with Go 1.26.11 passed all six offline gates, govulncheck 1.7.0, ShellCheck, actionlint, and whitespace checks.
+Govulncheck reported no vulnerabilities.
+The pinned arm64 container build and synthetic named-volume SQLite backup/restore test passed.
+The initial restricted command environment denied local test sockets. The approved local-server-capable rerun passed.
+No live provider tests, release, deployment, or credential changes ran.
+Hosted checks must pass on the repair commit before readiness is claimed.
+
+The November 12 Code Health measurement remains historical.
+Two source assertion files now have different version-string hashes. No new Code Health score is claimed for this patch.

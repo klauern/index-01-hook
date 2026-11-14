@@ -37,3 +37,8 @@ DeepSeek schema limits and alias normalization use application policy.
 TickTick encoded payload limits and response limits stay in the provider adapter.
 The full suite covers freeze transactions, replay, duplicate markers, routing and synthetic provider requests.
 Keep policy and adapter pull requests in immediate-parent order.
+
+## Current validation toolchain
+
+Historical results above retain their original compiler version.
+For new validation, use the Go version in `go.mod` (1.26.11 as of November 14).

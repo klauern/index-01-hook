@@ -65,3 +65,8 @@ Use only public committed source, a verified official bundle and isolated output
 Record the exact source SHA, tool/query versions, commands, findings and exclusions.
 Do not upload results or change scanning configuration to manufacture a hosted pass.
 CodeQL not scheduled on a nested base remains a separate state from a successful local analysis.
+
+## Current validation toolchain
+
+Historical results above retain their original compiler version.
+For new validation, use the Go version in `go.mod` (1.26.11 as of November 14).

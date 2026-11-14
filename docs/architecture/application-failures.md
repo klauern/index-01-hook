@@ -47,3 +47,8 @@ Recovery tests reproduce a second create after a durable reopen when a retryable
 The correction preserves ambiguous metadata across both join orders, nested joins and failure wrappers.
 The durable regression requires one create, one reconciliation and a reconciled completion after an actual SQLite close and reopen.
 This is synthetic regression evidence. It does not establish a production incident.
+
+## Current validation toolchain
+
+Historical results above retain their original compiler version.
+For new validation, use the Go version in `go.mod` (1.26.11 as of November 14).
