@@ -35,7 +35,8 @@ These assignments name a primary owner. The following existing responsibilities 
 | --- | --- | --- |
 | [worker.go](../../worker.go) | Application policy | Polling, leases, retries, shadow scheduling, and execution currently share one file. Runtime owns polling and scheduling. |
 | [queue.go](../../queue.go) | Persistence | Durable transitions and validation must keep their transaction boundaries when application ports are extracted. |
-| [health.go](../../health.go) | Application policy | Health decisions and telemetry queries share the file. Persistence owns queries; inbound adapters expose the decisions. |
+| [health.go](../../health.go) | Application policy | Health decisions and telemetry writes remain in this file. |
+| [health_status.go](../../health_status.go) | Persistence | Ordered health snapshot queries preserve application readiness decisions and inbound response contracts. |
 | [typesafe_verification.go](../../typesafe_verification.go) | Application policy | Verification decisions and the concrete TypeSafe adapter share the file. Provider transport and neutral assessment contracts must separate. |
 | [evaluation_collection.go](../../evaluation_collection.go) | Provider | Remote observation reads and the polling loop share the file. Runtime owns polling; persistence owns stored observations. |
 | [evaluation_evidence.go](../../evaluation_evidence.go) | Persistence | Evidence types and SQL share the file. Extract neutral contracts without breaking atomic capture. |

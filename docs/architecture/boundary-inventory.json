@@ -22,6 +22,7 @@
       "typesafe.go"
     ],
     "persistence": [
+      "health_status.go",
       "database_security.go",
       "evaluation_evidence.go",
       "migrations/001_initial.sql",
