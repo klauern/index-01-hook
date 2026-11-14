@@ -1,0 +1,94 @@
+{
+  "observed_at_utc": "2026-11-14T20:32:14.800932+00:00",
+  "parent": "3e945fce766155f1bdace880adc65a40c2154456",
+  "codescene_mcp_version": "1.5.20",
+  "rules": "defaults; no overrides or suppressions",
+  "files": [
+    {
+      "path": "health.go",
+      "sha256": "0f4a64397efdaa3c093e799a39b4f9c34128c67bdd8fc3131b471d6d6aa93b19",
+      "score": 8.81,
+      "review": [
+        {
+          "category": "Complex Method",
+          "functions": [
+            {
+              "title": "healthReasons",
+              "details": "cc = 13",
+              "start-line": 183,
+              "end-line": 221,
+              "url": ""
+            }
+          ],
+          "description": "A Complex Method has a high cyclomatic complexity. The recommended threshold for the Go language is a cyclomatic complexity lower than 9.\n\nSeverity: Brain Method - Complex Method - Long Method.",
+          "indication": 2
+        },
+        {
+          "category": "Code Duplication",
+          "functions": [
+            {
+              "title": "WorkerCycleCompleted",
+              "details": null,
+              "start-line": 123,
+              "end-line": 133,
+              "url": ""
+            },
+            {
+              "title": "WorkerStopped",
+              "details": null,
+              "start-line": 135,
+              "end-line": 144,
+              "url": ""
+            }
+          ],
+          "function-groups": [
+            [
+              {
+                "title": "WorkerCycleCompleted",
+                "details": null,
+                "start-line": 123,
+                "end-line": 133,
+                "url": ""
+              },
+              {
+                "title": "WorkerStopped",
+                "details": null,
+                "start-line": 135,
+                "end-line": 144,
+                "url": ""
+              }
+            ]
+          ],
+          "description": "Duplicated code often leads to code that's harder to change since the same logical change has to be done in multiple functions. More duplication gives lower code health.",
+          "indication": 2
+        },
+        {
+          "category": "Excess Number of Function Arguments",
+          "functions": [
+            {
+              "title": "RecordProviderLatency",
+              "details": "Arguments = 5",
+              "start-line": 146,
+              "end-line": 172,
+              "url": ""
+            }
+          ],
+          "description": "Functions with many arguments indicate either a) low cohesion where the function has too many responsibilities, or b) a missing abstraction that encapsulates those arguments.\n\nThe threshold for the Go language is 4 function arguments.",
+          "indication": 2
+        }
+      ]
+    },
+    {
+      "path": "health_status.go",
+      "sha256": "d381f1a9444df8dcaf411eda6359dfae93369cb7cc3a9604471054174840b008",
+      "score": 10.0,
+      "review": []
+    },
+    {
+      "path": "health_status_readers_test.go",
+      "sha256": "c3cb1ffd66269ebd12761221e94b413d4c7d885197af15779d4eb509b9e926be",
+      "score": 10.0,
+      "review": []
+    }
+  ]
+}
