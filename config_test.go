@@ -12,30 +12,15 @@ func TestLoadConfigUsesDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
-	if cfg.Token != "synthetic-webhook-token-0123456789abcdef" {
-		t.Errorf("Token = %q, want synthetic-webhook-token-0123456789abcdef", cfg.Token)
-	}
-	if cfg.DBPath != "./index01.db" {
-		t.Errorf("DBPath = %q, want ./index01.db", cfg.DBPath)
-	}
-	if cfg.ListenAddr != ":8080" {
-		t.Errorf("ListenAddr = %q, want :8080", cfg.ListenAddr)
-	}
-	if cfg.MaxBodyBytes != 64<<20 {
-		t.Errorf("MaxBodyBytes = %d, want %d", cfg.MaxBodyBytes, int64(64<<20))
-	}
-	if cfg.DeepSeekModel != defaultDeepSeekModel {
-		t.Errorf("DeepSeekModel = %q, want %q", cfg.DeepSeekModel, defaultDeepSeekModel)
-	}
-	if cfg.TimeZone != defaultDeepSeekTimeZone {
-		t.Errorf("TimeZone = %q, want %q", cfg.TimeZone, defaultDeepSeekTimeZone)
-	}
-	if cfg.WorkerOwner != "index-01-hook" || len(cfg.TickTickProjectAliases) != 0 {
-		t.Errorf("worker defaults = owner:%q aliases:%v", cfg.WorkerOwner, cfg.TickTickProjectAliases)
-	}
-	if cfg.TickTickNoteProjectID != "project-notes" {
-		t.Errorf("TickTickNoteProjectID = %q, want project-notes", cfg.TickTickNoteProjectID)
-	}
+	assertConfigValue(t, "Token", cfg.Token, "synthetic-webhook-token-0123456789abcdef")
+	assertConfigValue(t, "DBPath", cfg.DBPath, "./index01.db")
+	assertConfigValue(t, "ListenAddr", cfg.ListenAddr, ":8080")
+	assertConfigValue(t, "MaxBodyBytes", cfg.MaxBodyBytes, int64(64<<20))
+	assertConfigValue(t, "DeepSeekModel", cfg.DeepSeekModel, defaultDeepSeekModel)
+	assertConfigValue(t, "TimeZone", cfg.TimeZone, defaultDeepSeekTimeZone)
+	assertConfigValue(t, "WorkerOwner", cfg.WorkerOwner, "index-01-hook")
+	assertConfigValue(t, "alias count", len(cfg.TickTickProjectAliases), 0)
+	assertConfigValue(t, "TickTickNoteProjectID", cfg.TickTickNoteProjectID, "project-notes")
 }
 
 func TestLoadConfigReadsOverrides(t *testing.T) {
@@ -57,18 +42,14 @@ func TestLoadConfigReadsOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadConfig() error = %v", err)
 	}
-	if cfg.DBPath != "/tmp/index.db" || cfg.ListenAddr != "127.0.0.1:9090" || cfg.MaxBodyBytes != 12345 {
-		t.Fatalf("LoadConfig() = %+v, overrides were not retained", cfg)
-	}
-	if cfg.WorkerOwner != "pod-one" || cfg.TickTickProjectAliases["work"] != "project-work" {
-		t.Fatalf("LoadConfig() = %+v, worker overrides were not retained", cfg)
-	}
-	if cfg.DeepSeekModel != "deepseek-custom-v1" || cfg.TimeZone != "America/Los_Angeles" {
-		t.Fatalf("LoadConfig() = %+v, trimmed model and time-zone overrides were not retained", cfg)
-	}
-	if cfg.TickTickNoteProjectID != "project-notes-override" {
-		t.Fatalf("TickTickNoteProjectID = %q", cfg.TickTickNoteProjectID)
-	}
+	assertConfigValue(t, "DBPath", cfg.DBPath, "/tmp/index.db")
+	assertConfigValue(t, "ListenAddr", cfg.ListenAddr, "127.0.0.1:9090")
+	assertConfigValue(t, "MaxBodyBytes", cfg.MaxBodyBytes, int64(12345))
+	assertConfigValue(t, "WorkerOwner", cfg.WorkerOwner, "pod-one")
+	assertConfigValue(t, "work alias", cfg.TickTickProjectAliases["work"], "project-work")
+	assertConfigValue(t, "DeepSeekModel", cfg.DeepSeekModel, "deepseek-custom-v1")
+	assertConfigValue(t, "TimeZone", cfg.TimeZone, "America/Los_Angeles")
+	assertConfigValue(t, "TickTickNoteProjectID", cfg.TickTickNoteProjectID, "project-notes-override")
 }
 
 func TestLoadConfigReadsShadowMode(t *testing.T) {
@@ -188,5 +169,13 @@ func validConfigEnv() map[string]string {
 		"INDEX01_TICKTICK_TOKEN":              "ticktick-secret",
 		"INDEX01_TICKTICK_DEFAULT_PROJECT_ID": "project-default",
 		"INDEX01_TICKTICK_NOTE_PROJECT_ID":    "project-notes",
+	}
+}
+
+// assertConfigValue retains each field assertion with a focused diagnostic.
+func assertConfigValue[T comparable](t *testing.T, field string, got, want T) {
+	t.Helper()
+	if got != want {
+		t.Errorf("%s = %v, want %v", field, got, want)
 	}
 }

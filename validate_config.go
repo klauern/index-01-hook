@@ -17,12 +17,9 @@ func validateProvidersWithTypeSafe(ctx context.Context, cfg Config, transport ht
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("model client configuration is invalid")
 	}
-	var typeSafe *TypeSafeClient
-	if cfg.TypeSafeVerify || cfg.TypeSafeShadow {
-		typeSafe, err = NewTypeSafeClient(cfg.TypeSafeToken, transport, TypeSafeClientConfig{Model: cfg.TypeSafeModel, Endpoint: cfg.TypeSafeEndpoint})
-		if err != nil {
-			return nil, nil, nil, nil, fmt.Errorf("TypeSafe client configuration is invalid")
-		}
+	typeSafe, err := optionalTypeSafeClient(cfg, transport)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 	tickTick, err := NewTickTickClient(tickTickAPIBaseURL, cfg.TickTickToken, &http.Client{Transport: transport, Timeout: 30 * time.Second})
 	if err != nil {
@@ -30,11 +27,7 @@ func validateProvidersWithTypeSafe(ctx context.Context, cfg Config, transport ht
 	}
 	router, err := tickTick.ValidateRouting(ctx, TickTickRoutingConfig{DefaultProjectID: cfg.TickTickDefaultProjectID, NoteProjectID: cfg.TickTickNoteProjectID, Aliases: cfg.TickTickProjectAliases})
 	if err != nil {
-		var providerError *TickTickError
-		if errors.As(err, &providerError) {
-			return nil, nil, nil, nil, fmt.Errorf("TickTick routing validation failed (%s)", providerError.Kind)
-		}
-		return nil, nil, nil, nil, fmt.Errorf("TickTick routing validation failed")
+		return nil, nil, nil, nil, routingValidationError(err)
 	}
 	return deepSeek, typeSafe, tickTick, router, nil
 }
@@ -56,4 +49,25 @@ func runValidateConfig(ctx context.Context, getenv func(string) string, transpor
 	return json.NewEncoder(output).Encode(struct {
 		Status string `json:"status"`
 	}{Status: "ok"})
+}
+
+// optionalTypeSafeClient constructs only an explicitly enabled assessment client.
+func optionalTypeSafeClient(cfg Config, transport http.RoundTripper) (*TypeSafeClient, error) {
+	if !cfg.verificationEnabled() {
+		return nil, nil
+	}
+	client, err := NewTypeSafeClient(cfg.TypeSafeToken, transport, TypeSafeClientConfig{Model: cfg.TypeSafeModel, Endpoint: cfg.TypeSafeEndpoint})
+	if err != nil {
+		return nil, fmt.Errorf("TypeSafe client configuration is invalid")
+	}
+	return client, nil
+}
+
+// routingValidationError reports only the safe provider error category.
+func routingValidationError(err error) error {
+	var providerError *TickTickError
+	if errors.As(err, &providerError) {
+		return fmt.Errorf("TickTick routing validation failed (%s)", providerError.Kind)
+	}
+	return fmt.Errorf("TickTick routing validation failed")
 }

@@ -86,23 +86,13 @@ func newClient(token, model, url string, hc *http.Client) *client {
 	}
 	return &client{token: token, model: model, endpoint: url, httpClient: hc}
 }
+
+// evaluate sends one bounded request and validates every returned answer.
 func (c *client) evaluate(ctx context.Context, state any, qs map[string]question) (response, int, error) {
-	payload := struct {
-		State     any                 `json:"state"`
-		Model     string              `json:"model"`
-		Questions map[string]question `json:"questions"`
-	}{state, c.model, qs}
-	body, err := json.Marshal(payload)
-	if err != nil || len(body) > maxRequestBytes {
-		return response{}, 0, &providerError{Kind: "malformed", Detail: "request is invalid or too large"}
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
+	req, err := c.request(ctx, state, qs)
 	if err != nil {
-		return response{}, 0, &providerError{Kind: "malformed", Detail: "request cannot be built"}
+		return response{}, 0, err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
 	started := time.Now()
 	res, err := c.httpClient.Do(req)
 	latency := int(time.Since(started).Milliseconds())
@@ -110,67 +100,137 @@ func (c *client) evaluate(ctx context.Context, state any, qs map[string]question
 		return response{}, latency, &providerError{Kind: "retryable", Detail: "request failed"}
 	}
 	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, maxResponseBytes))
-		kind := "terminal"
-		if res.StatusCode == 401 || res.StatusCode == 403 {
-			kind = "authentication"
-		} else if res.StatusCode == 408 || res.StatusCode == 425 || res.StatusCode == 429 || res.StatusCode == 529 || res.StatusCode >= 500 {
+	out, err := decodeResponse(res)
+	if err != nil {
+		return response{}, latency, err
+	}
+	if err := c.validateResponse(out, qs); err != nil {
+		return response{}, latency, err
+	}
+	return out, latency, nil
+}
+
+func (c *client) request(ctx context.Context, state any, qs map[string]question) (*http.Request, error) {
+	payload := struct {
+		State     any                 `json:"state"`
+		Model     string              `json:"model"`
+		Questions map[string]question `json:"questions"`
+	}{state, c.model, qs}
+	body, err := json.Marshal(payload)
+	if err != nil || len(body) > maxRequestBytes {
+		return nil, malformed("request is invalid or too large")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, malformed("request cannot be built")
+	}
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	return req, nil
+}
+
+func malformed(detail string) error { return &providerError{Kind: "malformed", Detail: detail} }
+
+func responseError(status int) error {
+	kind := "terminal"
+	switch status {
+	case 401, 403:
+		kind = "authentication"
+	case 408, 425, 429, 529:
+		kind = "retryable"
+	default:
+		if status >= 500 {
 			kind = "retryable"
 		}
-		return response{}, latency, &providerError{Kind: kind, Status: res.StatusCode}
+	}
+	return &providerError{Kind: kind, Status: status}
+}
+
+func decodeResponse(res *http.Response) (response, error) {
+	if res.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, io.LimitReader(res.Body, maxResponseBytes))
+		return response{}, responseError(res.StatusCode)
 	}
 	data, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes+1))
 	if err != nil || len(data) > maxResponseBytes {
-		return response{}, latency, &providerError{Kind: "malformed", Detail: "response is too large or cannot be read"}
+		return response{}, malformed("response is too large or cannot be read")
 	}
 	var out response
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&out); err != nil {
-		return response{}, latency, &providerError{Kind: "malformed", Detail: "response is invalid"}
+		return response{}, malformed("response is invalid")
 	}
 	var trailing any
 	if err := dec.Decode(&trailing); !errors.Is(err, io.EOF) {
-		return response{}, latency, &providerError{Kind: "malformed", Detail: "response has trailing data"}
+		return response{}, malformed("response has trailing data")
 	}
-	if out.Model != c.model || out.Answers == nil || len(out.Answers) != len(qs) {
-		return response{}, latency, &providerError{Kind: "malformed", Detail: "response model or answer count is invalid"}
+	return out, nil
+}
+
+func (c *client) validateResponse(out response, qs map[string]question) error {
+	if out.Model != c.model {
+		return malformed("response model or answer count is invalid")
+	}
+	if out.Answers == nil || len(out.Answers) != len(qs) {
+		return malformed("response model or answer count is invalid")
 	}
 	for id, q := range qs {
 		a, ok := out.Answers[id]
 		if !ok || q.Type != a.Type {
-			return response{}, latency, &providerError{Kind: "malformed", Detail: "response answer type is invalid"}
+			return malformed("response answer type is invalid")
 		}
-		if q.Type == "noul" {
-			if a.Noul == nil || *a.Noul < 0 || *a.Noul > 1 {
-				return response{}, latency, &providerError{Kind: "malformed", Detail: "noul answer is invalid"}
-			}
-		} else {
-			if a.Choice == "" || a.Confidence == nil || *a.Confidence < 0 || *a.Confidence > 1 || len(a.Probabilities) == 0 {
-				return response{}, latency, &providerError{Kind: "malformed", Detail: "choice answer is invalid"}
-			}
-			allowed, ok := q.Criteria.(map[string]string)
-			if !ok {
-				return response{}, latency, &providerError{Kind: "malformed", Detail: "choice criteria is invalid"}
-			}
-			if _, ok := allowed[a.Choice]; !ok {
-				return response{}, latency, &providerError{Kind: "malformed", Detail: "choice is not allowed"}
-			}
-			if _, ok := a.Probabilities[a.Choice]; !ok {
-				return response{}, latency, &providerError{Kind: "malformed", Detail: "chosen probability is missing"}
-			}
-			if _, ok := a.Probabilities["supported"]; !ok {
-				return response{}, latency, &providerError{Kind: "malformed", Detail: "supported probability is missing"}
-			}
-			for _, p := range a.Probabilities {
-				if p < 0 || p > 1 {
-					return response{}, latency, &providerError{Kind: "malformed", Detail: "probability is invalid"}
-				}
-			}
+		if err := validateAnswer(a, q); err != nil {
+			return err
 		}
 	}
-	return out, latency, nil
+	return nil
+}
+
+func invalidProbability(value *float64) bool {
+	if value == nil {
+		return true
+	}
+	return *value < 0 || *value > 1
+}
+
+func validateAnswer(a answer, q question) error {
+	if q.Type == "noul" {
+		if invalidProbability(a.Noul) {
+			return malformed("noul answer is invalid")
+		}
+		return nil
+	}
+	if a.Choice == "" || invalidProbability(a.Confidence) {
+		return malformed("choice answer is invalid")
+	}
+	if len(a.Probabilities) == 0 {
+		return malformed("choice answer is invalid")
+	}
+	return validateChoice(a, q)
+}
+
+func validateChoice(a answer, q question) error {
+	allowed, ok := q.Criteria.(map[string]string)
+	if !ok {
+		return malformed("choice criteria is invalid")
+	}
+	if _, ok := allowed[a.Choice]; !ok {
+		return malformed("choice is not allowed")
+	}
+	if _, ok := a.Probabilities[a.Choice]; !ok {
+		return malformed("chosen probability is missing")
+	}
+	if _, ok := a.Probabilities["supported"]; !ok {
+		return malformed("supported probability is missing")
+	}
+	for _, p := range a.Probabilities {
+		if p < 0 || p > 1 {
+			return malformed("probability is invalid")
+		}
+	}
+	return nil
 }
 
 func aliases(c verificationcorpus.Corpus) []string {
@@ -248,7 +308,19 @@ func min(vals ...float64) float64 {
 	}
 	return x
 }
-func decision(design string, score float64, injection float64, accept, reject float64, choice string) string {
+
+type decisionPolicy struct {
+	design         string
+	accept, reject float64
+}
+type decisionSignals struct {
+	score, injection float64
+	choice           string
+}
+
+func (policy decisionPolicy) decide(signals decisionSignals) string {
+	design, accept, reject := policy.design, policy.accept, policy.reject
+	score, injection, choice := signals.score, signals.injection, signals.choice
 	if design == "fieldwise" && injection >= .5 {
 		return "review"
 	}
@@ -459,12 +531,19 @@ func corpusHash(path string) (string, error) {
 	return hex.EncodeToString(h[:]), nil
 }
 
+func (cfg runConfig) validPlanLimits() bool {
+	if cfg.RepeatCases < 0 {
+		return false
+	}
+	return cfg.RepeatCount >= 1 && cfg.MaxCalls >= 0
+}
+
 func makePlan(c verificationcorpus.Corpus, cfg runConfig) (plan, error) {
 	ds, e := designs(cfg.Design)
 	if e != nil {
 		return plan{}, e
 	}
-	if cfg.RepeatCases < 0 || cfg.RepeatCount < 1 || cfg.MaxCalls < 0 {
+	if !cfg.validPlanLimits() {
 		return plan{}, fmt.Errorf("repeat and max-calls values are invalid")
 	}
 	reps := chooseRepeats(c, cfg.RepeatCases)
@@ -484,15 +563,7 @@ func printJSON(v any) error {
 
 func scoreSignals(design string, r response, q map[string]question) (float64, any, string, error) {
 	if design == "choice" {
-		a, ok := r.Answers["verdict"]
-		if !ok || a.Confidence == nil {
-			return 0, nil, "", fmt.Errorf("missing choice answer")
-		}
-		supported, ok := a.Probabilities["supported"]
-		if !ok {
-			return 0, nil, "", fmt.Errorf("missing supported probability")
-		}
-		return supported, map[string]any{"choice": a.Choice, "confidence": *a.Confidence, "probabilities": a.Probabilities}, a.Choice, nil
+		return choiceScore(r)
 	}
 	vals := []float64{}
 	signals := map[string]float64{}
@@ -508,6 +579,18 @@ func scoreSignals(design string, r response, q map[string]question) (float64, an
 	}
 	return min(vals...), signals, "", nil
 }
+func choiceScore(r response) (float64, any, string, error) {
+	a, ok := r.Answers["verdict"]
+	if !ok || a.Confidence == nil {
+		return 0, nil, "", fmt.Errorf("missing choice answer")
+	}
+	supported, ok := a.Probabilities["supported"]
+	if !ok {
+		return 0, nil, "", fmt.Errorf("missing supported probability")
+	}
+	return supported, map[string]any{"choice": a.Choice, "confidence": *a.Confidence, "probabilities": a.Probabilities}, a.Choice, nil
+}
+
 func percentile(values []int, p float64) int {
 	if len(values) == 0 {
 		return 0
@@ -516,95 +599,118 @@ func percentile(values []int, p float64) int {
 	i := int(float64(len(values)-1) * p)
 	return values[i]
 }
-func calcMeasure(rows []caseRecord, cases map[string]verificationcorpus.Case, design string, accept, reject float64) measure {
-	m := measure{ProviderErrors: map[string]int{}}
-	// A failed call has no score. Exclude it here and report it as an error.
-	var sup, uns []float64
-	unsupportedAccepted := 0
-	var lats []int
+
+// measurementAccumulator separates decision counts from distribution statistics.
+type measurementAccumulator struct {
+	measure                            measure
+	supportedScores, unsupportedScores []float64
+	latencies                          []int
+	unsupportedAccepted                int
+	policy                             decisionPolicy
+}
+
+func (policy decisionPolicy) measure(rows []caseRecord) measure {
+	a := measurementAccumulator{measure: measure{ProviderErrors: map[string]int{}}, policy: policy}
 	for _, r := range rows {
-		if r.Error != "" {
-			var pe providerError
-			_ = json.Unmarshal([]byte(r.Error), &pe)
-			if pe.Kind != "" {
-				m.ProviderErrors[pe.Kind]++
-			}
+		a.add(r)
+	}
+	a.finishRates(rows)
+	a.finishScores()
+	a.finishUsage(rows)
+	return a.measure
+}
+
+func (a *measurementAccumulator) add(r caseRecord) {
+	if r.Error != "" {
+		a.addProviderError(r.Error)
+		return
+	}
+	d := a.policy.decisionFor(r)
+	a.addDecision(d, r)
+	a.latencies = append(a.latencies, r.LatencyMS)
+	if r.Label == "supported" {
+		a.supportedScores = append(a.supportedScores, r.Score)
+		return
+	}
+	a.unsupportedScores = append(a.unsupportedScores, r.Score)
+	if d == "accept" {
+		a.unsupportedAccepted++
+	}
+}
+
+func (a *measurementAccumulator) addProviderError(raw string) {
+	var pe providerError
+	_ = json.Unmarshal([]byte(raw), &pe)
+	if pe.Kind != "" {
+		a.measure.ProviderErrors[pe.Kind]++
+	}
+}
+
+func (a *measurementAccumulator) addDecision(d string, r caseRecord) {
+	switch d {
+	case "accept":
+		a.measure.Accepted++
+	case "reject":
+		a.measure.Rejected++
+	default:
+		a.measure.Review++
+	}
+	if d == r.ExpectedDecision {
+		a.measure.Agreement++
+	}
+	if r.FailureType == verificationcorpus.FailureTypePromptInjection && d == "accept" {
+		a.measure.InjectionAccepts++
+	}
+}
+
+func (a *measurementAccumulator) finishRates(rows []caseRecord) {
+	supported, bad := 0, 0
+	for _, r := range rows {
+		if r.Label != "supported" {
 			continue
 		}
-		// A failed call has no score and no decision. Report it and keep it out of the measures.
-		d := decisionForRecord(r, design, accept, reject)
-		switch d {
-		case "accept":
-			m.Accepted++
-		case "reject":
-			m.Rejected++
-		default:
-			m.Review++
-		}
-		if d == r.ExpectedDecision {
-			m.Agreement++
-		}
-		if r.FailureType == verificationcorpus.FailureTypePromptInjection && d == "accept" {
-			m.InjectionAccepts++
-		}
-		lats = append(lats, r.LatencyMS)
-		if r.Label == "supported" {
-			sup = append(sup, r.Score)
-		} else {
-			uns = append(uns, r.Score)
-			if d == "accept" {
-				unsupportedAccepted++
-			}
+		supported++
+		if a.policy.decisionFor(r) == "reject" {
+			bad++
 		}
 	}
-	total := len(rows)
-	supported := 0
-	for _, r := range rows {
-		if r.Label == "supported" {
-			supported++
-		}
-	}
-	// A false accept is an unsafe item that reaches delivery.
-	// The rate is measured against accepted items, not against all unsafe items.
-	if m.Accepted > 0 {
-		m.FalseAcceptRate = float64(unsupportedAccepted) / float64(m.Accepted)
+	if a.measure.Accepted > 0 {
+		a.measure.FalseAcceptRate = float64(a.unsupportedAccepted) / float64(a.measure.Accepted)
 	}
 	if supported > 0 {
-		bad := 0
-		for _, r := range rows {
-			if r.Label == "supported" && decisionForRecord(r, design, accept, reject) == "reject" {
-				bad++
-			}
-		}
-		m.FalseRejectRate = float64(bad) / float64(supported)
+		a.measure.FalseRejectRate = float64(bad) / float64(supported)
 	}
-	if total > 0 {
-		m.ReviewVolume = float64(m.Review) / float64(total)
-		m.Agreement /= float64(total)
+	if len(rows) > 0 {
+		a.measure.ReviewVolume = float64(a.measure.Review) / float64(len(rows))
+		a.measure.Agreement /= float64(len(rows))
 	}
-	m.Agreement = float64(m.Agreement)
-	m.Separation = mean(uns) - mean(sup)
-	m.MeanScoreSupported = mean(sup)
-	m.MinScoreSupported = minOrZero(sup)
-	m.MaxScoreSupported = maxOrZero(sup)
-	m.MeanScoreUnsupported = mean(uns)
-	m.MinScoreUnsupported = minOrZero(uns)
-	m.MaxScoreUnsupported = maxOrZero(uns)
-	for _, r := range rows {
-		m.LatencyTotalMS += r.LatencyMS
-	}
-	if total > 0 {
-		m.LatencyMeanMS = float64(m.LatencyTotalMS) / float64(total)
-	}
-	m.LatencyP50MS = percentile(lats, .5)
-	m.LatencyP95MS = percentile(lats, .95)
-	for _, r := range rows {
-		m.InputTokens += r.InputTokens
-		m.OutputTokens += r.OutputTokens
-	}
-	return m
 }
-func decisionForRecord(r caseRecord, d string, a, rej float64) string {
+
+func (a *measurementAccumulator) finishScores() {
+	m := &a.measure
+	m.Separation = mean(a.unsupportedScores) - mean(a.supportedScores)
+	m.MeanScoreSupported = mean(a.supportedScores)
+	m.MinScoreSupported = minOrZero(a.supportedScores)
+	m.MaxScoreSupported = maxOrZero(a.supportedScores)
+	m.MeanScoreUnsupported = mean(a.unsupportedScores)
+	m.MinScoreUnsupported = minOrZero(a.unsupportedScores)
+	m.MaxScoreUnsupported = maxOrZero(a.unsupportedScores)
+	m.LatencyP50MS = percentile(a.latencies, .5)
+	m.LatencyP95MS = percentile(a.latencies, .95)
+}
+
+func (a *measurementAccumulator) finishUsage(rows []caseRecord) {
+	for _, r := range rows {
+		a.measure.LatencyTotalMS += r.LatencyMS
+		a.measure.InputTokens += r.InputTokens
+		a.measure.OutputTokens += r.OutputTokens
+	}
+	if len(rows) > 0 {
+		a.measure.LatencyMeanMS = float64(a.measure.LatencyTotalMS) / float64(len(rows))
+	}
+}
+
+func (policy decisionPolicy) decisionFor(r caseRecord) string {
 	inj := injectionValue(r.Signals)
 	choice := ""
 	if s, ok := r.Signals.(map[string]any); ok {
@@ -612,7 +718,7 @@ func decisionForRecord(r caseRecord, d string, a, rej float64) string {
 			choice = x
 		}
 	}
-	return decision(d, r.Score, inj, a, rej, choice)
+	return policy.decide(decisionSignals{r.Score, inj, choice})
 }
 func mean(v []float64) float64 {
 	if len(v) == 0 {
@@ -651,7 +757,7 @@ func grid(rows []caseRecord, cases map[string]verificationcorpus.Case, d string)
 			if r >= a {
 				continue
 			}
-			m := calcMeasure(rows, cases, d, a, r)
+			m := (decisionPolicy{d, a, r}).measure(rows)
 			out = append(out, gridRow{a, r, m.FalseAcceptRate, m.FalseRejectRate, m.ReviewVolume, m.Agreement, m.InjectionAccepts, m.Accepted, m.Rejected, m.Review})
 		}
 	}
@@ -724,25 +830,42 @@ func realCorpus(in []realInputCase) verificationcorpus.Corpus {
 	}
 	return c
 }
-func realMeasureFor(rows []realCaseRecord, design string, group string, byStatus bool) realMeasure {
+
+type realGroup struct {
+	design, name string
+	byStatus     bool
+}
+
+func (group realGroup) matches(r realCaseRecord) bool {
+	if group.byStatus {
+		return r.ObservedStatus == group.name
+	}
+	return r.WeakLabel == group.name
+}
+func (group realGroup) measurementRecord(r realCaseRecord) caseRecord {
+	design := group.design
+	label := r.WeakLabel
+	expected := verificationcorpus.ExpectedReject
+	if label == "supported" {
+		expected = verificationcorpus.ExpectedAccept
+	} else if label == "unknown" {
+		expected = verificationcorpus.ExpectedReview
+	}
+	return caseRecord{Design: design, CaseID: r.CaseID, Label: label, ExpectedDecision: expected, Score: r.Score, Decision: (decisionPolicy{design, .9, .2}).decisionFor(caseRecord{Signals: r.Signals, Score: r.Score}), Signals: r.Signals, LatencyMS: r.LatencyMS, InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, Error: r.Error}
+}
+func (group realGroup) selectRecords(rows []realCaseRecord) []caseRecord {
 	selected := []caseRecord{}
 	for _, r := range rows {
-		if r.Design != design {
-			continue
+		if r.Design == group.design && group.matches(r) {
+			selected = append(selected, group.measurementRecord(r))
 		}
-		if (byStatus && r.ObservedStatus != group) || (!byStatus && r.WeakLabel != group) {
-			continue
-		}
-		label := r.WeakLabel
-		expected := verificationcorpus.ExpectedReject
-		if label == "supported" {
-			expected = verificationcorpus.ExpectedAccept
-		} else if label == "unknown" {
-			expected = verificationcorpus.ExpectedReview
-		}
-		selected = append(selected, caseRecord{Design: design, CaseID: r.CaseID, Label: label, ExpectedDecision: expected, Score: r.Score, Decision: decisionForRecord(caseRecord{Signals: r.Signals, Score: r.Score}, design, .9, .2), Signals: r.Signals, LatencyMS: r.LatencyMS, InputTokens: r.InputTokens, OutputTokens: r.OutputTokens, Error: r.Error})
 	}
-	m := calcMeasure(selected, nil, design, .9, .2)
+
+	return selected
+}
+func (group realGroup) measure(rows []realCaseRecord) realMeasure {
+	selected := group.selectRecords(rows)
+	m := (decisionPolicy{group.design, .9, .2}).measure(selected)
 	for _, r := range selected {
 		if r.Error != "" {
 			m.Errors++
@@ -782,171 +905,255 @@ func executeReal(cfg runConfig, in []realInputCase, p plan) (realReport, error) 
 	if strings.TrimSpace(cfg.Endpoint) == "" {
 		return rep, errors.New("run configuration has no provider endpoint")
 	}
-	cl := newClient(cfg.Token, cfg.Model, cfg.Endpoint, cfg.ClientHTTP)
-	c := realCorpus(in)
+	runner := trialRunner{newClient(cfg.Token, cfg.Model, cfg.Endpoint, cfg.ClientHTTP), aliasCriteria(realCorpus(in))}
 	for _, d := range p.Designs {
-		for _, x := range in {
-			vc := realCorpus([]realInputCase{x}).Cases[0]
-			qs := fieldQuestions(vc)
-			if d == "choice" {
-				qs = choiceQuestions()
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-			res, lat, e := cl.evaluate(ctx, stateFor(vc, aliasCriteria(c)), qs)
-			cancel()
-			r := realCaseRecord{CaseID: x.CaseID, Design: d, ObservedStatus: x.ObservedStatus, WeakLabel: x.WeakLabel, LatencyMS: lat}
-			if e != nil {
-				r.Error = e.Error()
-				if pe, ok := e.(*providerError); ok {
-					b, _ := json.Marshal(pe)
-					r.Error = string(b)
-				}
-			} else {
-				score, sig, ch, se := scoreSignals(d, res, qs)
-				if se != nil {
-					r.Error = se.Error()
-				} else {
-					r.Score, r.Signals = score, sig
-					r.InputTokens = res.Usage.InputTokens
-					r.OutputTokens = res.Usage.OutputTokens
-					_ = ch
-				}
-			}
-			rep.Cases = append(rep.Cases, r)
-			rep.Meta.CallCount++
-			if cfg.Out != "" {
-				if e := atomicWrite(cfg.Out, rep); e != nil {
-					return rep, e
-				}
-			}
-			if e != nil {
-				if pe, ok := e.(*providerError); ok && (pe.Status == 401 || pe.Status == 403) {
-					return rep, fmt.Errorf("aborting after HTTP %d authentication failure", pe.Status)
-				}
-			}
+		if err := rep.runDesign(runner, in, d, cfg.Out); err != nil {
+			return rep, err
 		}
 	}
-	for _, d := range p.Designs {
-		rep.Measures[d] = map[string]realMeasure{}
-		for _, g := range []string{"unchanged", "observed_move", "missing", "unknown"} {
-			rep.Measures[d]["status:"+g] = realMeasureFor(rep.Cases, d, g, true)
-		}
-		for _, g := range []string{"supported", "unsupported", "unknown"} {
-			rep.Measures[d]["weak_label:"+g] = realMeasureFor(rep.Cases, d, g, false)
-		}
-	}
+	rep.measureTrials(p.Designs)
 	return rep, nil
 }
 
-func execute(cfg runConfig, c verificationcorpus.Corpus, p plan, hash string) (report, error) {
-	rep := report{Meta: reportMeta{true, true, cfg.Model, promptVersion, cfg.CorpusPath, hash, time.Now().UTC().Format(time.RFC3339), 0, cfg.MaxCalls, p.Designs, cfg.RepeatCases, cfg.RepeatCount}, Measures: map[string]map[string]measure{}, Stability: []stabilityRecord{}}
+func (rep *realReport) runDesign(runner trialRunner, in []realInputCase, design, path string) error {
+	for _, item := range in {
+		result := runner.run(design, realCorpus([]realInputCase{item}).Cases[0])
+		rep.Cases = append(rep.Cases, realRecord(item, design, result))
+		rep.Meta.CallCount++
+		if err := writeCheckpoint(path, rep); err != nil {
+			return err
+		}
+		if err := authenticationFailure(result.providerErr); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func realRecord(item realInputCase, design string, result trialResult) realCaseRecord {
+	rec := realCaseRecord{CaseID: item.CaseID, Design: design, ObservedStatus: item.ObservedStatus, WeakLabel: item.WeakLabel, LatencyMS: result.latency}
+	if result.err != nil {
+		rec.Error = encodedError(result.err)
+		return rec
+	}
+	rec.Score, rec.Signals = result.score, result.signals
+	rec.InputTokens, rec.OutputTokens = result.usage.InputTokens, result.usage.OutputTokens
+	return rec
+}
+
+func (rep *realReport) measureTrials(designs []string) {
+	for _, d := range designs {
+		rep.Measures[d] = map[string]realMeasure{}
+		for _, g := range []string{"unchanged", "observed_move", "missing", "unknown"} {
+			rep.Measures[d]["status:"+g] = (realGroup{d, g, true}).measure(rep.Cases)
+		}
+		for _, g := range []string{"supported", "unsupported", "unknown"} {
+			rep.Measures[d]["weak_label:"+g] = (realGroup{d, g, false}).measure(rep.Cases)
+		}
+	}
+}
+
+// trialRunner executes one request and preserves provider errors for reporting.
+type trialRunner struct {
+	client     *client
+	vocabulary map[string]string
+}
+type trialResult struct {
+	score       float64
+	signals     any
+	choice      string
+	latency     int
+	usage       usage
+	err         error
+	providerErr error
+}
+
+func (r trialRunner) run(design string, item verificationcorpus.Case) trialResult {
+	qs := fieldQuestions(item)
+	if design == "choice" {
+		qs = choiceQuestions()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	res, lat, err := r.client.evaluate(ctx, stateFor(item, r.vocabulary), qs)
+	result := trialResult{latency: lat, usage: res.Usage, err: err, providerErr: err}
+	if err != nil {
+		return result
+	}
+	result.score, result.signals, result.choice, result.err = scoreSignals(design, res, qs)
+	return result
+}
+
+func encodedError(err error) string {
+	if err == nil {
+		return ""
+	}
+	if pe, ok := err.(*providerError); ok {
+		encoded, _ := json.Marshal(pe)
+		return string(encoded)
+	}
+	return err.Error()
+}
+
+func authenticationFailure(err error) error {
+	pe, ok := err.(*providerError)
+	if !ok {
+		return nil
+	}
+	if pe.Status == 401 || pe.Status == 403 {
+		return fmt.Errorf("aborting after HTTP %d authentication failure", pe.Status)
+	}
+	return nil
+}
+
+func writeCheckpoint(path string, report any) error {
+	if path == "" {
+		return nil
+	}
+	return atomicWrite(path, report)
+}
+
+func (r trialRunner) caseRecord(design string, item verificationcorpus.Case, run int) (caseRecord, error) {
+	result := r.run(design, item)
+	rec := caseRecord{Design: design, CaseID: item.ID, Split: item.Split, Label: item.Label, FailureType: item.FailureType, ExpectedDecision: verificationcorpus.ExpectedDecision(item), LatencyMS: result.latency, Run: run}
+	if result.err != nil {
+		rec.Error = encodedError(result.err)
+		rec.Decision = "review"
+		return rec, result.providerErr
+	}
+	rec.Score, rec.Signals = result.score, result.signals
+	// Keep a missed injection observable as an unsafe accept.
+	rec.Decision = (decisionPolicy{design, .9, .2}).decide(decisionSignals{result.score, injectionValue(result.signals), result.choice})
+	rec.InputTokens = result.usage.InputTokens
+	rec.OutputTokens = result.usage.OutputTokens
+	return rec, nil
+}
+
+type plannedTrial struct {
+	design string
+	item   verificationcorpus.Case
+	run    int
+}
+
+func plannedTrials(c verificationcorpus.Corpus, p plan, repeatCount int) []plannedTrial {
+	trials := []plannedTrial{}
 	repeats := map[string]bool{}
 	for _, id := range p.RepeatCases {
 		repeats[id] = true
 	}
-	// A missing endpoint would fail every call as a transport error.
-	// Stop before the first request so a misconfigured run cannot look like provider trouble.
+	for _, d := range p.Designs {
+		for _, item := range c.Cases {
+			runs := 1
+			if repeats[item.ID] {
+				runs = repeatCount
+			}
+			trials = appendTrials(trials, plannedTrial{design: d, item: item}, runs)
+		}
+	}
+	return trials
+}
+
+func appendTrials(trials []plannedTrial, trial plannedTrial, runs int) []plannedTrial {
+	for run := 1; run <= runs; run++ {
+		trial.run = run
+		trials = append(trials, trial)
+	}
+	return trials
+}
+
+func execute(cfg runConfig, c verificationcorpus.Corpus, p plan, hash string) (report, error) {
+	rep := report{Meta: reportMeta{true, true, cfg.Model, promptVersion, cfg.CorpusPath, hash, time.Now().UTC().Format(time.RFC3339), 0, cfg.MaxCalls, p.Designs, cfg.RepeatCases, cfg.RepeatCount}, Measures: map[string]map[string]measure{}, Stability: []stabilityRecord{}}
 	if strings.TrimSpace(cfg.Endpoint) == "" {
 		return rep, errors.New("run configuration has no provider endpoint")
 	}
-	cl := newClient(cfg.Token, cfg.Model, cfg.Endpoint, cfg.ClientHTTP)
+	runner := trialRunner{newClient(cfg.Token, cfg.Model, cfg.Endpoint, cfg.ClientHTTP), aliasCriteria(c)}
+	for _, trial := range plannedTrials(c, p, cfg.RepeatCount) {
+		rec, err := runner.caseRecord(trial.design, trial.item, trial.run)
+		rep.Cases = append(rep.Cases, rec)
+		rep.Meta.CallCount++
+		if err := writeCheckpoint(cfg.Out, rep); err != nil {
+			return rep, err
+		}
+		if err := authenticationFailure(err); err != nil {
+			return rep, err
+		}
+	}
+	rep.measureTrials(c, p, cfg.RepeatCount)
+	return rep, nil
+}
+
+func (r caseRecord) belongsTo(design, split string) bool {
+	if r.Run != 1 || r.Design != design {
+		return false
+	}
+	return r.Split == split || split == "union"
+}
+
+func selectedTrials(records []caseRecord, design, split string) ([]caseRecord, int) {
+	rows := []caseRecord{}
+	errors := 0
+	for _, r := range records {
+		if !r.belongsTo(design, split) {
+			continue
+		}
+		if r.Error != "" {
+			errors++
+			continue
+		}
+		rows = append(rows, r)
+	}
+	return rows, errors
+}
+
+func (rep *report) measureTrials(c verificationcorpus.Corpus, p plan, repeatCount int) {
 	lookup := map[string]verificationcorpus.Case{}
 	for _, x := range c.Cases {
 		lookup[x.ID] = x
 	}
 	for _, d := range p.Designs {
-		for _, x := range c.Cases {
-			runs := 1
-			if repeats[x.ID] {
-				runs = cfg.RepeatCount
-			}
-			for run := 1; run <= runs; run++ {
-				qs := fieldQuestions(x)
-				if d == "choice" {
-					qs = choiceQuestions()
-				}
-				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				res, lat, e := cl.evaluate(ctx, stateFor(x, aliasCriteria(c)), qs)
-				cancel()
-				rec := caseRecord{Design: d, CaseID: x.ID, Split: x.Split, Label: x.Label, FailureType: x.FailureType, ExpectedDecision: verificationcorpus.ExpectedDecision(x), LatencyMS: lat, Run: run}
-				if e != nil {
-					rec.Error = e.Error()
-					if pe, ok := e.(*providerError); ok {
-						encoded, _ := json.Marshal(pe)
-						rec.Error = string(encoded)
-					}
-					rec.Decision = "review"
-				} else {
-					score, sig, ch, se := scoreSignals(d, res, qs)
-					if se != nil {
-						rec.Error = se.Error()
-						rec.Decision = "review"
-					} else {
-						rec.Score, rec.Signals = score, sig
-						rec.Decision = decision(d, score, injectionValue(sig), .9, .2, ch)
-						// Do not force a review here. The injection signal must stay observable,
-						// so that an injected item accepted by the model is counted as an unsafe accept.
-						rec.InputTokens = res.Usage.InputTokens
-						rec.OutputTokens = res.Usage.OutputTokens
-					}
-				}
-				rep.Cases = append(rep.Cases, rec)
-				rep.Meta.CallCount++
-				if cfg.Out != "" {
-					if e := atomicWrite(cfg.Out, rep); e != nil {
-						return rep, e
-					}
-				}
-				if e != nil {
-					if pe, ok := e.(*providerError); ok && pe.Status != 0 && (pe.Status == 401 || pe.Status == 403) {
-						return rep, fmt.Errorf("aborting after HTTP %d authentication failure", pe.Status)
-					}
-				}
-			}
-		}
-	}
-	for _, d := range p.Designs {
 		rep.Measures[d] = map[string]measure{}
 		for _, split := range []string{"development", "heldout", "union"} {
-			rows := []caseRecord{}
-			for _, r := range rep.Cases {
-				if r.Error != "" {
-					continue
-				}
-				if r.Run != 1 || r.Design != d {
-					continue
-				}
-				if r.Split == split || split == "union" {
-					rows = append(rows, r)
-				}
-			}
-			m := calcMeasure(rows, lookup, d, .9, .2)
-			for _, r := range rep.Cases {
-				if r.Run != 1 || r.Design != d || r.Error == "" {
-					continue
-				}
-				if r.Split == split || split == "union" {
-					m.Errors++
-				}
-			}
+			rows, errors := selectedTrials(rep.Cases, d, split)
+			m := (decisionPolicy{d, .9, .2}).measure(rows)
+			m.Errors = errors
 			m.ThresholdGrid = grid(rows, lookup, d)
 			rep.Measures[d][split] = m
 		}
-		for _, id := range p.RepeatCases {
-			scores := []float64{}
-			for _, r := range rep.Cases {
-				if r.CaseID == id && r.Design == d && r.Run <= cfg.RepeatCount {
-					scores = append(scores, r.Score)
-				}
-			}
-			if len(scores) > 1 {
-				spread := maxOrZero(scores) - minOrZero(scores)
-				rep.Stability = append(rep.Stability, stabilityRecord{id, d, scores, spread, mean(scores)})
-			}
+		rep.addStability(d, p.RepeatCases, repeatCount)
+	}
+}
+
+type repeatSelection struct {
+	design, id string
+	count      int
+}
+
+func (selection repeatSelection) matches(r caseRecord) bool {
+	if r.CaseID != selection.id {
+		return false
+	}
+	return r.Design == selection.design && r.Run <= selection.count
+}
+
+func (rep *report) addStability(design string, ids []string, count int) {
+	for _, id := range ids {
+		scores := (repeatSelection{design, id, count}).scores(rep.Cases)
+		if len(scores) > 1 {
+			rep.Stability = append(rep.Stability, stabilityRecord{id, design, scores, maxOrZero(scores) - minOrZero(scores), mean(scores)})
 		}
 	}
-	return rep, nil
 }
+
+func (selection repeatSelection) scores(records []caseRecord) []float64 {
+	scores := []float64{}
+	for _, r := range records {
+		if selection.matches(r) {
+			scores = append(scores, r.Score)
+		}
+	}
+	return scores
+}
+
 func injectionValue(sig any) float64 {
 	switch m := sig.(type) {
 	case map[string]float64:
@@ -960,6 +1167,14 @@ func injectionValue(sig any) float64 {
 }
 
 func main() {
+	cfg := parseFlags()
+	if err := runCLI(cfg); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+func parseFlags() runConfig {
 	var cfg runConfig
 	flag.StringVar(&cfg.CorpusPath, "corpus", "testdata/typesafe-verification/corpus.json", "")
 	flag.StringVar(&cfg.CasesPath, "cases", "", "private real-case file")
@@ -971,79 +1186,81 @@ func main() {
 	flag.StringVar(&cfg.Model, "model", os.Getenv("INDEX01_TYPESAFE_MODEL"), "")
 	flag.BoolVar(&cfg.Approve, "approve", false, "")
 	flag.Parse()
+	return cfg
+}
+
+func runCLI(cfg runConfig) error {
 	applyDefaults(&cfg)
 	cfg.Live = cfg.Approve
 	if cfg.Approve && os.Getenv("INDEX01_TYPESAFE_CALIBRATION_APPROVED") != "true" {
-		fmt.Fprintln(os.Stderr, "live calibration requires INDEX01_TYPESAFE_CALIBRATION_APPROVED=true")
-		os.Exit(1)
+		return errors.New("live calibration requires INDEX01_TYPESAFE_CALIBRATION_APPROVED=true")
 	}
 	if cfg.CasesPath != "" {
-		in, e := loadRealCases(cfg.CasesPath)
-		if e != nil {
-			fmt.Fprintln(os.Stderr, e)
-			os.Exit(1)
-		}
-		rc := realCorpus(in)
-		caseCfg := cfg
-		caseCfg.CorpusPath = cfg.CasesPath
-		caseCfg.RepeatCases = 0
-		caseCfg.RepeatCount = 1
-		p, e := makePlan(rc, caseCfg)
-		if e != nil {
-			fmt.Fprintln(os.Stderr, e)
-			os.Exit(1)
-		}
-		_ = printJSON(p)
-		if !cfg.Live {
-			return
-		}
-		cfg.Token = os.Getenv("INDEX01_TYPESAFE_TOKEN")
-		if cfg.Token == "" {
-			fmt.Fprintln(os.Stderr, "live calibration requires INDEX01_TYPESAFE_TOKEN")
-			os.Exit(1)
-		}
-		rp, e := executeReal(cfg, in, p)
-		if e != nil {
-			fmt.Fprintln(os.Stderr, e)
-			os.Exit(1)
-		}
-		if e = atomicWrite(cfg.Out, rp); e != nil {
-			fmt.Fprintln(os.Stderr, e)
-			os.Exit(1)
-		}
-		return
+		return runRealCLI(cfg)
 	}
-	c, e := verificationcorpus.Load(cfg.CorpusPath)
-	if e != nil {
-		fmt.Fprintln(os.Stderr, e)
-		os.Exit(1)
+	return runSyntheticCLI(cfg)
+}
+
+func liveToken() (string, error) {
+	token := os.Getenv("INDEX01_TYPESAFE_TOKEN")
+	if token == "" {
+		return "", errors.New("live calibration requires INDEX01_TYPESAFE_TOKEN")
 	}
-	p, e := makePlan(c, cfg)
-	if e != nil {
-		fmt.Fprintln(os.Stderr, e)
-		os.Exit(1)
+	return token, nil
+}
+
+func runRealCLI(cfg runConfig) error {
+	in, err := loadRealCases(cfg.CasesPath)
+	if err != nil {
+		return err
+	}
+	caseCfg := cfg
+	caseCfg.CorpusPath = cfg.CasesPath
+	caseCfg.RepeatCases = 0
+	caseCfg.RepeatCount = 1
+	p, err := makePlan(realCorpus(in), caseCfg)
+	if err != nil {
+		return err
 	}
 	_ = printJSON(p)
 	if !cfg.Live {
-		return
+		return nil
 	}
-	cfg.Token = os.Getenv("INDEX01_TYPESAFE_TOKEN")
-	if cfg.Token == "" {
-		fmt.Fprintln(os.Stderr, "live calibration requires INDEX01_TYPESAFE_TOKEN")
-		os.Exit(1)
+	cfg.Token, err = liveToken()
+	if err != nil {
+		return err
 	}
-	h, e := corpusHash(cfg.CorpusPath)
-	if e != nil {
-		fmt.Fprintln(os.Stderr, e)
-		os.Exit(1)
+	rep, err := executeReal(cfg, in, p)
+	if err != nil {
+		return err
 	}
-	rep, e := execute(cfg, c, p, h)
-	if e != nil {
-		fmt.Fprintln(os.Stderr, e)
-		os.Exit(1)
+	return atomicWrite(cfg.Out, rep)
+}
+
+func runSyntheticCLI(cfg runConfig) error {
+	c, err := verificationcorpus.Load(cfg.CorpusPath)
+	if err != nil {
+		return err
 	}
-	if e = atomicWrite(cfg.Out, rep); e != nil {
-		fmt.Fprintln(os.Stderr, e)
-		os.Exit(1)
+	p, err := makePlan(c, cfg)
+	if err != nil {
+		return err
 	}
+	_ = printJSON(p)
+	if !cfg.Live {
+		return nil
+	}
+	cfg.Token, err = liveToken()
+	if err != nil {
+		return err
+	}
+	hash, err := corpusHash(cfg.CorpusPath)
+	if err != nil {
+		return err
+	}
+	rep, err := execute(cfg, c, p, hash)
+	if err != nil {
+		return err
+	}
+	return atomicWrite(cfg.Out, rep)
 }

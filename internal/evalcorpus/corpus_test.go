@@ -56,11 +56,11 @@ func fixtureObservation(data json.RawMessage, at string) sourceObservation {
 	return sourceObservation{TaskID: c.Source.TaskID, ObservedAt: at, Candidate: data}
 }
 
-func fixtureEvent(id string, from, to json.RawMessage, fromTime, toTime, status string) sourceEvent {
+func fixtureEvent(id string, from, to sourceObservation, status string) sourceEvent {
 	data, _ := json.Marshal(map[string]any{"status": status, "basis": "owner_default"})
-	c, _ := parseCandidate(to)
+	c, _ := parseCandidate(to.Candidate)
 	route, _ := json.Marshal(map[string]string{"project_id": c.Current.ProjectID})
-	return sourceEvent{ID: id, Type: "observed_move", From: fixtureObservation(from, fromTime), To: fixtureObservation(to, toTime), Review: data, ExpectedRoute: route}
+	return sourceEvent{ID: id, Type: "observed_move", From: from, To: to, Review: data, ExpectedRoute: route}
 }
 
 func fixtureLedger(rows []json.RawMessage, events []sourceEvent) []byte {
@@ -102,12 +102,10 @@ func TestOriginalInputAndExplicitLabels(t *testing.T) {
 	row := original(approvedCandidate(fixtureCandidate("one", "observed", fp, 0), "work"), "Synthetic fixture marked as a recovered original")
 	source := fixtureSnapshot(row)
 	c := mustImport(t, source)
-	if c.Examples[0].Targets[0].Label.ProjectID != "work" || c.Examples[0].Targets[0].ObservedProjectID != "observed" {
-		t.Fatal("expected and observed projects were mixed")
-	}
-	if c.Examples[0].Input.Text != "Synthetic fixture marked as a recovered original" || c.Examples[0].Input.Provenance != "original" {
-		t.Fatal("original transcript not preserved")
-	}
+	requireEqual(t, c.Examples[0].Targets[0].Label.ProjectID, "work")
+	requireEqual(t, c.Examples[0].Targets[0].ObservedProjectID, "observed")
+	requireEqual(t, c.Examples[0].Input.Text, "Synthetic fixture marked as a recovered original")
+	requireEqual(t, c.Examples[0].Input.Provenance, "original")
 	if len(c.Examples[0].SavedOutput) != 0 {
 		t.Fatal("saved output synthesized")
 	}
@@ -119,17 +117,14 @@ func TestOriginalInputAndExplicitLabels(t *testing.T) {
 		t.Fatal(blockers)
 	}
 	hash := sha256.Sum256(source)
-	if c.Source.SHA256 != hex.EncodeToString(hash[:]) || c.Source.CollectedAt != "2026-09-08T12:00:00Z" {
-		t.Fatal("source provenance lost")
-	}
+	requireEqual(t, c.Source.SHA256, hex.EncodeToString(hash[:]))
+	requireEqual(t, c.Source.CollectedAt, "2026-09-08T12:00:00Z")
 	encoded, _ := json.Marshal(c)
-	if bytes.Contains(encoded, []byte("[index01:")) || bytes.Contains(encoded, []byte("Task content must not")) {
-		t.Fatal("marker or task content leaked into input")
-	}
+	requireEqual(t, bytes.Contains(encoded, []byte("[index01:")), false)
+	requireEqual(t, bytes.Contains(encoded, []byte("Task content must not")), false)
 	loaded, err := Load(encoded)
-	if err != nil || !reflect.DeepEqual(c, loaded) {
-		t.Fatal("roundtrip changed corpus:", err)
-	}
+	requireNoError(t, err)
+	requireSame(t, c, loaded)
 }
 
 func TestMissingAndReconstructedInputAreNeverInvented(t *testing.T) {
@@ -181,33 +176,35 @@ func TestLatestEventByTimeAndExplicitOverrides(t *testing.T) {
 	a := original(fixtureCandidate("one", "work", fp, 0), "Synthetic original fixture")
 	b := original(fixtureCandidate("one", "home", fp, 0), "Synthetic original fixture")
 	c := original(fixtureCandidate("one", "default", fp, 0), "Synthetic original fixture")
-	first := fixtureEvent("first", a, b, "2026-09-01T12:00:00Z", "2026-09-02T12:00:00Z", "inferred")
-	last := fixtureEvent("last", b, c, "2026-09-02T12:00:00Z", "2026-09-03T12:00:00Z", "inferred")
+	first := fixtureEvent("first", fixtureObservation(a, "2026-09-01T12:00:00Z"), fixtureObservation(b, "2026-09-02T12:00:00Z"), "inferred")
+	last := fixtureEvent("last", fixtureObservation(b, "2026-09-02T12:00:00Z"), fixtureObservation(c, "2026-09-03T12:00:00Z"), "inferred")
 	corpus := mustImport(t, fixtureLedger([]json.RawMessage{c}, []sourceEvent{last, first}))
 	label := corpus.Examples[0].Targets[0].Label
-	if label.ProjectID != "default" || label.EventID != "last" || label.Basis != "owner_default" || label.Status != "inferred" {
-		t.Fatal("latest event not selected:", label)
-	}
+	requireEqual(t, label.ProjectID, "default")
+	requireEqual(t, label.EventID, "last")
+	requireEqual(t, label.Basis, "owner_default")
+	requireEqual(t, label.Status, "inferred")
 	for _, status := range []string{"pending", "rejected"} {
 		t.Run(status, func(t *testing.T) {
 			last.Review = json.RawMessage(fmt.Sprintf(`{"status":%q}`, status))
 			corpus := mustImport(t, fixtureLedger([]json.RawMessage{c}, []sourceEvent{last, first}))
 			label := corpus.Examples[0].Targets[0].Label
-			if label.Status != "blocked" || label.ProjectID != "" || label.EventID != "last" {
-				t.Fatal("blocked latest event fell back to earlier label")
-			}
+			requireEqual(t, label.Status, "blocked")
+			requireEqual(t, label.ProjectID, "")
+			requireEqual(t, label.EventID, "last")
 			corpus = mustImport(t, fixtureLedger([]json.RawMessage{approvedCandidate(c, "home")}, []sourceEvent{last, first}))
-			if label := corpus.Examples[0].Targets[0].Label; label.ProjectID != "home" || label.Status != "approved" || label.Basis != "candidate_review" {
-				t.Fatal("explicit task label did not override event")
-			}
+			label = corpus.Examples[0].Targets[0].Label
+			requireEqual(t, label.ProjectID, "home")
+			requireEqual(t, label.Status, "approved")
+			requireEqual(t, label.Basis, "candidate_review")
 		})
 	}
 	last.Review = json.RawMessage(`{"status":"approved"}`)
 	last.ExpectedRoute = json.RawMessage(`{"project_id":"work"}`)
 	corpus = mustImport(t, fixtureLedger([]json.RawMessage{c}, []sourceEvent{last, first}))
-	if label := corpus.Examples[0].Targets[0].Label; label.ProjectID != "work" || label.Basis != "event_review" {
-		t.Fatal("approved independent expected route ignored")
-	}
+	label = corpus.Examples[0].Targets[0].Label
+	requireEqual(t, label.ProjectID, "work")
+	requireEqual(t, label.Basis, "event_review")
 }
 
 func TestRecordingSiblingsShareInputAndSplit(t *testing.T) {
@@ -219,9 +216,10 @@ func TestRecordingSiblingsShareInputAndSplit(t *testing.T) {
 	other := approvedCandidate(fixtureCandidate("other", "work", strings.Repeat("b", 64), 0), "work")
 	a := mustImport(t, fixtureSnapshot(second, other, first))
 	b := mustImport(t, fixtureSnapshot(first, second, other))
-	if len(a.Examples) != 2 || len(a.Examples[0].Targets) != 2 || a.Examples[0].Targets[0].TaskID != "first" || a.Examples[0].Targets[1].TaskID != "second" {
-		t.Fatal("recording siblings were not grouped and sorted")
-	}
+	requireEqual(t, len(a.Examples), 2)
+	requireEqual(t, len(a.Examples[0].Targets), 2)
+	requireEqual(t, a.Examples[0].Targets[0].TaskID, "first")
+	requireEqual(t, a.Examples[0].Targets[1].TaskID, "second")
 	if !reflect.DeepEqual(a.Examples, b.Examples) {
 		t.Fatal("source order changed grouped examples or split")
 	}
@@ -310,12 +308,12 @@ func TestAmbiguousSourceIdentityIsRejected(t *testing.T) {
 		})
 	}
 	to := fixtureCandidate("one", "work", strings.Repeat("a", 64), 0)
-	e := fixtureEvent("event", row, to, "2026-09-01T12:00:00Z", "2026-09-02T12:00:00Z", "inferred")
+	e := fixtureEvent("event", fixtureObservation(row, "2026-09-01T12:00:00Z"), fixtureObservation(to, "2026-09-02T12:00:00Z"), "inferred")
 	e.From.TaskID = "another-task"
 	if _, err := Import(fixtureLedger([]json.RawMessage{to}, []sourceEvent{e})); err == nil {
 		t.Fatal("conflicting move identity accepted")
 	}
-	e = fixtureEvent("event", row, to, "2026-09-01T12:00:00Z", "2026-09-02T12:00:00Z", "inferred")
+	e = fixtureEvent("event", fixtureObservation(row, "2026-09-01T12:00:00Z"), fixtureObservation(to, "2026-09-02T12:00:00Z"), "inferred")
 	other := e
 	other.ID = "other"
 	if _, err := Import(fixtureLedger([]json.RawMessage{to}, []sourceEvent{e, other})); err == nil {
@@ -430,30 +428,26 @@ func TestImportRecordingContext(t *testing.T) {
 	})
 	c := mustImport(t, fixtureSnapshot(row))
 	e := c.Examples[0]
-	if c.Routing != nil || !reflect.DeepEqual(e.Routing, routing()) || len(Eligibility(c, e)) != 0 {
-		t.Fatal("recording context was not sufficient for eligibility")
-	}
-	if string(e.SavedOutput) != `{"items":[]}` || e.Input.Model != "recorded-model" || e.Input.PromptSHA256 != strings.Repeat("c", 64) {
-		t.Fatal("independent output or model provenance was lost")
-	}
+	requireEqual(t, c.Routing, nil)
+	requireSame(t, e.Routing, routing())
+	requireEqual(t, len(Eligibility(c, e)), 0)
+	requireEqual(t, string(e.SavedOutput), `{"items":[]}`)
+	requireEqual(t, e.Input.Model, "recorded-model")
+	requireEqual(t, e.Input.PromptSHA256, strings.Repeat("c", 64))
 	encoded, _ := json.Marshal(c)
 	loaded, err := Load(encoded)
-	if err != nil || !reflect.DeepEqual(c, loaded) {
-		t.Fatal("recording context did not roundtrip", err)
-	}
+	requireNoError(t, err)
+	requireSame(t, c, loaded)
 	c.Routing = routing()
 	c.Routing.Aliases["home"] = "wrong-project"
-	if EffectiveRouting(c, e) != e.Routing || len(Eligibility(c, e)) != 0 {
-		t.Fatal("global context replaced recording context")
-	}
+	requireEqual(t, EffectiveRouting(c, e), e.Routing)
+	requireEqual(t, len(Eligibility(c, e)), 0)
 	e.Routing = nil
-	if EffectiveRouting(c, e) != c.Routing || !includes(Eligibility(c, e), "unsupported_target_project") {
-		t.Fatal("global fallback ignored")
-	}
+	requireEqual(t, EffectiveRouting(c, e), c.Routing)
+	requireEqual(t, includes(Eligibility(c, e), "unsupported_target_project"), true)
 	c.Examples[0].Routing.Clock = "invalid"
-	if Validate(c) == nil || !includes(Eligibility(c, c.Examples[0]), "invalid_routing_configuration") {
-		t.Fatal("invalid recording context accepted")
-	}
+	requireEqual(t, Validate(c) == nil, false)
+	requireEqual(t, includes(Eligibility(c, c.Examples[0]), "invalid_routing_configuration"), true)
 }
 
 func TestImportRejectsConflictingSiblingContext(t *testing.T) {
@@ -495,5 +489,24 @@ func TestImportRejectsConflictingSiblingContext(t *testing.T) {
 	c = mustImport(t, fixtureSnapshot(second, first))
 	if c.Examples[0].Routing == nil || len(c.Examples[0].SavedOutput) == 0 {
 		t.Fatal("missing sibling evidence erased preserved context")
+	}
+}
+
+func requireEqual[T comparable](t *testing.T, got, want T) {
+	t.Helper()
+	if got != want {
+		t.Fatalf("got %v; want %v", got, want)
+	}
+}
+func requireSame(t *testing.T, got, want any) {
+	t.Helper()
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %#v; want %#v", got, want)
+	}
+}
+func requireNoError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
 	}
 }

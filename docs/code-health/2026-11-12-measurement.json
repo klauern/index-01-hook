@@ -1,0 +1,663 @@
+{
+  "observed_at_utc": "2026-11-12T18:17:16.609827+00:00",
+  "base_commit": "2613f6b58b2770707c95309ab5ad942ddf932700",
+  "branch": "refactor/code-health-10-20261112",
+  "source_state": "uncommitted worktree",
+  "codescene_mcp_version": "1.5.20",
+  "embedded_cli_version": "1.0.58",
+  "rules": "defaults; no overrides or suppressions",
+  "files": [
+    {
+      "path": "application_contracts_test.go",
+      "hash": "83398f07fb58fe05fc04397a448b4fef4fd970f3a50b27090fb71e4eb837ab46",
+      "score": 8.09
+    },
+    {
+      "path": "application_date_confidence_test.go",
+      "hash": "2922b51acfd42b024940ae0fe61996f7b1e54bfb7404d8e5b28f75f19f1fab13",
+      "score": 9.68
+    },
+    {
+      "path": "application_date_policy_test.go",
+      "hash": "b3c2ba48e5444f27afc3e94e0adcc3577edd47a3e701fe26790668f92c19e591",
+      "score": 10.0
+    },
+    {
+      "path": "application_dates_test.go",
+      "hash": "0b838a171262280dc367db2361a7f61a0eec577bc91c94295edbc426701e5828",
+      "score": 8.67
+    },
+    {
+      "path": "application_failure_adapters_test.go",
+      "hash": "4692a5fce2d96e5089a5cc21e55acdca33bb0ec1d1612dc10c42b3ca046eb686",
+      "score": 6.3
+    },
+    {
+      "path": "application_identity_test.go",
+      "hash": "d44010536da0d9d07e465e69a02753f49d8681c7fe914dbe1852873cc0bededb",
+      "score": 9.09
+    },
+    {
+      "path": "application_item_adapters_test.go",
+      "hash": "465061e62a140f4295e0c6bedfa4651d405d4b341e77e91e769b81916c5c80ac",
+      "score": 9.68
+    },
+    {
+      "path": "application_item_policy_test.go",
+      "hash": "6dfdad08aff0485d924913ed4a929af479e237dc2a80c961a53c5b01d57b87f6",
+      "score": 9.68
+    },
+    {
+      "path": "application_values_test.go",
+      "hash": "1b67890345148b470082dab018af7b705073285d97197b83fb0574f19867abc6",
+      "score": 8.95
+    },
+    {
+      "path": "architecture_inventory_test.go",
+      "hash": "1b4143768b9a6911703e796e03880398f69ce9d0f66e783f6deabdd38dbed9b5",
+      "score": 6.3
+    },
+    {
+      "path": "ci_configuration_test.go",
+      "hash": "9e341aa14e3186c4cee78ff4a1472f1cada3f101ede053622d881d649ee6e63e",
+      "score": 10.0
+    },
+    {
+      "path": "cleanup.go",
+      "hash": "72b3faf55e58a2f9e76e9fc69f61d130e44ef46810109f9817c66ffceb62974f",
+      "score": 10.0
+    },
+    {
+      "path": "config.go",
+      "hash": "89e4f4c8f304bddb434e0d1cb8f33d656e0312e50a6cadfb951f0262a61b98f6",
+      "score": 10.0
+    },
+    {
+      "path": "config_legacy_test.go",
+      "hash": "95f1be5f17e2aba97a89ce9983d22ccf92fa872e63a4cbe514efd5790bf4ad10",
+      "score": 10.0
+    },
+    {
+      "path": "config_stages_test.go",
+      "hash": "63dbc63a4470d88927d44b981b96d230a2db4764251fef75b32130572cd4137c",
+      "score": 10.0
+    },
+    {
+      "path": "config_test.go",
+      "hash": "8c48fcd6ecf26855eb5306da486dd6f38276b22c9f572b395165eac093bfdd3c",
+      "score": 10.0
+    },
+    {
+      "path": "dashboard.go",
+      "hash": "4527b5904f5b3bd34fe5f1f07ca644f92f8ce3ca1a415423f829e483c546c9e2",
+      "score": 8.55
+    },
+    {
+      "path": "dashboard_test.go",
+      "hash": "35c8a28a26143b7aec66617d10a5a701f7944c906f021300080eebf24baf7489",
+      "score": 7.3
+    },
+    {
+      "path": "database_security.go",
+      "hash": "3c3d46ba29a4634231fb5dd13d56e56b99ae8b13fed2a6ebe9805fce9d8a2dec",
+      "score": 8.63
+    },
+    {
+      "path": "database_security_test.go",
+      "hash": "ac86edce65b587d6e551706ec8766559b140ebf7db57478f1e1febc92d23ea17",
+      "score": 10.0
+    },
+    {
+      "path": "date_parts.go",
+      "hash": "7f6386d46a6a810a6d9ecff8f09d7b9cef4813026383cb1eaa14557d1ca0381a",
+      "score": 10.0
+    },
+    {
+      "path": "date_parts_test.go",
+      "hash": "950b83dce48eac27ae05c06844ec73668ca8c6f89a7b9780a2007fe47de517d4",
+      "score": 9.68
+    },
+    {
+      "path": "deepseek.go",
+      "hash": "17b9819ff2f892c70aa5b0e2dd32733140c5e20c22fa177396861c452c94a85a",
+      "score": 7.15
+    },
+    {
+      "path": "deepseek_live_test.go",
+      "hash": "5238a7e6a52c8c174eaafecb7c55b29b47bd9bb11ea91d778f1b8ce6a6e19e02",
+      "score": 9.68
+    },
+    {
+      "path": "deepseek_test.go",
+      "hash": "d033093137a9e031bb5771236ec61a31779fd85ebbe9d257d08358730fa4e46d",
+      "score": 7.16
+    },
+    {
+      "path": "delivery_security_test.go",
+      "hash": "76789fa958f44b59fd9733cfcb8c80e4eb787aec87280d49a4c08776c981e67e",
+      "score": 8.74
+    },
+    {
+      "path": "documentation_test.go",
+      "hash": "c1f154ba255faacfdf7e3558873bdd8241a15a8db83ee950a99102b4cb5d92a0",
+      "score": 10.0
+    },
+    {
+      "path": "e2e/provider-fixture/main.go",
+      "hash": "6206741f0c78c42fe4f10d977cfe74c829244269146b5df1ee855ea9eed45299",
+      "score": 10.0
+    },
+    {
+      "path": "e2e/provider-fixture/main_test.go",
+      "hash": "847a1b5d0ee2196be1e53f90e1d95763eb28f162d2d3e73c03e5f043a45de319",
+      "score": 10.0
+    },
+    {
+      "path": "evaluation_collection.go",
+      "hash": "4faff87a526010ef9a511518bcfe77d13e43ff9dc8918581832f0ba06c87bb9a",
+      "score": 7.38
+    },
+    {
+      "path": "evaluation_collection_test.go",
+      "hash": "af12044740b4d7ae4f56bee18a858cc87baca92d5155152de3c492fc1eaf9089",
+      "score": 7.63
+    },
+    {
+      "path": "evaluation_contract_test.go",
+      "hash": "d147d198ebb7e751e852427d3a72a82ca0f0ab53f34a147214e5cec3454074de",
+      "score": 4.09
+    },
+    {
+      "path": "evaluation_evidence.go",
+      "hash": "2b202b176f00cd6a35875669120de81722fbfba80777fe28b07665ef58d2c6b0",
+      "score": 5.76
+    },
+    {
+      "path": "evaluation_evidence_test.go",
+      "hash": "3b762702f103a482c07cf35c6d85dae682b3aeb6d6dec4274edd2757a33f7a7e",
+      "score": 6.31
+    },
+    {
+      "path": "evaluation_export.go",
+      "hash": "c7d1668e3c06cbfbbd122332e679a3440fb64b70ec423675e2e80902a1aaf6d2",
+      "score": 7.75
+    },
+    {
+      "path": "evaluation_export_test.go",
+      "hash": "c9478aa909e79df011022d5873138ddece7125aebe7b6352d5ebafa64741c166",
+      "score": 6.82
+    },
+    {
+      "path": "evaluation_feedback_context_test.go",
+      "hash": "4c30801f7900b8d6b3561cc48eb12ef1785030a6b564c3e642dee94469ca1872",
+      "score": 8.95
+    },
+    {
+      "path": "evaluation_feedback_gate_test.go",
+      "hash": "c07cbc61cb76ccba1270faddf6076e0985465bc3ed06ac63c70c940bb50beb4a",
+      "score": 8.95
+    },
+    {
+      "path": "evaluation_feedback_routing_test.go",
+      "hash": "88904c03e93bc9d471e5efc4ec4d0649deff3ddc674560c803be52f408c58bfb",
+      "score": 9.68
+    },
+    {
+      "path": "evaluation_feedback_test.go",
+      "hash": "7182e9f5439b0f45b221f39e9bfeec3e3880f5dd57086fa4298d9a3bd42f8281",
+      "score": 3.97
+    },
+    {
+      "path": "evaluation_runner_test.go",
+      "hash": "a87de770f444a737d31b58dc0c21fc879229fdcaa09d9d962112e2ef192712e3",
+      "score": 6.21
+    },
+    {
+      "path": "evaluation_scorer_test.go",
+      "hash": "9d9a988ad4efa57cc25a7fd0fea727b771a77e8e57f06a6d5664adacabbc8507",
+      "score": 8.41
+    },
+    {
+      "path": "extraction_evidence.go",
+      "hash": "a0c77d900083cf55968f6daa534ac0ccc9d6ac8e44adea1ca7e4e3f9c6cf0ab4",
+      "score": 10.0
+    },
+    {
+      "path": "extraction_evidence_test.go",
+      "hash": "e929674e4907d441092f930814b26486157b125f3447f5efd138f948d3a8b6b8",
+      "score": 8.15
+    },
+    {
+      "path": "health.go",
+      "hash": "41cdaac87b389045f9c571d117c4f76db733ca50f493ad0093eb802fac9d894b",
+      "score": 8.32
+    },
+    {
+      "path": "health_test.go",
+      "hash": "a5ca80d00234724ff5f62a4163c73a240cde1e8571ef4f3b288bcccb10a02833",
+      "score": 7.05
+    },
+    {
+      "path": "internal/application/date_confidence_test.go",
+      "hash": "47cbb47e8120c4f982e59e675b0399eace2521b5eaad0014327742a666b52d2a",
+      "score": 9.09
+    },
+    {
+      "path": "internal/application/date_policy.go",
+      "hash": "a6902de5d11ec6f4c9fd2a6b25d64d735abdea105421736387cd8b2c216dd654",
+      "score": 8.28
+    },
+    {
+      "path": "internal/application/date_policy_test.go",
+      "hash": "fc7eb7a5df30e69a7c2d9bee69c8c14af3be972ffcc69526b4fa324bc79b25fb",
+      "score": 9.61
+    },
+    {
+      "path": "internal/application/dates.go",
+      "hash": "73a10c4a2dbc8258c449714b6a9c28a5498fbb296177f23d2d1a863436728626",
+      "score": 9.92
+    },
+    {
+      "path": "internal/application/dates_test.go",
+      "hash": "9b99d078b609267cfe958b525ae69eea4d8c9657d5a0d0e4e320fa20e07ffa3e",
+      "score": 9.61
+    },
+    {
+      "path": "internal/application/failures.go",
+      "hash": "2fd570a2edafa6295adc1f276101d2e9fd93b0dedffe7e066208b1472d0f2f25",
+      "score": 9.61
+    },
+    {
+      "path": "internal/application/failures_test.go",
+      "hash": "1e257a03e8640f0446f81febc8564ce981e842ba6190a7a3d90383e6aacb7baa",
+      "score": 9.68
+    },
+    {
+      "path": "internal/application/identity.go",
+      "hash": "1d18b06edc53786e7442e4f4718c5bb94c61aea1f2048648fd1e5b92fd725b12",
+      "score": 10.0
+    },
+    {
+      "path": "internal/application/identity_test.go",
+      "hash": "73a2feb947fcb1ea3b67983b5ee4520b623d7919191a60fab5ef19b364e0bf45",
+      "score": 9.09
+    },
+    {
+      "path": "internal/application/item_policy.go",
+      "hash": "aeadf0dd2228f3f544a10e8ee63328236f1011e26a339b5ddb37300b77541983",
+      "score": 8.81
+    },
+    {
+      "path": "internal/application/item_policy_test.go",
+      "hash": "ff2b77c7f1d02dabdfeae0db8b2a2963ad008f12b7d24420d89f06bc3ca247e3",
+      "score": 9.24
+    },
+    {
+      "path": "internal/application/items.go",
+      "hash": "8865bd0e9322cdd331bd48b5eb534e9d027692759e92130ce830b3756478dc7a",
+      "score": null
+    },
+    {
+      "path": "internal/evalcorpus/corpus.go",
+      "hash": "a721856dc4313db545a728a8eea6138d14ca09aaa1ef9f36f05887066ec6ac32",
+      "score": 10.0
+    },
+    {
+      "path": "internal/evalcorpus/corpus_test.go",
+      "hash": "cd714170a4a431edaf44fe9421df7c031c30dcbdeac71713d4ef0fbb684e02f4",
+      "score": 10.0
+    },
+    {
+      "path": "internal/evalcorpus/coverage.go",
+      "hash": "00f6453ca0501b541b7f202c5e2a07dabff1b6f2fe5c911cc0caf969b326ca65",
+      "score": 10.0
+    },
+    {
+      "path": "internal/evalcorpus/coverage_test.go",
+      "hash": "e74961e082da3a8101a3c0c8cbcb3ed81584ee65ac1bdf1fa93e395843ad3417",
+      "score": 10.0
+    },
+    {
+      "path": "internal/evalcorpus/import.go",
+      "hash": "f47c6234f69c1cf8e3123b6a07d7c1adfeb4913d28c5212b513bb8896abb8bd7",
+      "score": 10.0
+    },
+    {
+      "path": "internal/evalcorpus/types.go",
+      "hash": "e52da9beb1a0bc8f2672c0a48a54975515653c22f67b4c21109b79d51299b3e1",
+      "score": null
+    },
+    {
+      "path": "internal/verificationcorpus/corpus.go",
+      "hash": "4471ac99414c47010f26f02592b43e66f2a842c7e41f06afddd5e117bdb27e45",
+      "score": 10.0
+    },
+    {
+      "path": "internal/verificationcorpus/corpus_test.go",
+      "hash": "dbbef26f5fd33d23aef9750107f4577ef5437c35818fe722cc70b78cd32be46d",
+      "score": 10.0
+    },
+    {
+      "path": "internal/verificationcorpus/fixture_content_test.go",
+      "hash": "e5bd44abc9b3fde936f94a836498f6655463c532889b2bd711d66a28c2980c00",
+      "score": 10.0
+    },
+    {
+      "path": "internal/verificationcorpus/fixture_coverage_test.go",
+      "hash": "756138469e63ae6c70d768666f98503c0862856642911dcfe929b0321aefe15e",
+      "score": 10.0
+    },
+    {
+      "path": "internal/verificationcorpus/fixture_grounding_test.go",
+      "hash": "69e49d454b4c1c0734340a93174751d7cd45db1f4af0fd1bb6fa1973bb2d116d",
+      "score": 10.0
+    },
+    {
+      "path": "internal/verificationcorpus/types.go",
+      "hash": "84cf91f304e9bb254b80668ed59dad65e4b51f4aeb4be9463ab792c1e654a5ad",
+      "score": 10.0
+    },
+    {
+      "path": "item_acceptance_test.go",
+      "hash": "76d8a2c8d2122b5d56e57cdd0e54be4262caf8a7f580fe959fdd62dc6a09ea5c",
+      "score": 4.06
+    },
+    {
+      "path": "main.go",
+      "hash": "73fb18af6e6ef8c0d736093d65bf755f46f2dc8c3beb2e3532745ed7eb10e197",
+      "score": 9.38
+    },
+    {
+      "path": "operator.go",
+      "hash": "a32defb7fab5033acd8f5079695023a6561b325a6517fa08a21544335b023066",
+      "score": 5.99
+    },
+    {
+      "path": "operator_contract_test.go",
+      "hash": "227aff7eaa0b28f32647e716d62b1576f1a4254bab457bd708c16dc183b1bfa6",
+      "score": 5.83
+    },
+    {
+      "path": "operator_test.go",
+      "hash": "39d397a618ca97cd2fd582ad3a0457acfd69de766a924de7269bab7b2e22a297",
+      "score": 6.58
+    },
+    {
+      "path": "public_validation_test.go",
+      "hash": "ae708300dadc953aeaa06cddee550d0f0a281aa232d81724c168c8a20072ae73",
+      "score": 10.0
+    },
+    {
+      "path": "queue.go",
+      "hash": "1854d61f989092eaadd1aad6dce7010dc611f6fc1804dffd1b33f4186331266e",
+      "score": 4.67
+    },
+    {
+      "path": "queue_test.go",
+      "hash": "76915ab78ebe080439690948657b3274dcfaba34f3d81d8eb5242814177dfc0b",
+      "score": 3.12
+    },
+    {
+      "path": "recording_read_contract_test.go",
+      "hash": "de9cd95b1e3ce81c99922f7cf9ff51b17b621424e486c796377eabeca9d366f1",
+      "score": 6.27
+    },
+    {
+      "path": "release_workflow_test.go",
+      "hash": "f6289eb01098b869476e7a8145d6f277bc14933da369d1264f0174335bfa6fff",
+      "score": 8.11
+    },
+    {
+      "path": "retention.go",
+      "hash": "c18bae546f17474361fcea46ddf84f9da4ffdee10534a9c57adb018364739bfb",
+      "score": 10.0
+    },
+    {
+      "path": "retention_test.go",
+      "hash": "73bd6a19688258052157086a1ebfefd88868cd4a530e12bcefe3afc9fa61b48c",
+      "score": 8.27
+    },
+    {
+      "path": "scripts/check-release-labels.mjs",
+      "hash": "0e071a16de88c0a2c2e6b46bee6e01120be064b4d88e395cfbe1938b7d4b9005",
+      "score": 9.68
+    },
+    {
+      "path": "scripts/check-release-labels.test.mjs",
+      "hash": "cd60457323edfef9ac06727694cf479f87b947800c0f61a4388b2e47d9fa3b87",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/eval-corpus/main.go",
+      "hash": "133f7741a2d524c2023e4ce27a2e76fe2a2488ae8ecee0b7fc8ce2c8108c4e92",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/eval-corpus/main_test.go",
+      "hash": "f6b090e7aa525c755cc98611adabce3caa4630c64d509542cd7004d1fd78d22a",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/release-candidate.mjs",
+      "hash": "7ccdaf86769c41b276d2a938c8c1f3b2a88116d331e79ec0d6acf33594f415c9",
+      "score": 4.27
+    },
+    {
+      "path": "scripts/release-candidate.test.mjs",
+      "hash": "21ed894ca9e9fea14091367b6ae7756858d69f4f24ca5d7d56909dac8c09b2e8",
+      "score": 8.62
+    },
+    {
+      "path": "scripts/release-drafter-config.test.mjs",
+      "hash": "69078eb09fdb1ed6155494865cab0644f87e6d9240f50772e9cfc1473e3012c2",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/release-notices/main.go",
+      "hash": "9651459dfd0ac620b12a289ddb87e2882301b16b67297dfa8cd3ae61639ec101",
+      "score": 7.05
+    },
+    {
+      "path": "scripts/rename-no-replace/main.go",
+      "hash": "570b5f1c9d2f3b75146e51877523e38cccd27bb958958daf43922faaf2a8c46e",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/rename-no-replace/rename_darwin.go",
+      "hash": "1036518078a7eab755a6f1f545aec439dad1e437b8b76d0dcea6435cce783790",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/rename-no-replace/rename_linux.go",
+      "hash": "84b4c151cb2f5e079fd86375a6292a2aabf6fab8b492912b56cb715673ca5f6d",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/rename-no-replace/rename_other.go",
+      "hash": "556224dd7273a4af77a4fc0914620c1c59e343806641cc575ddb4d3b14e7ea9a",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/routing-feedback/main.go",
+      "hash": "f6aa7d396b93d2b94dbc9c508a1f26b1fff11689d3ac4c54b1eb0aabe5ed24ac",
+      "score": 4.04
+    },
+    {
+      "path": "scripts/routing-feedback/main_test.go",
+      "hash": "f316cb5a201a3bf6bf6435766a13066039e1fe2067c1612f444442cc075e380a",
+      "score": 6.54
+    },
+    {
+      "path": "scripts/ticktick-pull/main.go",
+      "hash": "c79514c44186676e4f1be048f70eea3827af4d44176d1ccbf000c6763321c00b",
+      "score": 6.22
+    },
+    {
+      "path": "scripts/ticktick-pull/main_test.go",
+      "hash": "57b02a9ee41cea61c600d30e79581404c943ac0fc9c553ae077dc3cc1848dbf6",
+      "score": 7.57
+    },
+    {
+      "path": "scripts/typesafe-calibration/main.go",
+      "hash": "a1e5e138f06ac1c0aa145144e32b5c369e84c60496e7b26322caaf87830f8de9",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/typesafe-calibration/main_test.go",
+      "hash": "7c79034837b9633673006b7fdc4acdc2d2fcfe6df13b4ab51aa2a5486b8c4122",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/typesafe-calibration/provider_validation_test.go",
+      "hash": "45ad955287d17b111e1425cc9b1a6492c77feb6aa379aeccb35bdb239eede5bf",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/typesafe-spike/main.go",
+      "hash": "d8954edb8254b48a4eda68f53dae000a696d89e336ad71bc71d4b14165baab78",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/typesafe-spike/main_test.go",
+      "hash": "55fd03ad34b9b313eeb6eb0fd137d2ea252f13f65dfacf062c176c496dc4c72a",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/typesafe-thresholds/main.go",
+      "hash": "03cc4c068b9f54383f817ef1f904016692f794e5e24b84743b245648c426c3ee",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/typesafe-thresholds/main_test.go",
+      "hash": "32bb71d4a0fd056111e93751dde293e0afc71fa9b7596ca2a6de0794522c3a28",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/work-session/main.go",
+      "hash": "8f14331586cab48a4f672f0bcf02a17fd7bc609cfdf1d246448f9c019142a66e",
+      "score": 10.0
+    },
+    {
+      "path": "scripts/work-session/main_test.go",
+      "hash": "23d4dcc4d812492bb441e963ca0b024b7811321103e956d9f8cd78da58246aa8",
+      "score": 10.0
+    },
+    {
+      "path": "server.go",
+      "hash": "87d996274083a3249f0ca6ed80647a4082ffb870b5dc7329534512c8fc884f7f",
+      "score": 10.0
+    },
+    {
+      "path": "server_test.go",
+      "hash": "4f2d8c20f2be0696637549d3311bed559b0eac3befebc7fb0344cebcbbc2c3ea",
+      "score": 10.0
+    },
+    {
+      "path": "store.go",
+      "hash": "658534dcd4589b613f4174b40287790ade8e0c1d50158239d094743adcbb6a2f",
+      "score": 8.33
+    },
+    {
+      "path": "ticktick.go",
+      "hash": "41b1d1480b044744c3b2e186edf164b2a72c3999102e9d417664f0c04393be2a",
+      "score": 5.2
+    },
+    {
+      "path": "ticktick_reconcile_moved_test.go",
+      "hash": "71b6e3911acbed23b139c5f12c4b77ebc7909a90fd5e14ce620a7925f48708cc",
+      "score": 7.78
+    },
+    {
+      "path": "ticktick_test.go",
+      "hash": "9f97abd11c7ced8894527eb59e8a3c81d7f568174c23df692b903409eab12e6d",
+      "score": 7.13
+    },
+    {
+      "path": "typesafe.go",
+      "hash": "5031f13a257b34592e38db0e49d18f4f3d9f15a83eddc81b6cc489b1fbd702e3",
+      "score": 6.11
+    },
+    {
+      "path": "typesafe_test.go",
+      "hash": "5f71779c08ee53faac24ee725c9977fd70c2570c2b0d058fef886064e9fabb49",
+      "score": 8.41
+    },
+    {
+      "path": "typesafe_verification.go",
+      "hash": "c4597aafb079148e1ba0eee2b50cc86f3b48b777615172c890e3c3626c7090d9",
+      "score": 8.06
+    },
+    {
+      "path": "validate_config.go",
+      "hash": "cadf913f0a72155aab8b7812575400cb9d7808ac53e504a5c5d8e819217fd7ad",
+      "score": 10.0
+    },
+    {
+      "path": "validate_config_test.go",
+      "hash": "5c449f54b821102ad12152d76619119be584a95243d488bc8d52012622e5eb4e",
+      "score": 9.09
+    },
+    {
+      "path": "verification_contract_test.go",
+      "hash": "a5accb84c057c72be26a14fa7932fcd49d3011bb7de512d1fb81b32c9c4eacd0",
+      "score": 8.25
+    },
+    {
+      "path": "webhook.go",
+      "hash": "2221e8e70c08bd62b1537547eb475fd5fe3ed9653080d155ea6bac94e21cd2eb",
+      "score": 8.18
+    },
+    {
+      "path": "webhook_test.go",
+      "hash": "ba420284295bc9fb30848297c15b06a78a7501115c3a16daded9a0d80c829659",
+      "score": 5.2
+    },
+    {
+      "path": "worker.go",
+      "hash": "36276cc395744cf38e40ff0533948c69e7d5a626471ab73c380dee87f9f7fa26",
+      "score": 7.02
+    },
+    {
+      "path": "worker_test.go",
+      "hash": "84a25ff60e0a46a1184407ec38a4f7bdcb2c537a697d6f82d7e4cabb5b4d4a76",
+      "score": 3.01
+    }
+  ],
+  "changed_source_files": [
+    "ci_configuration_test.go",
+    "config.go",
+    "config_test.go",
+    "documentation_test.go",
+    "e2e/provider-fixture/main.go",
+    "internal/evalcorpus/corpus.go",
+    "internal/evalcorpus/corpus_test.go",
+    "internal/evalcorpus/coverage.go",
+    "internal/evalcorpus/coverage_test.go",
+    "internal/evalcorpus/import.go",
+    "internal/verificationcorpus/corpus.go",
+    "internal/verificationcorpus/corpus_test.go",
+    "public_validation_test.go",
+    "scripts/eval-corpus/main.go",
+    "scripts/eval-corpus/main_test.go",
+    "scripts/typesafe-calibration/main.go",
+    "scripts/typesafe-calibration/main_test.go",
+    "scripts/typesafe-spike/main.go",
+    "scripts/typesafe-thresholds/main.go",
+    "scripts/typesafe-thresholds/main_test.go",
+    "scripts/work-session/main_test.go",
+    "validate_config.go",
+    "config_stages_test.go",
+    "e2e/provider-fixture/main_test.go",
+    "internal/verificationcorpus/fixture_content_test.go",
+    "internal/verificationcorpus/fixture_coverage_test.go",
+    "internal/verificationcorpus/fixture_grounding_test.go",
+    "scripts/typesafe-calibration/provider_validation_test.go",
+    "scripts/typesafe-spike/main_test.go"
+  ],
+  "excluded_third_party": [
+    "dashboard_static/htmx.min.js"
+  ],
+  "unsupported_languages": [
+    "shell"
+  ]
+}

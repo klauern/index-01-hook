@@ -159,33 +159,12 @@ func loadReport(path string) (report, error) {
 	return r, nil
 }
 
+// requestedDesigns preserves the report order and rejects unknown requested designs.
 func requestedDesigns(spec string, available []string) ([]string, error) {
-	wanted := map[string]bool{}
-	wantedOrder := make([]string, 0)
-	if strings.TrimSpace(spec) == "" || strings.TrimSpace(spec) == "all" {
-		for _, d := range available {
-			if !wanted[d] {
-				wanted[d] = true
-				wantedOrder = append(wantedOrder, d)
-			}
-		}
-	} else {
-		for _, d := range strings.Split(spec, ",") {
-			d = strings.TrimSpace(d)
-			if d != "" && !wanted[d] {
-				wanted[d] = true
-				wantedOrder = append(wantedOrder, d)
-			}
-		}
-	}
-	seen := map[string]bool{}
-	out := make([]string, 0, len(available))
-	for _, d := range available {
-		if wanted[d] && !seen[d] {
-			out = append(out, d)
-			seen[d] = true
-		}
-	}
+	wantedOrder := requestedNames(spec, available)
+	wanted := designSet(wantedOrder)
+	out := selectAvailableDesigns(available, wanted)
+	seen := designSet(out)
 	for _, d := range wantedOrder {
 		if !seen[d] {
 			return nil, fmt.Errorf("requested design %q is absent from meta.designs", d)
@@ -197,25 +176,62 @@ func requestedDesigns(spec string, available []string) ([]string, error) {
 	return out, nil
 }
 
+// requestedNames parses explicit names without changing names in report metadata.
+func requestedNames(spec string, available []string) []string {
+	spec = strings.TrimSpace(spec)
+	if spec == "" || spec == "all" {
+		return available
+	}
+	names := make([]string, 0)
+	for _, name := range strings.Split(spec, ",") {
+		if name = strings.TrimSpace(name); name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func designSet(names []string) map[string]bool {
+	set := make(map[string]bool, len(names))
+	for _, name := range names {
+		set[name] = true
+	}
+	return set
+}
+
+// selectAvailableDesigns keeps only the first occurrence of each requested name.
+func selectAvailableDesigns(available []string, wanted map[string]bool) []string {
+	out := make([]string, 0, len(available))
+	seen := map[string]bool{}
+	for _, name := range available {
+		if !wanted[name] || seen[name] {
+			continue
+		}
+		out = append(out, name)
+		seen[name] = true
+	}
+	return out
+}
+
 func measures(r gridRow) selectedMeasures {
 	return selectedMeasures{r.FalseAcceptRate, r.FalseRejectRate, r.ReviewVolume, r.Agreement, r.Accepted, r.Rejected, r.Review, r.InjectionAccepts}
 }
 
-func violationNames(r gridRow, faLimit, reviewLimit float64) []string {
+func (policy selectionPolicy) violationNames(r gridRow) []string {
 	v := make([]string, 0, 3)
 	if r.InjectionAccepts != 0 {
 		v = append(v, "injection_accepts")
 	}
-	if r.FalseAcceptRate > faLimit {
+	if r.FalseAcceptRate > policy.falseAcceptLimit {
 		v = append(v, "false_accept_rate")
 	}
-	if r.ReviewVolume > reviewLimit {
+	if r.ReviewVolume > policy.reviewVolumeLimit {
 		v = append(v, "review_volume")
 	}
 	return v
 }
-func candidate(r gridRow, faLimit, reviewLimit float64) candidateOutput {
-	v := violationNames(r, faLimit, reviewLimit)
+func (policy selectionPolicy) candidate(r gridRow) candidateOutput {
+	v := policy.violationNames(r)
 	return candidateOutput{r.Accept, r.Reject, len(v), v, measures(r)}
 }
 
@@ -228,8 +244,8 @@ func betterSelection(a, b gridRow) bool {
 	}
 	return a.Reject > b.Reject
 }
-func betterFewest(a, b gridRow, faLimit, reviewLimit float64) bool {
-	av, bv := len(violationNames(a, faLimit, reviewLimit)), len(violationNames(b, faLimit, reviewLimit))
+func (policy selectionPolicy) betterFewest(a, b gridRow) bool {
+	av, bv := len(policy.violationNames(a)), len(policy.violationNames(b))
 	if av != bv {
 		return av < bv
 	}
@@ -241,42 +257,60 @@ func betterFewest(a, b gridRow, faLimit, reviewLimit float64) bool {
 	}
 	return a.Reject > b.Reject
 }
-func betterLowest(a, b gridRow, faLimit, reviewLimit float64) bool {
+func (policy selectionPolicy) betterLowest(a, b gridRow) bool {
 	if a.ReviewVolume != b.ReviewVolume {
 		return a.ReviewVolume < b.ReviewVolume
 	}
-	return betterFewest(a, b, faLimit, reviewLimit)
+	return policy.betterFewest(a, b)
 }
 
-func neighbor(rows []gridRow, selected gridRow, rejectAxis bool, up bool) *sensitivityRow {
+// sensitivityAxis selects one changing threshold and one fixed threshold.
+type sensitivityAxis struct {
+	reject bool
+	up     bool
+}
+
+func (axis sensitivityAxis) values(row gridRow) (varying, fixed float64) {
+	if axis.reject {
+		return row.Reject, row.Accept
+	}
+	return row.Accept, row.Reject
+}
+
+// matches requires a fixed threshold and a varying threshold on the requested side.
+func (axis sensitivityAxis) matches(row, selected gridRow) bool {
+	value, fixed := axis.values(row)
+	baseline, selectedFixed := axis.values(selected)
+	if fixed != selectedFixed {
+		return false
+	}
+	if axis.up {
+		return !(value <= baseline)
+	}
+	return !(value >= baseline)
+}
+
+func (axis sensitivityAxis) closer(row gridRow, found *gridRow) bool {
+	if found == nil {
+		return true
+	}
+	value, _ := axis.values(row)
+	previous, _ := axis.values(*found)
+	if axis.up {
+		return value < previous
+	}
+	return value > previous
+}
+
+// neighbor returns the closest row on one side of the selected threshold.
+func neighbor(rows []gridRow, selected gridRow, axis sensitivityAxis) *sensitivityRow {
 	var found *gridRow
 	for i := range rows {
-		r := rows[i]
-		if rejectAxis && r.Accept != selected.Accept {
+		if !axis.matches(rows[i], selected) {
 			continue
 		}
-		if !rejectAxis && r.Reject != selected.Reject {
-			continue
-		}
-		value, selectedValue := r.Reject, selected.Reject
-		if !rejectAxis {
-			value, selectedValue = r.Accept, selected.Accept
-		}
-		if up && value <= selectedValue || !up && value >= selectedValue {
-			continue
-		}
-		if found == nil || (up && value < func() float64 {
-			if rejectAxis {
-				return found.Reject
-			}
-			return found.Accept
-		}()) || (!up && value > func() float64 {
-			if rejectAxis {
-				return found.Reject
-			}
-			return found.Accept
-		}()) {
-			copy := r
+		if axis.closer(rows[i], found) {
+			copy := rows[i]
 			found = &copy
 		}
 	}
@@ -286,71 +320,115 @@ func neighbor(rows []gridRow, selected gridRow, rejectAxis bool, up bool) *sensi
 	return &sensitivityRow{Accept: found.Accept, Reject: found.Reject, Measures: measures(*found), Change: sensitivityChange{found.FalseAcceptRate - selected.FalseAcceptRate, found.ReviewVolume - selected.ReviewVolume, found.Agreement - selected.Agreement}}
 }
 
-func analyzeDesign(name string, rows []gridRow, faLimit, reviewLimit float64, approved bool) designOutput {
-	o := designOutput{Design: name, FailureCandidates: failureCandidates{}, Sensitivity: sensitivityOutput{}}
+type selectionPolicy struct {
+	falseAcceptLimit, reviewVolumeLimit float64
+	approved                            bool
+}
+
+func (policy selectionPolicy) selectRow(rows []gridRow) (*gridRow, int) {
 	var selected *gridRow
-	survivors := make([]gridRow, 0)
+	survivors := 0
 	for i := range rows {
-		v := violationNames(rows[i], faLimit, reviewLimit)
-		if len(v) == 0 {
-			survivors = append(survivors, rows[i])
-			if selected == nil || betterSelection(rows[i], *selected) {
-				copy := rows[i]
-				selected = &copy
-			}
+		if len(policy.violationNames(rows[i])) != 0 {
+			continue
+		}
+		survivors++
+		if selected == nil || betterSelection(rows[i], *selected) {
+			copy := rows[i]
+			selected = &copy
 		}
 	}
-	o.SurvivorCount = len(survivors)
-	if selected != nil {
-		o.SelectedAccept = &selected.Accept
-		o.SelectedReject = &selected.Reject
-		o.SelectedThresholds = &thresholdOutput{Accept: selected.Accept, Reject: selected.Reject}
-		m := measures(*selected)
-		o.Measures = &m
-		o.Decision = "enable"
-		if !approved {
-			o.Decision = "provisional"
+	return selected, survivors
+}
+
+func selectedDesign(name string, selected gridRow, survivors int) designOutput {
+	m := measures(selected)
+	return designOutput{Design: name, SurvivorCount: survivors, SelectedAccept: &selected.Accept, SelectedReject: &selected.Reject, SelectedThresholds: &thresholdOutput{Accept: selected.Accept, Reject: selected.Reject}, Measures: &m, Decision: "enable"}
+}
+
+func (policy selectionPolicy) failureCandidates(rows []gridRow) failureCandidates {
+	fewest, lowest := rows[0], rows[0]
+	for _, r := range rows[1:] {
+		if policy.betterFewest(r, fewest) {
+			fewest = r
 		}
-		o.Sensitivity.AcceptFixedRejectUp = neighbor(rows, *selected, true, true)
-		o.Sensitivity.AcceptFixedRejectDown = neighbor(rows, *selected, true, false)
-		o.Sensitivity.RejectFixedAcceptUp = neighbor(rows, *selected, false, true)
-		o.Sensitivity.RejectFixedAcceptDown = neighbor(rows, *selected, false, false)
+		if policy.betterLowest(r, lowest) {
+			lowest = r
+		}
+	}
+	f, l := policy.candidate(fewest), policy.candidate(lowest)
+	return failureCandidates{&f, &l}
+}
+
+func (policy selectionPolicy) rejection(rows []gridRow) (reason, decision string) {
+	allInjection, anyFA := true, false
+	for _, r := range rows {
+		if r.InjectionAccepts == 0 {
+			allInjection = false
+		}
+		if r.FalseAcceptRate <= policy.falseAcceptLimit {
+			anyFA = true
+		}
+	}
+	if allInjection {
+		return "every threshold row has injection_accepts > 0", "reject"
+	}
+	if !anyFA {
+		return "no threshold row reaches the acceptable false-accept rate", "reject"
+	}
+	return "no threshold row satisfies all limits", "defer"
+}
+
+// analyzeDesign selects a feasible row or reports the unchanged policy failure.
+func analyzeDesign(name string, rows []gridRow, policy selectionPolicy) designOutput {
+	selected, survivors := policy.selectRow(rows)
+	if selected == nil {
+		o := designOutput{Design: name, SurvivorCount: survivors}
+		if len(rows) > 0 {
+			o.FailureCandidates = policy.failureCandidates(rows)
+			o.RejectingReason, o.Decision = policy.rejection(rows)
+		}
 		return o
 	}
-	if len(rows) > 0 {
-		fewest, lowest := rows[0], rows[0]
-		for _, r := range rows[1:] {
-			if betterFewest(r, fewest, faLimit, reviewLimit) {
-				fewest = r
-			}
-			if betterLowest(r, lowest, faLimit, reviewLimit) {
-				lowest = r
-			}
-		}
-		f, l := candidate(fewest, faLimit, reviewLimit), candidate(lowest, faLimit, reviewLimit)
-		o.FailureCandidates = failureCandidates{&f, &l}
-		o.RejectingReason = "no threshold row satisfies all limits"
-		allInjection := true
-		anyFA := false
-		for _, r := range rows {
-			if r.InjectionAccepts == 0 {
-				allInjection = false
-			}
-			if r.FalseAcceptRate <= faLimit {
-				anyFA = true
-			}
-		}
-		if allInjection {
-			o.RejectingReason = "every threshold row has injection_accepts > 0"
-			o.Decision = "reject"
-		} else if !anyFA {
-			o.RejectingReason = "no threshold row reaches the acceptable false-accept rate"
-			o.Decision = "reject"
-		} else {
-			o.Decision = "defer"
-		}
+	o := selectedDesign(name, *selected, survivors)
+	if !policy.approved {
+		o.Decision = "provisional"
 	}
+	o.Sensitivity.AcceptFixedRejectUp = neighbor(rows, *selected, sensitivityAxis{reject: true, up: true})
+	o.Sensitivity.AcceptFixedRejectDown = neighbor(rows, *selected, sensitivityAxis{reject: true})
+	o.Sensitivity.RejectFixedAcceptUp = neighbor(rows, *selected, sensitivityAxis{up: true})
+	o.Sensitivity.RejectFixedAcceptDown = neighbor(rows, *selected, sensitivityAxis{})
 	return o
+}
+
+// heldoutRows refuses incomplete evidence before threshold selection.
+func heldoutRows(r report, design string) ([]gridRow, error) {
+	parts, ok := r.Measures[design]
+	if !ok {
+		return nil, fmt.Errorf("refusing calibration report: requested design %q has no held-out split or threshold grid rows", design)
+	}
+	h, ok := parts["heldout"]
+	if !ok || len(h.ThresholdGrid) == 0 {
+		return nil, fmt.Errorf("refusing calibration report: design %q held-out split is missing or has no threshold grid rows", design)
+	}
+	if h.Errors != 0 {
+		return nil, fmt.Errorf("refusing calibration report: design %q held-out split has %d failed calls", design, h.Errors)
+	}
+	return h.ThresholdGrid, nil
+}
+
+func verifyReportCorpus(r report, corpusPath string) error {
+	if !r.Meta.Live {
+		return errors.New("refusing calibration report: meta.live is false")
+	}
+	actualHash, err := sha256File(corpusPath)
+	if err != nil {
+		return fmt.Errorf("read corpus: %w", err)
+	}
+	if !strings.EqualFold(r.Meta.CorpusSHA256, actualHash) {
+		return fmt.Errorf("refusing calibration report: corpus sha256 mismatch: report=%s corpus=%s", r.Meta.CorpusSHA256, actualHash)
+	}
+	return nil
 }
 
 func run(cfg config) ([]byte, error) {
@@ -358,15 +436,8 @@ func run(cfg config) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !r.Meta.Live {
-		return nil, errors.New("refusing calibration report: meta.live is false")
-	}
-	actualHash, err := sha256File(cfg.Corpus)
-	if err != nil {
-		return nil, fmt.Errorf("read corpus: %w", err)
-	}
-	if !strings.EqualFold(r.Meta.CorpusSHA256, actualHash) {
-		return nil, fmt.Errorf("refusing calibration report: corpus sha256 mismatch: report=%s corpus=%s", r.Meta.CorpusSHA256, actualHash)
+	if err := verifyReportCorpus(r, cfg.Corpus); err != nil {
+		return nil, err
 	}
 	designs, err := requestedDesigns(cfg.Design, r.Meta.Designs)
 	if err != nil {
@@ -374,20 +445,11 @@ func run(cfg config) ([]byte, error) {
 	}
 	out := output{cfg.FalseAcceptLimit, cfg.ReviewVolumeLimit, cfg.LimitsApproved, cfg.Report, r.Meta.GeneratedAt, r.Meta.Model, r.Meta.PromptVersion, r.Meta.CorpusPath, r.Meta.CorpusSHA256, make([]designOutput, 0, len(designs))}
 	for _, d := range designs {
-		parts, ok := r.Measures[d]
-		if !ok {
-			return nil, fmt.Errorf("refusing calibration report: requested design %q has no held-out split or threshold grid rows", d)
+		rows, err := heldoutRows(r, d)
+		if err != nil {
+			return nil, err
 		}
-		h, ok := parts["heldout"]
-		if !ok || len(h.ThresholdGrid) == 0 {
-			return nil, fmt.Errorf("refusing calibration report: design %q held-out split is missing or has no threshold grid rows", d)
-		}
-		// A held-out split with failed calls is incomplete evidence.
-		// Threshold selection needs every held-out case answered.
-		if h.Errors != 0 {
-			return nil, fmt.Errorf("refusing calibration report: design %q held-out split has %d failed calls", d, h.Errors)
-		}
-		out.Designs = append(out.Designs, analyzeDesign(d, h.ThresholdGrid, cfg.FalseAcceptLimit, cfg.ReviewVolumeLimit, cfg.LimitsApproved))
+		out.Designs = append(out.Designs, analyzeDesign(d, rows, selectionPolicy{cfg.FalseAcceptLimit, cfg.ReviewVolumeLimit, cfg.LimitsApproved}))
 	}
 	b, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {

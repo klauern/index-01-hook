@@ -99,7 +99,7 @@ func TestReleaseWorkflowIsGatedAndImmutable(t *testing.T) {
 		"attestations: write",
 		"actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333",
 		"gh api repos/klauern/index-01-hook --jq .visibility",
-		"docker.io/library/golang:1.26.10@sha256:3745f1aa11822297b79113f5e84ce2bffeb039734571c39855809cfe9e5d7be6",
+		"docker.io/library/golang:1.26.11@sha256:957952ae74dc010608717144399a59a2c6e82ea03d63be1c7ff6577c5a135f93",
 		"platforms: linux/amd64,linux/arm64",
 		"image=moby/buildkit@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8",
 		"push-by-digest=true",

@@ -55,7 +55,10 @@ func markdownFiles(t *testing.T, root string) []string {
 }
 
 func relativeMarkdownTarget(target string) (string, bool) {
-	if target == "" || strings.HasPrefix(target, "#") || strings.HasPrefix(target, "//") {
+	if target == "" {
+		return "", false
+	}
+	if strings.HasPrefix(target, "#") || strings.HasPrefix(target, "//") {
 		return "", false
 	}
 	parsed, err := url.Parse(target)
@@ -75,27 +78,49 @@ func relativeMarkdownTarget(target string) (string, bool) {
 func TestMarkdownRelativeLinks(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, file := range markdownFiles(t, root) {
-		displayPath, _ := filepath.Rel(root, file)
-		contents, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatalf("read %s: %v", file, err)
-		}
-		for _, match := range markdownLinkPattern.FindAllStringSubmatch(string(contents), -1) {
-			target, ok := relativeMarkdownTarget(match[1])
-			if !ok {
-				continue
-			}
-			resolved := filepath.Clean(filepath.Join(filepath.Dir(file), filepath.FromSlash(target)))
-			relative, err := filepath.Rel(root, resolved)
-			if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-				t.Errorf("%s links outside the repository: %q", displayPath, match[1])
-				continue
-			}
-			if _, err := os.Stat(resolved); err != nil {
-				t.Errorf("%s links to missing target %q: %v", displayPath, match[1], err)
-			}
-		}
+		(documentationFile{root: root, path: file}).checkLinks(t)
 	}
+}
+
+type documentationFile struct {
+	root string
+	path string
+}
+
+func (file documentationFile) checkLinks(t *testing.T) {
+	t.Helper()
+	contents, err := os.ReadFile(file.path)
+	if err != nil {
+		t.Fatalf("read %s: %v", file.path, err)
+	}
+	for _, match := range markdownLinkPattern.FindAllStringSubmatch(string(contents), -1) {
+		file.checkLink(t, match[1])
+	}
+}
+
+func (file documentationFile) checkLink(t *testing.T, link string) {
+	t.Helper()
+	target, ok := relativeMarkdownTarget(link)
+	if !ok {
+		return
+	}
+	displayPath, _ := filepath.Rel(file.root, file.path)
+	resolved := filepath.Clean(filepath.Join(filepath.Dir(file.path), filepath.FromSlash(target)))
+	if !file.containsTarget(resolved) {
+		t.Errorf("%s links outside the repository: %q", displayPath, link)
+		return
+	}
+	if _, err := os.Stat(resolved); err != nil {
+		t.Errorf("%s links to missing target %q: %v", displayPath, link, err)
+	}
+}
+
+func (file documentationFile) containsTarget(path string) bool {
+	relative, err := filepath.Rel(file.root, path)
+	if err != nil || relative == ".." {
+		return false
+	}
+	return !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func TestREADMEReferenceLinks(t *testing.T) {
@@ -124,14 +149,31 @@ func TestREADMEReferenceLinks(t *testing.T) {
 	}
 }
 
-func requiredEnvironmentValues(t *testing.T, path string, keys []string) {
+type environmentExample struct {
+	path     string
+	required []string
+}
+
+func (example environmentExample) assertEmptyRequiredValues(t *testing.T) {
+	path, keys := example.path, example.required
 	t.Helper()
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read %s: %v", path, err)
 	}
+	values := exampleEnvironmentValues(string(contents))
+	for _, key := range keys {
+		if value, ok := values[key]; !ok {
+			t.Errorf("%s does not define required value %s", path, key)
+		} else if value != "" {
+			t.Errorf("%s contains a non-empty required value %s", path, key)
+		}
+	}
+}
+
+func exampleEnvironmentValues(contents string) map[string]string {
 	values := make(map[string]string)
-	for _, line := range strings.Split(string(contents), "\n") {
+	for _, line := range strings.Split(contents, "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -141,13 +183,7 @@ func requiredEnvironmentValues(t *testing.T, path string, keys []string) {
 			values[key] = value
 		}
 	}
-	for _, key := range keys {
-		if value, ok := values[key]; !ok {
-			t.Errorf("%s does not define required value %s", path, key)
-		} else if value != "" {
-			t.Errorf("%s contains a non-empty required value %s", path, key)
-		}
-	}
+	return values
 }
 
 func TestExampleEnvironmentValuesAreEmpty(t *testing.T) {
@@ -158,8 +194,8 @@ func TestExampleEnvironmentValuesAreEmpty(t *testing.T) {
 		"INDEX01_TICKTICK_DEFAULT_PROJECT_ID",
 		"INDEX01_TICKTICK_NOTE_PROJECT_ID",
 	}
-	requiredEnvironmentValues(t, ".env.example", required)
-	requiredEnvironmentValues(t, "deploy/kubernetes/index-01-hook-secrets.env.example", required)
+	(environmentExample{path: ".env.example", required: required}).assertEmptyRequiredValues(t)
+	(environmentExample{path: "deploy/kubernetes/index-01-hook-secrets.env.example", required: required}).assertEmptyRequiredValues(t)
 }
 
 func TestComposeSmokeWebhookIsProviderFree(t *testing.T) {
@@ -189,27 +225,32 @@ func TestComposeSmokeWebhookIsProviderFree(t *testing.T) {
 func TestDocumentationHasNoRemovedPrivateDeploymentValues(t *testing.T) {
 	root := repositoryRoot(t)
 	for _, file := range markdownFiles(t, root) {
-		displayPath, _ := filepath.Rel(root, file)
-		contents, err := os.ReadFile(file)
-		if err != nil {
-			t.Fatalf("read %s: %v", file, err)
-		}
-		privateDeploymentPatterns := []*regexp.Regexp{
-			// The removed private deployment used hostnames under a personal
-			// .work TLD. Match every .work hostname so no private value can be
-			// reintroduced; false positives on unrelated .work domains are
-			// acceptable for public documentation.
-			regexp.MustCompile(`(?i)\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.work\b`),
-			// Match all numbered Docker registry hosts (registry-N.docker.io),
-			// not only the removed literal. Intentionally over-matches to keep
-			// private registry references out of public documentation.
-			regexp.MustCompile(`(?i)\bregistry-[0-9]+\.docker\.io\b`),
-			regexp.MustCompile(`(?i)\bgitea[_-]admin\b`),
-		}
-		for _, forbidden := range privateDeploymentPatterns {
-			if forbidden.Match(contents) {
-				t.Errorf("%s contains a removed private deployment pattern %q", displayPath, forbidden.String())
-			}
+		(documentationFile{root: root, path: file}).checkPrivacy(t)
+	}
+}
+
+func (file documentationFile) checkPrivacy(t *testing.T) {
+	t.Helper()
+	displayPath, _ := filepath.Rel(file.root, file.path)
+	contents, err := os.ReadFile(file.path)
+	if err != nil {
+		t.Fatalf("read %s: %v", file.path, err)
+	}
+	privateDeploymentPatterns := []*regexp.Regexp{
+		// The removed private deployment used hostnames under a personal
+		// .work TLD. Match every .work hostname so no private value can be
+		// reintroduced; false positives on unrelated .work domains are
+		// acceptable for public documentation.
+		regexp.MustCompile(`(?i)\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.work\b`),
+		// Match all numbered Docker registry hosts (registry-N.docker.io),
+		// not only the removed literal. Intentionally over-matches to keep
+		// private registry references out of public documentation.
+		regexp.MustCompile(`(?i)\bregistry-[0-9]+\.docker\.io\b`),
+		regexp.MustCompile(`(?i)\bgitea[_-]admin\b`),
+	}
+	for _, forbidden := range privateDeploymentPatterns {
+		if forbidden.Match(contents) {
+			t.Errorf("%s contains a removed private deployment pattern %q", displayPath, forbidden.String())
 		}
 	}
 }
@@ -228,12 +269,21 @@ func normalContributorCode(contents string) string {
 			inFence = !inFence
 			continue
 		}
-		if inFence && (section == "Build and test" || section == "Local development" || section == "Test requirements") {
+		if inFence && contributorSection(section) {
 			builder.WriteString(line)
 			builder.WriteByte('\n')
 		}
 	}
 	return builder.String()
+}
+
+func contributorSection(section string) bool {
+	switch section {
+	case "Build and test", "Local development", "Test requirements":
+		return true
+	default:
+		return false
+	}
 }
 
 func TestNormalContributorCommandsAreOffline(t *testing.T) {

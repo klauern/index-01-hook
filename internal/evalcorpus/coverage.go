@@ -38,21 +38,25 @@ func SummarizeCoverage(c Corpus) Coverage {
 		split := summary.Splits[example.Split]
 		split.Recordings++
 		blockers := Eligibility(c, example)
-		if len(blockers) == 0 {
-			summary.Ready++
-			split.Ready++
-			if len(example.SavedOutput) > 0 {
-				summary.ReplayReady++
-				split.ReplayReady++
-			}
-		} else {
-			summary.Blocked++
-			split.Blocked++
-			for _, blocker := range blockers {
-				summary.Blockers[blocker]++
-			}
-		}
+		summary.recordReadiness(&split, blockers, example.SavedOutput)
 		summary.Splits[example.Split] = split
 	}
 	return summary
+}
+
+func (summary *Coverage) recordReadiness(split *SplitCoverage, blockers []string, output []byte) {
+	if len(blockers) > 0 {
+		summary.Blocked++
+		split.Blocked++
+		for _, blocker := range blockers {
+			summary.Blockers[blocker]++
+		}
+		return
+	}
+	summary.Ready++
+	split.Ready++
+	if len(output) > 0 {
+		summary.ReplayReady++
+		split.ReplayReady++
+	}
 }
