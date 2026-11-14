@@ -27,3 +27,13 @@ The restricted runtime could not access existing CodeScene authentication; the a
 No authentication settings, rule thresholds, or check policies changed.
 No live provider tests ran. Container tests were not rerun for this read-path slice; the parent passed its pinned build and SQLite restore test.
 Hosted child checks remain separate and must pass on the published child head.
+
+## Native stack verification
+
+On November 14, official github/gh-stack 0.2.1 created native stack #72 with PR-number-only linking.
+The verified merge order is main, PR #70, then PR #71.
+PR #70 targets main at head 3e945fce766155f1bdace880adc65a40c2154456.
+PR #71 targets refactor/code-health-10-20261112; its initial source head is 8ef178358b939673fd3dce73e3743e5dfa1a2b64.
+GitHub stack metadata and both immediate-parent PR bases matched after registration.
+No force push, rebase, merge, or unrelated stack change ran.
+The local legacy stack catalog remains untouched; the native remote stack is authoritative for this pair.
