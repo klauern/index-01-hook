@@ -42,15 +42,11 @@ func savePrivate(path string, data []byte) error {
 }
 
 func run(args []string, stdout io.Writer) error {
-	flags := flag.NewFlagSet("eval-corpus", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-	input := flags.String("input", "", "private snapshot or ledger")
-	out := flags.String("out", "", "new private corpus path")
-	config := flags.String("config", "", "explicit routing configuration")
-	if err := flags.Parse(args); err != nil || *input == "" || *out == "" || flags.NArg() != 0 {
-		return errors.New("require --input and --out; optional --config")
+	options, err := parseOptions(args)
+	if err != nil {
+		return err
 	}
-	data, err := os.ReadFile(*input)
+	data, err := os.ReadFile(options.input)
 	if err != nil {
 		return errors.New("cannot read source input")
 	}
@@ -58,15 +54,8 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if *config != "" {
-		data, err := os.ReadFile(*config)
-		if err != nil {
-			return errors.New("cannot read routing configuration")
-		}
-		corpus.Routing, err = evalcorpus.DecodeRouting(data)
-		if err != nil {
-			return err
-		}
+	if err := applyConfiguration(&corpus, options.config); err != nil {
+		return err
 	}
 	if err := evalcorpus.Validate(corpus); err != nil {
 		return err
@@ -75,9 +64,32 @@ func run(args []string, stdout io.Writer) error {
 	if err != nil {
 		return errors.New("cannot encode corpus")
 	}
-	if err := savePrivate(*out, append(data, '\n')); err != nil {
+	if err := savePrivate(options.output, append(data, '\n')); err != nil {
 		return err
 	}
+	printSummary(stdout, corpus)
+	return nil
+}
+
+func main() {
+	if err := run(os.Args[1:], os.Stdout); err != nil {
+		fmt.Fprintln(os.Stderr, "eval-corpus:", err)
+		os.Exit(1)
+	}
+}
+
+func applyConfiguration(corpus *evalcorpus.Corpus, path string) error {
+	if path == "" {
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return errors.New("cannot read routing configuration")
+	}
+	corpus.Routing, err = evalcorpus.DecodeRouting(data)
+	return err
+}
+func printSummary(stdout io.Writer, corpus evalcorpus.Corpus) {
 	ready, targets, missingOriginal := 0, 0, 0
 	for _, example := range corpus.Examples {
 		targets += len(example.Targets)
@@ -89,12 +101,23 @@ func run(args []string, stdout io.Writer) error {
 		}
 	}
 	fmt.Fprintf(stdout, "Examples: %d; targets: %d; ready: %d; blocked: %d; missing original transcripts: %d\n", len(corpus.Examples), targets, ready, len(corpus.Examples)-ready, missingOriginal)
-	return nil
 }
 
-func main() {
-	if err := run(os.Args[1:], os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "eval-corpus:", err)
-		os.Exit(1)
+func missingPaths(input, output string) bool { return input == "" || output == "" }
+
+type commandOptions struct{ input, output, config string }
+
+func parseOptions(args []string) (commandOptions, error) {
+	flags := flag.NewFlagSet("eval-corpus", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	input := flags.String("input", "", "private snapshot or ledger")
+	out := flags.String("out", "", "new private corpus path")
+	config := flags.String("config", "", "explicit routing configuration")
+	if err := flags.Parse(args); err != nil {
+		return commandOptions{}, errors.New("require --input and --out; optional --config")
 	}
+	if missingPaths(*input, *out) || flags.NArg() != 0 {
+		return commandOptions{}, errors.New("require --input and --out; optional --config")
+	}
+	return commandOptions{input: *input, output: *out, config: *config}, nil
 }

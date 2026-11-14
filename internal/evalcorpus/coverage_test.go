@@ -23,15 +23,17 @@ func TestCoverageSeparatesReadinessAndEvidence(t *testing.T) {
 		t.Fatal(err)
 	}
 	coverage := SummarizeCoverage(c)
-	if coverage.Recordings != 2 || coverage.Targets != 2 || coverage.Ready != 1 || coverage.Blocked != 1 || coverage.ReplayReady != 1 {
-		t.Fatalf("unexpected coverage: %+v", coverage)
-	}
-	if coverage.Splits["development"].Ready != 1 || coverage.Splits["held_out"].Ready != 0 || coverage.Splits["held_out"].Blocked != 1 {
-		t.Fatalf("blocked held-out input counted as ready: %+v", coverage.Splits)
-	}
-	if coverage.InputProvenance["original"] != 1 || coverage.InputProvenance["missing"] != 1 || coverage.LabelStatus["blocked"] != 1 {
-		t.Fatalf("evidence counts lost: %+v", coverage)
-	}
+	requireEqual(t, coverage.Recordings, 2)
+	requireEqual(t, coverage.Targets, 2)
+	requireEqual(t, coverage.Ready, 1)
+	requireEqual(t, coverage.Blocked, 1)
+	requireEqual(t, coverage.ReplayReady, 1)
+	requireEqual(t, coverage.Splits["development"].Ready, 1)
+	requireEqual(t, coverage.Splits["held_out"].Ready, 0)
+	requireEqual(t, coverage.Splits["held_out"].Blocked, 1)
+	requireEqual(t, coverage.InputProvenance["original"], 1)
+	requireEqual(t, coverage.InputProvenance["missing"], 1)
+	requireEqual(t, coverage.LabelStatus["blocked"], 1)
 	if len(coverage.Blockers) < 2 {
 		t.Fatal("overlapping evidence gaps were hidden")
 	}

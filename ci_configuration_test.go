@@ -22,15 +22,7 @@ func TestCIWorkflowSafetyBoundary(t *testing.T) {
 			t.Errorf("CI workflow has no %s job", job)
 		}
 	}
-	matches := workflowUsesPattern.FindAllStringSubmatch(workflow, -1)
-	if len(matches) == 0 {
-		t.Fatal("CI workflow uses no pinned actions")
-	}
-	for _, match := range matches {
-		if !fullCommitPattern.MatchString(match[1]) {
-			t.Errorf("CI action is not pinned to a full commit: %q", match[0])
-		}
-	}
+	checkPinnedWorkflowActions(t, workflow)
 
 	for _, required := range []string{
 		"permissions:\n  contents: read",
@@ -70,6 +62,20 @@ func TestCIWorkflowSafetyBoundary(t *testing.T) {
 	}
 }
 
+func checkPinnedWorkflowActions(t *testing.T, workflow string) {
+	t.Helper()
+	matches := workflowUsesPattern.FindAllStringSubmatch(workflow, -1)
+	if len(matches) == 0 {
+		t.Fatal("CI workflow uses no pinned actions")
+	}
+	for _, match := range matches {
+		if !fullCommitPattern.MatchString(match[1]) {
+			t.Errorf("CI action is not pinned to a full commit: %q", match[0])
+		}
+	}
+
+}
+
 func TestDependabotCoversGoAndActions(t *testing.T) {
 	contents, err := os.ReadFile(".github/dependabot.yml")
 	if err != nil {
@@ -90,6 +96,20 @@ func TestCIContainerIsolationAndBuilderPin(t *testing.T) {
 		t.Fatalf("read container volume test: %v", err)
 	}
 	text := string(volumeTest)
+	checkIsolatedContainerRuns(t, text)
+
+	dockerfile, err := os.ReadFile("Dockerfile")
+	if err != nil {
+		t.Fatalf("read Dockerfile: %v", err)
+	}
+	const builder = "ARG GO_IMAGE=docker.io/library/golang:1.26.10@sha256:3745f1aa11822297b79113f5e84ce2bffeb039734571c39855809cfe9e5d7be6"
+	if !strings.Contains(string(dockerfile), builder) {
+		t.Error("Dockerfile does not use the approved default builder digest")
+	}
+}
+
+func checkIsolatedContainerRuns(t *testing.T, text string) {
+	t.Helper()
 	runLines := 0
 	for _, line := range strings.Split(text, "\n") {
 		if strings.Contains(line, "docker run ") {
@@ -105,14 +125,6 @@ func TestCIContainerIsolationAndBuilderPin(t *testing.T) {
 		t.Error("container volume test runs no Docker containers")
 	}
 
-	dockerfile, err := os.ReadFile("Dockerfile")
-	if err != nil {
-		t.Fatalf("read Dockerfile: %v", err)
-	}
-	const builder = "ARG GO_IMAGE=docker.io/library/golang:1.26.10@sha256:3745f1aa11822297b79113f5e84ce2bffeb039734571c39855809cfe9e5d7be6"
-	if !strings.Contains(string(dockerfile), builder) {
-		t.Error("Dockerfile does not use the approved default builder digest")
-	}
 }
 
 func TestDockerfileFrontendIsDigestPinned(t *testing.T) {

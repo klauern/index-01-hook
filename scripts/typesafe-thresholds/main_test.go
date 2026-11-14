@@ -4,14 +4,20 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
 
-func thresholdTestRow(a, r, fa, review, agreement float64, injection int) gridRow {
-	return gridRow{Accept: a, Reject: r, FalseAcceptRate: fa, FalseRejectRate: .1, ReviewVolume: review, Agreement: agreement, InjectionAccepts: injection, Accepted: 10, Rejected: 8, Review: int(review * 10)}
+func thresholdTestRow(row gridRow) gridRow {
+	row.FalseRejectRate = .1
+	row.Accepted = 10
+	row.Rejected = 8
+	row.Review = int(row.ReviewVolume * 10)
+	return row
 }
 
 func thresholdFixture(t *testing.T, live bool, rows []gridRow) (config, report) {
@@ -46,9 +52,9 @@ func decodeThresholdOutput(t *testing.T, b []byte) output {
 
 func TestThresholdSelectionTable(t *testing.T) {
 	rows := []gridRow{
-		thresholdTestRow(.8, .2, .01, .20, .7, 0),
-		thresholdTestRow(.9, .2, .01, .20, .8, 0),
-		thresholdTestRow(.9, .3, .01, .10, .9, 0),
+		thresholdTestRow(gridRow{Accept: .8, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .20, Agreement: .7, InjectionAccepts: 0}),
+		thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .20, Agreement: .8, InjectionAccepts: 0}),
+		thresholdTestRow(gridRow{Accept: .9, Reject: .3, FalseAcceptRate: .01, ReviewVolume: .10, Agreement: .9, InjectionAccepts: 0}),
 	}
 	cfg, _ := thresholdFixture(t, true, rows)
 	b, err := run(cfg)
@@ -56,9 +62,8 @@ func TestThresholdSelectionTable(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := decodeThresholdOutput(t, b).Designs[0]
-	if got.SelectedAccept == nil || *got.SelectedAccept != .9 || got.SelectedReject == nil || *got.SelectedReject != .3 {
-		t.Fatalf("selected thresholds: %v/%v", got.SelectedAccept, got.SelectedReject)
-	}
+	assertThreshold(t, got.SelectedAccept, .9)
+	assertThreshold(t, got.SelectedReject, .3)
 	if got.SurvivorCount != 3 || got.Measures.ReviewVolume != .1 {
 		t.Fatalf("selection output: %+v", got)
 	}
@@ -66,14 +71,14 @@ func TestThresholdSelectionTable(t *testing.T) {
 
 func TestInjectedRowsNeverSelectedAndAllInjectedReject(t *testing.T) {
 	cfg, _ := thresholdFixture(t, true, []gridRow{
-		thresholdTestRow(.9, .2, .001, .1, .9, 1),
-		thresholdTestRow(.8, .2, .01, .2, .8, 0),
+		thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .001, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 1}),
+		thresholdTestRow(gridRow{Accept: .8, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .2, Agreement: .8, InjectionAccepts: 0}),
 	})
 	got := decodeThresholdOutput(t, mustRun(t, cfg)).Designs[0]
 	if *got.SelectedAccept != .8 || got.SurvivorCount != 1 {
 		t.Fatalf("injected row selected: %+v", got)
 	}
-	cfg, _ = thresholdFixture(t, true, []gridRow{thresholdTestRow(.9, .2, .001, .1, .9, 1)})
+	cfg, _ = thresholdFixture(t, true, []gridRow{thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .001, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 1})})
 	got = decodeThresholdOutput(t, mustRun(t, cfg)).Designs[0]
 	if got.Decision != "reject" || got.SelectedAccept != nil {
 		t.Fatalf("all injected result: %+v", got)
@@ -82,9 +87,9 @@ func TestInjectedRowsNeverSelectedAndAllInjectedReject(t *testing.T) {
 
 func TestTieBreaks(t *testing.T) {
 	cfg, _ := thresholdFixture(t, true, []gridRow{
-		thresholdTestRow(.8, .3, .01, .1, .8, 0),
-		thresholdTestRow(.9, .2, .01, .1, .9, 0),
-		thresholdTestRow(.9, .4, .01, .1, .95, 0),
+		thresholdTestRow(gridRow{Accept: .8, Reject: .3, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .8, InjectionAccepts: 0}),
+		thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 0}),
+		thresholdTestRow(gridRow{Accept: .9, Reject: .4, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .95, InjectionAccepts: 0}),
 	})
 	got := decodeThresholdOutput(t, mustRun(t, cfg)).Designs[0]
 	if *got.SelectedAccept != .9 || *got.SelectedReject != .4 {
@@ -94,11 +99,14 @@ func TestTieBreaks(t *testing.T) {
 
 func TestNoFeasibleRowReportsDeferAndCandidates(t *testing.T) {
 	cfg, _ := thresholdFixture(t, true, []gridRow{
-		thresholdTestRow(.9, .2, .03, .1, .8, 0),
-		thresholdTestRow(.8, .2, .01, .4, .7, 0),
+		thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .03, ReviewVolume: .1, Agreement: .8, InjectionAccepts: 0}),
+		thresholdTestRow(gridRow{Accept: .8, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .4, Agreement: .7, InjectionAccepts: 0}),
 	})
 	got := decodeThresholdOutput(t, mustRun(t, cfg)).Designs[0]
-	if got.Decision != "defer" || got.FailureCandidates.FewestLimitViolations == nil || got.FailureCandidates.LowestReviewVolume == nil {
+	if got.Decision != "defer" {
+		t.Fatalf("decision=%s, want defer", got.Decision)
+	}
+	if got.FailureCandidates.FewestLimitViolations == nil || got.FailureCandidates.LowestReviewVolume == nil {
 		t.Fatalf("failed candidates: %+v", got)
 	}
 	if got.FailureCandidates.FewestLimitViolations.ViolationCount != 1 {
@@ -107,7 +115,7 @@ func TestNoFeasibleRowReportsDeferAndCandidates(t *testing.T) {
 }
 
 func TestApprovalControlsEnable(t *testing.T) {
-	cfg, _ := thresholdFixture(t, true, []gridRow{thresholdTestRow(.9, .2, .01, .1, .9, 0)})
+	cfg, _ := thresholdFixture(t, true, []gridRow{thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 0})})
 	cfg.LimitsApproved = false
 	got := decodeThresholdOutput(t, mustRun(t, cfg)).Designs[0]
 	if got.Decision != "provisional" || got.Decision == "enable" {
@@ -121,7 +129,7 @@ func TestApprovalControlsEnable(t *testing.T) {
 }
 
 func TestRequestedDesignAbsent(t *testing.T) {
-	cfg, _ := thresholdFixture(t, true, []gridRow{thresholdTestRow(.9, .2, .01, .1, .9, 0)})
+	cfg, _ := thresholdFixture(t, true, []gridRow{thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 0})})
 	cfg.Design = "choice"
 	if _, err := run(cfg); err == nil || !strings.Contains(err.Error(), "requested design \"choice\" is absent from meta.designs") {
 		t.Fatalf("error=%v", err)
@@ -135,7 +143,7 @@ func TestRefusals(t *testing.T) {
 		want string
 	}{
 		{"stale corpus", func(t *testing.T) (config, report) {
-			cfg, r := thresholdFixture(t, true, []gridRow{thresholdTestRow(.9, .2, .01, .1, .9, 0)})
+			cfg, r := thresholdFixture(t, true, []gridRow{thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 0})})
 			r.Meta.CorpusSHA256 = strings.Repeat("0", 64)
 			b, _ := json.Marshal(r)
 			if err := os.WriteFile(cfg.Report, b, 0600); err != nil {
@@ -144,7 +152,7 @@ func TestRefusals(t *testing.T) {
 			return cfg, r
 		}, "corpus sha256 mismatch"},
 		{"not live", func(t *testing.T) (config, report) {
-			return thresholdFixture(t, false, []gridRow{thresholdTestRow(.9, .2, .01, .1, .9, 0)})
+			return thresholdFixture(t, false, []gridRow{thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 0})})
 		}, "meta.live is false"},
 		{"missing heldout", func(t *testing.T) (config, report) {
 			cfg, r := thresholdFixture(t, true, nil)
@@ -156,7 +164,7 @@ func TestRefusals(t *testing.T) {
 			return cfg, r
 		}, "held-out split is missing"},
 		{"heldout has failed calls", func(t *testing.T) (config, report) {
-			cfg, r := thresholdFixture(t, true, []gridRow{thresholdTestRow(.9, .2, .01, .1, .9, 0)})
+			cfg, r := thresholdFixture(t, true, []gridRow{thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 0})})
 			r.Measures["fieldwise"]["heldout"] = measure{Errors: 2, ThresholdGrid: r.Measures["fieldwise"]["heldout"].ThresholdGrid}
 			b, _ := json.Marshal(r)
 			if err := os.WriteFile(cfg.Report, b, 0600); err != nil {
@@ -177,9 +185,9 @@ func TestRefusals(t *testing.T) {
 
 func TestRunIsByteIdenticalAndGridOrderIndependent(t *testing.T) {
 	rows := []gridRow{
-		thresholdTestRow(.8, .2, .01, .2, .8, 0),
-		thresholdTestRow(.9, .2, .01, .1, .9, 0),
-		thresholdTestRow(.9, .3, .01, .1, .9, 0),
+		thresholdTestRow(gridRow{Accept: .8, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .2, Agreement: .8, InjectionAccepts: 0}),
+		thresholdTestRow(gridRow{Accept: .9, Reject: .2, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 0}),
+		thresholdTestRow(gridRow{Accept: .9, Reject: .3, FalseAcceptRate: .01, ReviewVolume: .1, Agreement: .9, InjectionAccepts: 0}),
 	}
 	cfg, _ := thresholdFixture(t, true, rows)
 	first := mustRun(t, cfg)
@@ -202,4 +210,92 @@ func mustRun(t *testing.T, cfg config) []byte {
 		t.Fatal(err)
 	}
 	return b
+}
+
+func assertThreshold(t *testing.T, got *float64, want float64) {
+	t.Helper()
+	if got == nil {
+		t.Fatal("missing threshold")
+	}
+	if *got != want {
+		t.Fatalf("threshold=%v, want %v", *got, want)
+	}
+}
+
+func TestRequestedDesignsPreservesReportOrder(t *testing.T) {
+	tests := []struct {
+		name, spec      string
+		available, want []string
+		errorText       string
+	}{
+		{name: "all", spec: " all ", available: []string{"b", "a", "b"}, want: []string{"b", "a"}},
+		{name: "requested order differs", spec: " a, b, a, ", available: []string{"b", "a", "b"}, want: []string{"b", "a"}},
+		{name: "empty metadata name", available: []string{"", "a"}, want: []string{"", "a"}},
+		{name: "unknown", spec: "missing,a", available: []string{"a"}, errorText: `requested design "missing" is absent from meta.designs`},
+		{name: "none", spec: ",", available: []string{"a"}, errorText: "calibration report has no designs"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := requestedDesigns(tc.spec, tc.available)
+			if tc.errorText != "" {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				if err.Error() != tc.errorText {
+					t.Fatalf("error=%v, want %s", err, tc.errorText)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("designs=%v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSensitivityUsesNearestMatchingAxis(t *testing.T) {
+	selected := gridRow{Accept: .8, Reject: .3, Agreement: .7}
+	rows := []gridRow{
+		{Accept: .8, Reject: .6, Agreement: .9},
+		{Accept: .8, Reject: .4, Agreement: .8},
+		{Accept: .8, Reject: .4, Agreement: .1}, // Equal-distance duplicates retain the first row.
+		{Accept: .8, Reject: .1}, {Accept: .8, Reject: .2},
+		{Accept: .9, Reject: .3}, {Accept: 1, Reject: .3},
+		{Accept: .7, Reject: .3}, {Accept: .6, Reject: .3},
+		{Accept: .81, Reject: .31}, // A nearer diagonal row must not match either axis.
+	}
+	tests := []struct {
+		name string
+		axis sensitivityAxis
+		want thresholdOutput
+	}{
+		{"reject up", sensitivityAxis{reject: true, up: true}, thresholdOutput{.8, .4}},
+		{"reject down", sensitivityAxis{reject: true}, thresholdOutput{.8, .2}},
+		{"accept up", sensitivityAxis{up: true}, thresholdOutput{.9, .3}},
+		{"accept down", sensitivityAxis{}, thresholdOutput{.7, .3}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := neighbor(rows, selected, tc.axis)
+			if got == nil {
+				t.Fatal("missing neighbor")
+			}
+			if got.Accept != tc.want.Accept || got.Reject != tc.want.Reject {
+				t.Fatalf("neighbor=%+v, want %+v", got, tc.want)
+			}
+		})
+	}
+	got := neighbor(rows, selected, sensitivityAxis{reject: true, up: true})
+	if got.Measures.Agreement != .8 {
+		t.Fatalf("duplicate tie chose %+v", got)
+	}
+	if math.Abs(got.Change.Agreement-.1) > 1e-12 {
+		t.Fatalf("agreement change=%v", got.Change.Agreement)
+	}
+	if neighbor([]gridRow{selected}, selected, sensitivityAxis{}) != nil {
+		t.Fatal("equal threshold must not be a neighbor")
+	}
 }

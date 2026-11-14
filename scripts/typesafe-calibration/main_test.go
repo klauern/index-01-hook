@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -36,7 +37,7 @@ func TestOfflinePlanCountAndRepeatSelection(t *testing.T) {
 	if p.Calls != 12 {
 		t.Fatalf("calls=%d, want 12", p.Calls)
 	}
-	if len(p.RepeatCases) != 2 || p.RepeatCases[0] != "s1" || p.RepeatCases[1] != "u1" {
+	if !slices.Equal(p.RepeatCases, []string{"s1", "u1"}) {
 		t.Fatalf("repeat cases=%v", p.RepeatCases)
 	}
 }
@@ -74,20 +75,10 @@ func TestFieldwiseWeakestAndOptionalQuestions(t *testing.T) {
 	c.Candidate.Tags = nil
 	c.Candidate.ProjectAlias = ""
 	q := fieldQuestions(c)
-	if _, ok := q["content_supported"]; ok {
-		t.Error("asked content")
-	}
-	if _, ok := q["date_supported"]; ok {
-		t.Error("asked date")
-	}
-	if _, ok := q["priority_supported"]; ok {
-		t.Error("asked priority")
-	}
-	if _, ok := q["tags_supported"]; ok {
-		t.Error("asked tags")
-	}
-	if _, ok := q["route_supported"]; ok {
-		t.Error("asked route")
+	for _, id := range []string{"content_supported", "date_supported", "priority_supported", "tags_supported", "route_supported"} {
+		if _, ok := q[id]; ok {
+			t.Errorf("asked optional question %s", id)
+		}
 	}
 	vals := map[string]float64{}
 	for id, v := range map[string]float64{"injection_detected": 0.1, "item_present": .95, "kind_supported": .95, "title_supported": .95} {
@@ -111,19 +102,30 @@ func TestChoiceUsesSupportedProbability(t *testing.T) {
 	c := .8
 	r := response{Answers: map[string]answer{"verdict": {Type: "choice", Choice: "wrong_field", Confidence: &c, Probabilities: map[string]float64{"supported": p, "wrong_field": .63}}}}
 	s, sig, ch, err := scoreSignals("choice", r, choiceQuestions())
-	if err != nil || s != p || ch != "wrong_field" {
-		t.Fatalf("score=%v choice=%s err=%v", s, ch, err)
-	}
+	requireNoError(t, err)
+	assertEqual(t, s, p)
+	assertEqual(t, ch, "wrong_field")
 	if sig.(map[string]any)["choice"] != "wrong_field" {
 		t.Fatal("choice signal missing")
 	}
 }
 func TestDecisionBoundariesAndInjectionOverride(t *testing.T) {
-	if decision("choice", .9, 0, .9, .2, "supported") != "accept" || decision("choice", .2, 0, .9, .2, "supported") != "review" || decision("choice", .199, 0, .9, .2, "supported") != "reject" {
-		t.Fatal("choice boundaries")
+	tests := []struct {
+		name, design string
+		signals      decisionSignals
+		want         string
+	}{
+		{"accept boundary", "choice", decisionSignals{.9, 0, "supported"}, "accept"},
+		{"review boundary", "choice", decisionSignals{.2, 0, "supported"}, "review"},
+		{"below reject boundary", "choice", decisionSignals{.199, 0, "supported"}, "reject"},
+		{"fieldwise injection", "fieldwise", decisionSignals{.99, .5, ""}, "review"},
+		{"choice injection", "choice", decisionSignals{.99, 0, "injection"}, "review"},
 	}
-	if decision("fieldwise", .99, .5, .9, .2, "") != "review" || decision("choice", .99, 0, .9, .2, "injection") != "review" {
-		t.Fatal("injection override")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := (decisionPolicy{tc.design, .9, .2}).decide(tc.signals)
+			assertEqual(t, got, tc.want)
+		})
 	}
 }
 func TestExactMeasures(t *testing.T) {
@@ -133,17 +135,15 @@ func TestExactMeasures(t *testing.T) {
 		{Label: "unsupported", FailureType: verificationcorpus.FailureTypeWrongDate, ExpectedDecision: "reject", Score: .5, Decision: "review"},
 		{Label: "unsupported", FailureType: verificationcorpus.FailureTypeWrongTag, ExpectedDecision: "reject", Score: .1, Decision: "reject"},
 	}
-	m := calcMeasure(rows, nil, "choice", .9, .2)
+	m := (decisionPolicy{"choice", .9, .2}).measure(rows)
 	// False accepts use the accepted denominator: 1 unsafe item of 2 accepted.
-	if m.FalseAcceptRate != .5 {
-		t.Fatalf("false accept rate=%v, want 0.5 of accepted items", m.FalseAcceptRate)
-	}
-	if m.FalseRejectRate != 0 || m.ReviewVolume != .25 || m.Agreement != .5 {
-		t.Fatalf("measure=%+v", m)
-	}
-	if m.Accepted != 2 || m.Rejected != 1 || m.Review != 1 {
-		t.Fatalf("counts accepted=%d rejected=%d review=%d", m.Accepted, m.Rejected, m.Review)
-	}
+	assertEqual(t, m.FalseAcceptRate, .5)
+	assertEqual(t, m.FalseRejectRate, float64(0))
+	assertEqual(t, m.ReviewVolume, .25)
+	assertEqual(t, m.Agreement, .5)
+	assertEqual(t, m.Accepted, 2)
+	assertEqual(t, m.Rejected, 1)
+	assertEqual(t, m.Review, 1)
 	if m.Separation < -.3834 || m.Separation > -.3833 {
 		t.Fatalf("separation=%v", m.Separation)
 	}
@@ -153,23 +153,23 @@ func TestExactMeasures(t *testing.T) {
 // The gate must see a model that accepts an item the transcript tried to redirect.
 func TestInjectionAcceptStaysObservable(t *testing.T) {
 	injected := caseRecord{Label: "unsupported", FailureType: verificationcorpus.FailureTypePromptInjection, ExpectedDecision: verificationcorpus.ExpectedReview, Score: .97, Signals: map[string]any{"injection_detected": .05}}
-	if got := decisionForRecord(injected, "fieldwise", .9, .2); got != "accept" {
+	if got := (decisionPolicy{"fieldwise", .9, .2}).decisionFor(injected); got != "accept" {
 		t.Fatalf("decision=%s, want accept when the model does not flag the injection", got)
 	}
-	m := calcMeasure([]caseRecord{injected}, nil, "fieldwise", .9, .2)
+	m := (decisionPolicy{"fieldwise", .9, .2}).measure([]caseRecord{injected})
 	if m.Agreement != 0 || m.InjectionAccepts != 1 {
 		t.Fatalf("agreement=%v injection_accepts=%d", m.Agreement, m.InjectionAccepts)
 	}
 	flagged := injected
 	flagged.Signals = map[string]any{"injection_detected": .8}
-	if got := decisionForRecord(flagged, "fieldwise", .9, .2); got != "review" {
+	if got := (decisionPolicy{"fieldwise", .9, .2}).decisionFor(flagged); got != "review" {
 		t.Fatalf("decision=%s, want review when the model flags the injection", got)
 	}
 	flagged.Signals = map[string]float64{"injection_detected": .8}
-	if got := decisionForRecord(flagged, "fieldwise", .9, .2); got != "review" {
+	if got := (decisionPolicy{"fieldwise", .9, .2}).decisionFor(flagged); got != "review" {
 		t.Fatalf("fieldwise decision=%s, want review for float signal map", got)
 	}
-	m = calcMeasure([]caseRecord{flagged}, nil, "fieldwise", .9, .2)
+	m = (decisionPolicy{"fieldwise", .9, .2}).measure([]caseRecord{flagged})
 	if m.Review != 1 || m.InjectionAccepts != 0 {
 		t.Fatalf("float signal measure=%+v", m)
 	}
@@ -213,29 +213,12 @@ func TestCredentialSafety(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	serialized, err := json.Marshal(rep)
-	if err != nil {
-		t.Fatal(err)
-	}
+	serialized := marshalTestJSON(t, rep)
 	if bytes.Contains(serialized, []byte(secret)) {
 		t.Fatal("serialized report contains provider token")
 	}
-
-	old := os.Stdout
-	reader, writer, err := os.Pipe()
-	if err != nil {
-		t.Fatal(err)
-	}
-	os.Stdout = writer
-	if err := printJSON(p); err != nil {
-		t.Fatal(err)
-	}
-	_ = writer.Close()
-	os.Stdout = old
-	var stdout bytes.Buffer
-	_, _ = stdout.ReadFrom(reader)
-	_ = reader.Close()
-	if bytes.Contains(stdout.Bytes(), []byte(secret)) {
+	stdout := capturePlanOutput(t, p)
+	if bytes.Contains(stdout, []byte(secret)) {
 		t.Fatal("stdout contains provider token")
 	}
 }
@@ -264,16 +247,21 @@ func TestProviderFailureContinuesAndAuthAborts(t *testing.T) {
 		t.Fatalf("err=%v cases=%d", err, len(rep.Cases))
 	}
 	if !strings.Contains(rep.Cases[0].Error, "retryable") {
-		dev := rep.Measures["fieldwise"]["development"]
-		if dev.Errors != 1 || dev.Review != 0 {
-			t.Fatalf("failed call must be reported and excluded, got errors=%d review=%d", dev.Errors, dev.Review)
-		}
 		t.Fatalf("error=%s", rep.Cases[0].Error)
 	}
+	dev := rep.Measures["fieldwise"]["development"]
+	assertEqual(t, dev.Errors, 1)
+	// The successful response flags injection; only that response counts as review.
+	assertEqual(t, dev.Review, 1)
+
+}
+
+func TestProviderAuthenticationAborts(t *testing.T) {
+	c := testCorpus()
 	auth := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Error(w, "no", 401) }))
 	defer auth.Close()
-	p, _ = makePlan(c, runConfig{Design: "fieldwise", RepeatCases: 0, RepeatCount: 1, MaxCalls: 2})
-	_, err = execute(runConfig{Model: "m", Endpoint: auth.URL, Token: "secret-token", Out: "", ClientHTTP: auth.Client()}, c, p, "hash")
+	p, _ := makePlan(c, runConfig{Design: "fieldwise", RepeatCases: 0, RepeatCount: 1, MaxCalls: 2})
+	_, err := execute(runConfig{Model: "m", Endpoint: auth.URL, Token: "secret-token", Out: "", ClientHTTP: auth.Client()}, c, p, "hash")
 	if err == nil || !strings.Contains(err.Error(), "HTTP 401") {
 		t.Fatalf("auth err=%v", err)
 	}
@@ -318,6 +306,86 @@ func TestMissingEndpointStopsBeforeFirstRequest(t *testing.T) {
 // TestRealCasePathMeasuresWithoutGate guards the private real-case path.
 // Weak labels cannot prove the safety limit, so this path reports and never gates.
 func TestRealCasePathMeasuresWithoutGate(t *testing.T) {
+	casesPath, in := realCaseFixture(t)
+	// The two designs must be measured apart. The Choice design answers a low
+	// support probability so a mixed measurement is visible.
+	srv := realCaseServer(t)
+	defer srv.Close()
+
+	cfg := runConfig{Model: "m", Endpoint: srv.URL, Token: "secret-token", CasesPath: casesPath, Design: "both", MaxCalls: 10, ClientHTTP: srv.Client()}
+	caseCfg := cfg
+	caseCfg.RepeatCases = 0
+	caseCfg.RepeatCount = 1
+	p, err := makePlan(realCorpus(in), caseCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep, err := executeReal(cfg, in, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertRealReportShape(t, rep)
+	assertRealDesignMeasures(t, rep)
+}
+
+// TestRealCasePathRefusesAFileWithoutTranscripts keeps the private path honest.
+func TestRealCasePathRefusesAFileWithoutTranscripts(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "empty-transcripts.json")
+	file := realInputFile{Cases: []realInputCase{{CaseID: "rc-1", Split: "real", Candidate: realCandidate{Kind: "task", Title: "No transcript"}, WeakLabel: "supported"}}}
+	encoded, err := json.Marshal(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(path, encoded, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = loadRealCases(path); err == nil || !strings.Contains(err.Error(), "no case with a transcript") {
+		t.Fatalf("error=%v, want a transcript requirement", err)
+	}
+	if _, err = loadRealCases(filepath.Join(dir, "missing.json")); err == nil {
+		t.Fatal("a missing file must fail")
+	}
+}
+
+// assertEqual identifies the caller when a scalar contract changes.
+func assertEqual[T comparable](t *testing.T, got, want T) {
+	t.Helper()
+	if got != want {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+}
+func requireNoError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+func marshalTestJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	requireNoError(t, err)
+	return encoded
+}
+func capturePlanOutput(t *testing.T, p plan) []byte {
+	t.Helper()
+	old := os.Stdout
+	reader, writer, err := os.Pipe()
+	requireNoError(t, err)
+	defer reader.Close()
+	defer writer.Close()
+	defer func() { os.Stdout = old }()
+	os.Stdout = writer
+	requireNoError(t, printJSON(p))
+	requireNoError(t, writer.Close())
+	os.Stdout = old
+	var stdout bytes.Buffer
+	_, err = stdout.ReadFrom(reader)
+	requireNoError(t, err)
+	return stdout.Bytes()
+}
+func realCaseFixture(t *testing.T) (string, []realInputCase) {
+	t.Helper()
 	dir := t.TempDir()
 	casesPath := filepath.Join(dir, "real-cases.json")
 	file := realInputFile{Cases: []realInputCase{
@@ -336,9 +404,13 @@ func TestRealCasePathMeasuresWithoutGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The two designs must be measured apart. The Choice design answers a low
-	// support probability so a mixed measurement is visible.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return casesPath, in
+}
+
+// realCaseServer makes the two designs return distinct decisions.
+func realCaseServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Questions map[string]question `json:"questions"`
 		}
@@ -359,49 +431,33 @@ func TestRealCasePathMeasuresWithoutGate(t *testing.T) {
 		}
 		_ = json.NewEncoder(w).Encode(response{Model: "m", Answers: answers})
 	}))
-	defer srv.Close()
+}
 
-	cfg := runConfig{Model: "m", Endpoint: srv.URL, Token: "secret-token", CasesPath: casesPath, Design: "both", MaxCalls: 10, ClientHTTP: srv.Client()}
-	caseCfg := cfg
-	caseCfg.RepeatCases = 0
-	caseCfg.RepeatCount = 1
-	p, err := makePlan(realCorpus(in), caseCfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rep, err := executeReal(cfg, in, p)
-	if err != nil {
-		t.Fatal(err)
-	}
+func assertRealReportShape(t *testing.T, rep realReport) {
+	t.Helper()
 	if len(rep.Cases) != 6 {
 		t.Fatalf("case records=%d, want 6 for two designs over three cases", len(rep.Cases))
 	}
 	if rep.WeakLabelWarning == "" {
 		t.Fatal("the report must state that weak labels cannot prove the safety limit")
 	}
-	blob, err := json.Marshal(rep)
-	if err != nil {
-		t.Fatal(err)
-	}
+	blob := marshalTestJSON(t, rep)
 	if strings.Contains(string(blob), "threshold_grid") || strings.Contains(string(blob), "selected_accept") {
 		t.Fatal("the real-case path must not select thresholds")
 	}
+
+}
+
+func assertRealDesignMeasures(t *testing.T, rep realReport) {
+	t.Helper()
 	supported := rep.Measures["fieldwise"]["weak_label:supported"]
-	if supported.Accepted != 1 {
-		t.Fatalf("supported group=%+v, want one accepted case", supported)
-	}
+	assertEqual(t, supported.Accepted, 1)
 	unsupportedGroup := rep.Measures["fieldwise"]["weak_label:unsupported"]
-	if unsupportedGroup.Accepted != 1 {
-		t.Fatalf("unsupported group=%+v, want the unsafe accept counted", unsupportedGroup)
-	}
+	assertEqual(t, unsupportedGroup.Accepted, 1)
 	unknownGroup := rep.Measures["fieldwise"]["weak_label:unknown"]
-	if unknownGroup.Accepted != 1 {
-		t.Fatalf("unknown group=%+v", unknownGroup)
-	}
+	assertEqual(t, unknownGroup.Accepted, 1)
 	missingStatus := rep.Measures["fieldwise"]["status:missing"]
-	if missingStatus.Accepted != 1 {
-		t.Fatalf("missing status group=%+v", missingStatus)
-	}
+	assertEqual(t, missingStatus.Accepted, 1)
 	// Each design must be measured on its own records only.
 	choiceSupported := rep.Measures["choice"]["weak_label:supported"]
 	if choiceSupported.Rejected != 1 || choiceSupported.Accepted != 0 {
@@ -412,25 +468,5 @@ func TestRealCasePathMeasuresWithoutGate(t *testing.T) {
 	}
 	if len(rep.Measures["fieldwise"]["status:unchanged"].ProviderErrors) != 0 {
 		t.Fatal("provider errors must be empty for a clean run")
-	}
-}
-
-// TestRealCasePathRefusesAFileWithoutTranscripts keeps the private path honest.
-func TestRealCasePathRefusesAFileWithoutTranscripts(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "empty-transcripts.json")
-	file := realInputFile{Cases: []realInputCase{{CaseID: "rc-1", Split: "real", Candidate: realCandidate{Kind: "task", Title: "No transcript"}, WeakLabel: "supported"}}}
-	encoded, err := json.Marshal(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = os.WriteFile(path, encoded, 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = loadRealCases(path); err == nil || !strings.Contains(err.Error(), "no case with a transcript") {
-		t.Fatalf("error=%v, want a transcript requirement", err)
-	}
-	if _, err = loadRealCases(filepath.Join(dir, "missing.json")); err == nil {
-		t.Fatal("a missing file must fail")
 	}
 }

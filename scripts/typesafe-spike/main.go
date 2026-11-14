@@ -47,11 +47,9 @@ func main() {
 		"latency_ms":       nil,
 		"token_usage":      nil,
 	}
-	if report["model"] == "" {
-		report["model"] = "jev-1.13.0"
-	}
+	report["model"] = spikeModel(report["model"])
 	token := strings.TrimSpace(os.Getenv("INDEX01_TYPESAFE_TOKEN"))
-	if token == "" || os.Getenv("INDEX01_TYPESAFE_SPIKE_APPROVED") != "true" {
+	if !liveSpikeApproved(token) {
 		report["note"] = "No live request was made. Set INDEX01_TYPESAFE_SPIKE_APPROVED=true with a server-side token for the synthetic trial."
 		printReport(report)
 		return
@@ -76,11 +74,7 @@ func main() {
 		}
 		entry := map[string]any{"fabricated": item.Fabricated, "unsupported_probability": unsupported, "latency_ms": time.Since(started).Milliseconds(), "input_tokens": answer.Usage.Input, "output_tokens": answer.Usage.Output}
 		results = append(results, entry)
-		if item.Fabricated {
-			fabricated = append(fabricated, unsupported)
-		} else {
-			supported = append(supported, unsupported)
-		}
+		supported, fabricated = collectScores(item, unsupported, supported, fabricated)
 	}
 	report["review_volume"] = float64(reviewCount) / float64(len(candidates))
 	report["latency_ms"] = totalLatency
@@ -94,7 +88,44 @@ func main() {
 	printReport(report)
 }
 
+func spikeModel(configured any) any {
+	if configured == "" {
+		return "jev-1.13.0"
+	}
+	return configured
+}
+
+func liveSpikeApproved(token string) bool {
+	return token != "" && os.Getenv("INDEX01_TYPESAFE_SPIKE_APPROVED") == "true"
+}
+
+func collectScores(item candidate, score float64, supported, fabricated []float64) ([]float64, []float64) {
+	if item.Fabricated {
+		return supported, append(fabricated, score)
+	}
+	return append(supported, score), fabricated
+}
+
 func loadCandidates() ([]candidate, error) {
+	scenarios, err := loadScenarioCandidates()
+	if err != nil {
+		return nil, err
+	}
+	feedback, err := loadFeedbackCandidates()
+	if err != nil {
+		return nil, err
+	}
+	return withFabricatedCandidates(append(scenarios, feedback...)), nil
+}
+
+func appendCandidateItems(out []candidate, text string, items []map[string]any) []candidate {
+	for _, item := range items {
+		out = append(out, candidate{Transcript: text, Item: item})
+	}
+	return out
+}
+
+func loadScenarioCandidates() ([]candidate, error) {
 	var scenarios []struct {
 		Turns []struct {
 			Message struct {
@@ -119,11 +150,13 @@ func loadCandidates() ([]candidate, error) {
 			if err := json.Unmarshal(turn.Output, &output); err != nil {
 				continue
 			}
-			for _, item := range output.Items {
-				candidates = append(candidates, candidate{Transcript: turn.Message.Text, Item: item})
-			}
+			candidates = appendCandidateItems(candidates, turn.Message.Text, output.Items)
 		}
 	}
+	return candidates, nil
+}
+
+func loadFeedbackCandidates() ([]candidate, error) {
 	var corpus struct {
 		Examples []struct {
 			Input struct {
@@ -134,18 +167,21 @@ func loadCandidates() ([]candidate, error) {
 			} `json:"saved_output"`
 		} `json:"examples"`
 	}
-	data, err = os.ReadFile("testdata/evaluation/feedback-corpus.json")
+	data, err := os.ReadFile("testdata/evaluation/feedback-corpus.json")
 	if err != nil {
 		return nil, err
 	}
 	if err := json.Unmarshal(data, &corpus); err != nil {
 		return nil, err
 	}
+	var candidates []candidate
 	for _, example := range corpus.Examples {
-		for _, item := range example.SavedOutput.Items {
-			candidates = append(candidates, candidate{Transcript: example.Input.Text, Item: item})
-		}
+		candidates = appendCandidateItems(candidates, example.Input.Text, example.SavedOutput.Items)
 	}
+	return candidates, nil
+}
+
+func withFabricatedCandidates(candidates []candidate) []candidate {
 	original := append([]candidate(nil), candidates...)
 	for _, item := range original {
 		fabricated := item
@@ -158,7 +194,7 @@ func loadCandidates() ([]candidate, error) {
 		}
 		candidates = append(candidates, fabricated)
 	}
-	return candidates, nil
+	return candidates
 }
 
 func evaluate(token, model string, item candidate) (answerEnvelope, error) {

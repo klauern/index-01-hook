@@ -54,7 +54,7 @@ func TestPublicInfrastructureOwnsOnlyGeneratedCluster(t *testing.T) {
 	collision := strings.Index(text, "generated kind cluster name already exists")
 	owned := strings.Index(text, "cluster_created=1\nrun_step kind-create")
 	create := strings.Index(text, "kind create cluster")
-	if collision < 0 || owned <= collision || create <= owned {
+	if !orderedClusterOwnership(collision, owned, create) {
 		t.Error("Kind cluster ownership is not established after collision checks and before creation")
 	}
 	for _, required := range []string{
@@ -68,6 +68,13 @@ func TestPublicInfrastructureOwnsOnlyGeneratedCluster(t *testing.T) {
 			t.Errorf("infrastructure validation does not contain %q", required)
 		}
 	}
+}
+
+func orderedClusterOwnership(collision, owned, create int) bool {
+	if collision < 0 {
+		return false
+	}
+	return owned > collision && create > owned
 }
 
 func TestKubernetesHTTPSPolicyExcludesSpecialUseRanges(t *testing.T) {

@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -74,62 +75,91 @@ func TestWorkSessionExcludesOtherWorktreesAndReleasesAfterExit(t *testing.T) {
 	other := filepath.Join(t.TempDir(), "linked")
 	git(t, repo, "worktree", "add", "-qb", "other", other)
 
-	first := helper(binary, repo, "sh", "-c", "echo ready; read -r value")
-	stdin, err := first.StdinPipe()
+	first := startSessionHolder(t, helper(binary, repo, "sh", "-c", "echo ready; read -r value"))
+	assertSessionContention(t, helper(binary, other, "sh", "-c", "echo must-not-run"))
+	first.finish(t)
+	assertSessionExit(t, helper(binary, other, "sh", "-c", "exit 7"), 7)
+	assertSessionAvailable(t, helper(binary, repo, "true"))
+
+	// A killed holder must not leave a stale lock.
+	killed := startSessionHolder(t, helper(binary, repo, "sh", "-c", "echo ready; read -r value"))
+	killed.kill(t)
+	assertSessionAvailable(t, helper(binary, other, "true"))
+}
+
+// sessionHolder owns a live child and always registers cleanup before assertions.
+type sessionHolder struct {
+	command *exec.Cmd
+	input   io.WriteCloser
+}
+
+func startSessionHolder(t *testing.T, command *exec.Cmd) sessionHolder {
+	t.Helper()
+	input, err := command.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
-	stdout, err := first.StdoutPipe()
+	output, err := command.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
 	}
 	var stderr bytes.Buffer
-	first.Stderr = &stderr
-	if err := first.Start(); err != nil {
+	command.Stderr = &stderr
+	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { stdin.Close(); first.Process.Kill(); first.Wait() })
-	ready := bufio.NewScanner(stdout)
+	t.Cleanup(func() { input.Close(); command.Process.Kill(); command.Wait() })
+	ready := bufio.NewScanner(output)
 	if !ready.Scan() || ready.Text() != "ready" {
 		t.Fatalf("holder did not start: %s", stderr.String())
 	}
+	return sessionHolder{command: command, input: input}
+}
 
-	output, err := helper(binary, other, "sh", "-c", "echo must-not-run").CombinedOutput()
+func (holder sessionHolder) finish(t *testing.T) {
+	t.Helper()
+	if _, err := holder.input.Write([]byte("done\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := holder.command.Wait(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func (holder sessionHolder) kill(t *testing.T) {
+	t.Helper()
+	if err := holder.command.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	holder.command.Wait()
+}
+
+func assertSessionContention(t *testing.T, command *exec.Cmd) {
+	t.Helper()
+	output, err := command.CombinedOutput()
 	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 75 {
 		t.Fatalf("contender = %v, %s", err, output)
 	}
 	if strings.Contains(string(output), "must-not-run") || !strings.Contains(string(output), errBusy.Error()) {
 		t.Fatalf("unexpected contention output: %s", output)
 	}
-	stdin.Write([]byte("done\n"))
-	if err := first.Wait(); err != nil {
-		t.Fatal(err)
-	}
-	if output, err := helper(binary, other, "sh", "-c", "exit 7").CombinedOutput(); err == nil {
+}
+
+func assertSessionExit(t *testing.T, command *exec.Cmd, status int) {
+	t.Helper()
+	output, err := command.CombinedOutput()
+	if err == nil {
 		t.Fatalf("command failure was lost: %s", output)
-	} else if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 7 {
-		t.Fatalf("command exit = %v", err)
 	}
-	if output, err := helper(binary, repo, "true").CombinedOutput(); err != nil {
+	if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != status {
+		t.Fatalf("command exit = %v, want %d", err, status)
+	}
+}
+
+func assertSessionAvailable(t *testing.T, command *exec.Cmd) {
+	t.Helper()
+	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("lock not released: %v: %s", err, output)
-	}
-	// A killed holder must not leave a stale lock.
-	killed := helper(binary, repo, "sh", "-c", "echo ready; read -r value")
-	input, _ := killed.StdinPipe()
-	defer input.Close()
-	pipe, _ := killed.StdoutPipe()
-	if err := killed.Start(); err != nil {
-		t.Fatal(err)
-	}
-	if !bufio.NewScanner(pipe).Scan() {
-		t.Fatal("second holder did not start")
-	}
-	if err := killed.Process.Kill(); err != nil {
-		t.Fatal(err)
-	}
-	killed.Wait()
-	if output, err := helper(binary, other, "true").CombinedOutput(); err != nil {
-		t.Fatalf("killed holder retained lock: %v: %s", err, output)
 	}
 }
 
@@ -193,6 +223,19 @@ func TestFixtureSubprocessesIgnoreGitLocationOverrides(t *testing.T) {
 	fixture := t.TempDir()
 	git(t, fixture, "init", "-q")
 	git(t, fixture, "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "Fixture baseline")
+	assertFixtureSessionRepository(t, binary, fixture)
+	if err := helper(binary, t.TempDir(), "true").Run(); err == nil {
+		t.Error("session accepted a non-repository through inherited Git overrides")
+	}
+	if got := cleanGit(outer, "rev-parse", "HEAD"); got != outerHead {
+		t.Errorf("fixture commands changed outer HEAD: %s -> %s", outerHead, got)
+	}
+	assertUnchangedIndex(t, outerIndex, indexBefore)
+}
+
+// assertFixtureSessionRepository checks the child command's real repository path.
+func assertFixtureSessionRepository(t *testing.T, binary, fixture string) {
+	t.Helper()
 	if _, err := os.Stat(filepath.Join(fixture, ".git")); err != nil {
 		t.Errorf("fixture repository was not created: %v", err)
 	} else {
@@ -207,12 +250,12 @@ func TestFixtureSubprocessesIgnoreGitLocationOverrides(t *testing.T) {
 			t.Errorf("session repository = %q (%v), want %q", got, err, want)
 		}
 	}
-	if err := helper(binary, t.TempDir(), "true").Run(); err == nil {
-		t.Error("session accepted a non-repository through inherited Git overrides")
-	}
-	if got := cleanGit(outer, "rev-parse", "HEAD"); got != outerHead {
-		t.Errorf("fixture commands changed outer HEAD: %s -> %s", outerHead, got)
-	}
+}
+
+// assertUnchangedIndex checks that fixture commands preserved the outer index bytes.
+func assertUnchangedIndex(t *testing.T, outerIndex string, indexBefore []byte) {
+	t.Helper()
+
 	indexAfter, err := os.ReadFile(outerIndex)
 	if err != nil || !bytes.Equal(indexAfter, indexBefore) {
 		t.Errorf("fixture commands changed outer index: %v", err)

@@ -57,37 +57,90 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		TickTickNoteProjectID:    getenv("INDEX01_TICKTICK_NOTE_PROJECT_ID"),
 		WorkerOwner:              getenv("INDEX01_WORKER_OWNER"),
 	}
-	if raw := getenv("INDEX01_ALLOW_LEGACY_WEBHOOK_TOKEN"); raw != "" {
-		legacy, err := strconv.ParseBool(raw)
-		if err != nil {
-			return Config{}, fmt.Errorf("INDEX01_ALLOW_LEGACY_WEBHOOK_TOKEN must be a boolean")
-		}
-		cfg.AllowLegacyWebhookToken = legacy
+	stages := []func(func(string) string) error{
+		cfg.loadVerification,
+		cfg.loadTypeSafeProvider,
+		cfg.loadDeepSeekProvider,
+		cfg.loadTimeZone,
+		cfg.loadEvaluationRetention,
+		cfg.loadEvaluationPolling,
+		cfg.loadTickTickRouting,
+		cfg.loadRoutingDescriptions,
+		cfg.loadHTTPStorage,
 	}
-	rawVerify := getenv("INDEX01_TYPESAFE_VERIFY")
-	if rawVerify != "" {
-		verify, err := strconv.ParseBool(rawVerify)
-		if err != nil {
-			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_VERIFY must be a boolean")
-		}
-		if verify {
-			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_VERIFY is not approved; use INDEX01_TYPESAFE_SHADOW")
+	for _, stage := range stages {
+		if err := stage(getenv); err != nil {
+			return Config{}, err
 		}
 	}
-	rawShadow := getenv("INDEX01_TYPESAFE_SHADOW")
-	if rawShadow != "" {
-		shadow, err := strconv.ParseBool(rawShadow)
-		if err != nil {
-			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_SHADOW must be a boolean")
-		}
-		cfg.TypeSafeShadow = shadow
+	return cfg, nil
+}
+
+// configValue binds a supplied value to its diagnostic name.
+type configValue struct{ raw, variable string }
+
+// boolean parses an optional environment flag.
+func (value configValue) boolean() (bool, error) {
+	raw, variable := value.raw, value.variable
+	if raw == "" {
+		return false, nil
 	}
-	if (cfg.TypeSafeVerify || cfg.TypeSafeShadow) && strings.TrimSpace(cfg.TypeSafeToken) == "" {
-		return Config{}, fmt.Errorf("INDEX01_TYPESAFE_TOKEN is required when verification is enabled")
+	parsed, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("%s must be a boolean", variable)
 	}
+	return parsed, nil
+}
+
+// loadVerification applies authentication flags before provider configuration.
+func (cfg *Config) loadVerification(getenv func(string) string) error {
+	legacy, err := (configValue{getenv("INDEX01_ALLOW_LEGACY_WEBHOOK_TOKEN"), "INDEX01_ALLOW_LEGACY_WEBHOOK_TOKEN"}).boolean()
+	if err != nil {
+		return err
+	}
+	cfg.AllowLegacyWebhookToken = legacy
+	if err := rejectProductionVerification(getenv("INDEX01_TYPESAFE_VERIFY")); err != nil {
+		return err
+	}
+	shadow, err := (configValue{getenv("INDEX01_TYPESAFE_SHADOW"), "INDEX01_TYPESAFE_SHADOW"}).boolean()
+	if err != nil {
+		return err
+	}
+	cfg.TypeSafeShadow = shadow
+	return cfg.validateVerificationToken()
+}
+
+// rejectProductionVerification keeps production verification disabled.
+func rejectProductionVerification(raw string) error {
+	verify, err := (configValue{raw, "INDEX01_TYPESAFE_VERIFY"}).boolean()
+	if err != nil {
+		return err
+	}
+	if verify {
+		return fmt.Errorf("INDEX01_TYPESAFE_VERIFY is not approved; use INDEX01_TYPESAFE_SHADOW")
+	}
+	return nil
+}
+
+// verificationEnabled includes shadow and production mode for shared validation.
+func (cfg Config) verificationEnabled() bool { return cfg.TypeSafeVerify || cfg.TypeSafeShadow }
+
+// validateVerificationToken rejects missing credentials for enabled modes.
+func (cfg Config) validateVerificationToken() error {
+	if !cfg.verificationEnabled() {
+		return nil
+	}
+	if strings.TrimSpace(cfg.TypeSafeToken) == "" {
+		return fmt.Errorf("INDEX01_TYPESAFE_TOKEN is required when verification is enabled")
+	}
+	return nil
+}
+
+// loadTypeSafeProvider applies one configuration stage without changing validation order.
+func (cfg *Config) loadTypeSafeProvider(getenv func(string) string) error {
 	if rawModel := getenv("INDEX01_TYPESAFE_MODEL"); rawModel != "" {
 		if strings.TrimSpace(rawModel) == "" || !safeProviderIdentifier(strings.TrimSpace(rawModel)) {
-			return Config{}, fmt.Errorf("INDEX01_TYPESAFE_MODEL is invalid")
+			return fmt.Errorf("INDEX01_TYPESAFE_MODEL is invalid")
 		}
 		cfg.TypeSafeModel = strings.TrimSpace(rawModel)
 	}
@@ -95,103 +148,146 @@ func LoadConfig(getenv func(string) string) (Config, error) {
 		cfg.TypeSafeEndpoint = strings.TrimSpace(rawEndpoint)
 	}
 	if err := validateTypeSafeEndpoint(cfg.TypeSafeEndpoint); err != nil {
-		return Config{}, fmt.Errorf("INDEX01_TYPESAFE_ENDPOINT is invalid")
+		return fmt.Errorf("INDEX01_TYPESAFE_ENDPOINT is invalid")
 	}
+
+	return nil
+}
+
+// loadDeepSeekProvider applies one configuration stage without changing validation order.
+func (cfg *Config) loadDeepSeekProvider(getenv func(string) string) error {
 	if err := validateWebhookTokenWithLegacy(cfg.Token, cfg.AllowLegacyWebhookToken); err != nil {
-		return Config{}, err
+		return err
 	}
 	if strings.TrimSpace(cfg.DeepSeekToken) == "" {
-		return Config{}, fmt.Errorf("INDEX01_DEEPSEEK_TOKEN is required")
+		return fmt.Errorf("INDEX01_DEEPSEEK_TOKEN is required")
 	}
 	rawModel := getenv("INDEX01_DEEPSEEK_MODEL")
 	if rawModel != "" && strings.TrimSpace(rawModel) == "" {
-		return Config{}, fmt.Errorf("INDEX01_DEEPSEEK_MODEL must not be blank")
+		return fmt.Errorf("INDEX01_DEEPSEEK_MODEL must not be blank")
 	}
 	if rawModel != "" {
 		cfg.DeepSeekModel = strings.TrimSpace(rawModel)
 	}
 	if !safeProviderIdentifier(cfg.DeepSeekModel) {
-		return Config{}, fmt.Errorf("INDEX01_DEEPSEEK_MODEL is invalid")
+		return fmt.Errorf("INDEX01_DEEPSEEK_MODEL is invalid")
 	}
+
+	return nil
+}
+
+// loadTimeZone applies one configuration stage without changing validation order.
+func (cfg *Config) loadTimeZone(getenv func(string) string) error {
 	rawTimeZone := getenv("INDEX01_TIME_ZONE")
 	if rawTimeZone != "" && strings.TrimSpace(rawTimeZone) == "" {
-		return Config{}, fmt.Errorf("INDEX01_TIME_ZONE must not be blank")
+		return fmt.Errorf("INDEX01_TIME_ZONE must not be blank")
 	}
 	if rawTimeZone != "" {
 		cfg.TimeZone = strings.TrimSpace(rawTimeZone)
 	}
 	normalizedTimeZone, err := normalizeTimeZone(cfg.TimeZone)
 	if err != nil {
-		return Config{}, fmt.Errorf("INDEX01_TIME_ZONE is invalid")
+		return fmt.Errorf("INDEX01_TIME_ZONE is invalid")
 	}
 	cfg.TimeZone = normalizedTimeZone
+
+	return nil
+}
+
+// loadEvaluationRetention applies one configuration stage without changing validation order.
+func (cfg *Config) loadEvaluationRetention(getenv func(string) string) error {
 	if raw := getenv("INDEX01_EVALUATION_RETENTION_DAYS"); raw != "" {
 		days, err := strconv.Atoi(raw)
-		if err != nil || days < 0 || days > 365 {
-			return Config{}, fmt.Errorf("INDEX01_EVALUATION_RETENTION_DAYS must be an integer from 0 to 365")
+		if err != nil || !validRetentionDays(days) {
+			return fmt.Errorf("INDEX01_EVALUATION_RETENTION_DAYS must be an integer from 0 to 365")
 		}
 		cfg.EvaluationRetention = time.Duration(days) * 24 * time.Hour
 	}
 	if cfg.TypeSafeShadow && cfg.EvaluationRetention == 0 {
-		return Config{}, fmt.Errorf("INDEX01_EVALUATION_RETENTION_DAYS must be nonzero when INDEX01_TYPESAFE_SHADOW is enabled")
+		return fmt.Errorf("INDEX01_EVALUATION_RETENTION_DAYS must be nonzero when INDEX01_TYPESAFE_SHADOW is enabled")
 	}
+
+	return nil
+}
+
+// loadEvaluationPolling applies one configuration stage without changing validation order.
+func (cfg *Config) loadEvaluationPolling(getenv func(string) string) error {
 	if cfg.EvaluationRetention > 0 {
 		cfg.EvaluationPollInterval = 6 * time.Hour
 	}
 	if raw := getenv("INDEX01_EVALUATION_POLL_INTERVAL"); raw != "" {
 		interval, err := time.ParseDuration(raw)
-		if err != nil || (interval != 0 && (interval < time.Hour || interval > 7*24*time.Hour)) {
-			return Config{}, fmt.Errorf("INDEX01_EVALUATION_POLL_INTERVAL must be 0 or a duration from 1h to 168h")
+		if err != nil || !validEvaluationPollInterval(interval) {
+			return fmt.Errorf("INDEX01_EVALUATION_POLL_INTERVAL must be 0 or a duration from 1h to 168h")
 		}
 		cfg.EvaluationPollInterval = interval
 	}
+
+	return nil
+}
+
+// loadTickTickRouting applies one configuration stage without changing validation order.
+func (cfg *Config) loadTickTickRouting(getenv func(string) string) error {
 	if strings.TrimSpace(cfg.TickTickToken) == "" {
-		return Config{}, fmt.Errorf("INDEX01_TICKTICK_TOKEN is required")
+		return fmt.Errorf("INDEX01_TICKTICK_TOKEN is required")
 	}
 	if strings.TrimSpace(cfg.TickTickDefaultProjectID) == "" {
-		return Config{}, fmt.Errorf("INDEX01_TICKTICK_DEFAULT_PROJECT_ID is required")
+		return fmt.Errorf("INDEX01_TICKTICK_DEFAULT_PROJECT_ID is required")
 	}
 	if strings.TrimSpace(cfg.TickTickNoteProjectID) == "" {
-		return Config{}, fmt.Errorf("INDEX01_TICKTICK_NOTE_PROJECT_ID is required")
+		return fmt.Errorf("INDEX01_TICKTICK_NOTE_PROJECT_ID is required")
 	}
 	if strings.TrimSpace(cfg.WorkerOwner) == "" {
 		cfg.WorkerOwner = "index-01-hook"
 	}
 	aliases, err := parseProjectAliases(getenv("INDEX01_TICKTICK_PROJECT_ALIASES"))
 	if err != nil {
-		return Config{}, err
+		return err
 	}
 	cfg.TickTickProjectAliases = aliases
+
+	return nil
+}
+
+// loadRoutingDescriptions applies one configuration stage without changing validation order.
+func (cfg *Config) loadRoutingDescriptions(getenv func(string) string) error {
 	descriptions, err := parseAliasDescriptions(
 		getenv("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"),
-		aliases,
+		cfg.TickTickProjectAliases,
 		cfg.TickTickDefaultProjectID,
 		cfg.TickTickNoteProjectID,
 	)
 	if err != nil {
-		return Config{}, err
+		return err
 	}
-	if (cfg.TypeSafeVerify || cfg.TypeSafeShadow) && len(aliases) != len(descriptions) {
-		return Config{}, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must describe every configured alias when verification is enabled")
+	if cfg.verificationEnabled() && len(cfg.TickTickProjectAliases) != len(descriptions) {
+		return fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must describe every configured alias when verification is enabled")
 	}
 	cfg.TypeSafeAliasDescriptions = descriptions
-	cfg.DBPath, err = normalizeDatabasePath(cfg.DBPath)
+
+	return nil
+}
+
+// loadHTTPStorage applies one configuration stage without changing validation order.
+func (cfg *Config) loadHTTPStorage(getenv func(string) string) error {
+	path, err := normalizeDatabasePath(cfg.DBPath)
 	if err != nil {
-		return Config{}, err
+		return err
 	}
+	cfg.DBPath = path
 	if cfg.ListenAddr == "" {
 		cfg.ListenAddr = ":8080"
 	} else if strings.TrimSpace(cfg.ListenAddr) == "" {
-		return Config{}, fmt.Errorf("INDEX01_LISTEN_ADDR must not be blank")
+		return fmt.Errorf("INDEX01_LISTEN_ADDR must not be blank")
 	}
 	if raw := getenv("INDEX01_MAX_BODY_BYTES"); raw != "" {
 		value, err := strconv.ParseInt(raw, 10, 64)
 		if err != nil || value <= 0 {
-			return Config{}, fmt.Errorf("INDEX01_MAX_BODY_BYTES must be a positive integer")
+			return fmt.Errorf("INDEX01_MAX_BODY_BYTES must be a positive integer")
 		}
 		cfg.MaxBodyBytes = value
 	}
-	return cfg, nil
+	return nil
 }
 
 func validateWebhookToken(token string) error {
@@ -238,18 +334,29 @@ func normalizeDatabasePath(path string) (string, error) {
 	return path, nil
 }
 
-func parseProjectAliases(raw string) (map[string]string, error) {
-	aliases := make(map[string]string)
+// stringMap accepts one JSON object and rejects null or trailing values.
+func (value configValue) stringMap() (map[string]string, error) {
+	raw, variable := value.raw, value.variable
+	values := make(map[string]string)
 	if strings.TrimSpace(raw) == "" {
-		return aliases, nil
+		return values, nil
 	}
 	decoder := json.NewDecoder(strings.NewReader(raw))
-	if err := decoder.Decode(&aliases); err != nil || aliases == nil {
-		return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIASES must be a JSON object")
+	if err := decoder.Decode(&values); err != nil || values == nil {
+		return nil, fmt.Errorf("%s must be a JSON object", variable)
 	}
 	var trailing any
 	if err := decoder.Decode(&trailing); err != io.EOF {
-		return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIASES must contain one JSON object")
+		return nil, fmt.Errorf("%s must contain one JSON object", variable)
+	}
+	return values, nil
+}
+
+// parseProjectAliases normalizes keys without allowing collisions.
+func parseProjectAliases(raw string) (map[string]string, error) {
+	aliases, err := (configValue{raw, "INDEX01_TICKTICK_PROJECT_ALIASES"}).stringMap()
+	if err != nil {
+		return nil, err
 	}
 	normalized := make(map[string]string, len(aliases))
 	for rawAlias, rawProjectID := range aliases {
@@ -266,50 +373,117 @@ func parseProjectAliases(raw string) (map[string]string, error) {
 	return normalized, nil
 }
 
+// aliasDescriptionPolicy holds the context needed to reject private identifiers.
+type aliasDescription struct {
+	alias       string
+	description string
+}
+
+type aliasDescriptionPolicy struct {
+	aliases    map[string]string
+	projectIDs []string
+}
+
+// newAliasDescriptionPolicy includes both aliases and default destinations.
+func newAliasDescriptionPolicy(aliases map[string]string, additional []string) aliasDescriptionPolicy {
+	policy := aliasDescriptionPolicy{aliases: aliases}
+	for _, id := range aliases {
+		policy.projectIDs = append(policy.projectIDs, strings.TrimSpace(id))
+	}
+	for _, id := range additional {
+		policy.projectIDs = append(policy.projectIDs, strings.TrimSpace(id))
+	}
+	return policy
+}
+
+// containsIdentifier checks the alias and description using the existing case rules.
+func (policy aliasDescriptionPolicy) containsIdentifier(value aliasDescription) bool {
+	alias, description := value.alias, value.description
+	for _, id := range policy.projectIDs {
+		if id == "" {
+			continue
+		}
+		if strings.EqualFold(alias, id) {
+			return true
+		}
+		if strings.Contains(strings.ToLower(description), strings.ToLower(id)) {
+			return true
+		}
+	}
+	return false
+}
+
+// valid rejects blank, oversized, and multiline descriptions.
+func (value aliasDescription) valid() bool {
+	alias, description := value.alias, value.description
+	if alias == "" || description == "" {
+		return false
+	}
+	if len(description) > maxQueuedNotesBytes {
+		return false
+	}
+	return !strings.ContainsAny(description, "\r\n\x00")
+}
+
+// addDescription preserves validation precedence before inserting an alias.
+func (policy aliasDescriptionPolicy) addDescription(normalized map[string]string, raw aliasDescription) error {
+	alias := strings.ToLower(strings.TrimSpace(raw.alias))
+	description := strings.TrimSpace(raw.description)
+	if policy.containsIdentifier(aliasDescription{alias, description}) {
+		return fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must not contain a project identifier")
+	}
+	if !(aliasDescription{alias, description}).valid() {
+		return fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains a blank or invalid description")
+	}
+	if _, ok := policy.aliases[alias]; !ok {
+		return fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains an unknown alias")
+	}
+	if _, exists := normalized[alias]; exists {
+		return fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains duplicate normalized aliases")
+	}
+	normalized[alias] = description
+	return nil
+}
+
+// validateDescriptionCoverage requires a description for every configured alias.
+func validateDescriptionCoverage(aliases, descriptions map[string]string) error {
+	for alias := range aliases {
+		if _, ok := descriptions[alias]; !ok {
+			return fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must describe every configured alias")
+		}
+	}
+	return nil
+}
+
+// parseAliasDescriptions retains the optional blank-input behavior.
 func parseAliasDescriptions(raw string, aliases map[string]string, additionalProjectIDs ...string) (map[string]string, error) {
-	descriptions := make(map[string]string)
+	descriptions, err := (configValue{raw, "INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS"}).stringMap()
+	if err != nil {
+		return nil, err
+	}
 	if strings.TrimSpace(raw) == "" {
 		return descriptions, nil
 	}
-	decoder := json.NewDecoder(strings.NewReader(raw))
-	if err := decoder.Decode(&descriptions); err != nil || descriptions == nil {
-		return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must be a JSON object")
-	}
-	var trailing any
-	if err := decoder.Decode(&trailing); err != io.EOF {
-		return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must contain one JSON object")
-	}
-	projectIDs := make([]string, 0, len(aliases)+len(additionalProjectIDs))
-	for _, projectID := range aliases {
-		projectIDs = append(projectIDs, strings.TrimSpace(projectID))
-	}
-	for _, projectID := range additionalProjectIDs {
-		projectIDs = append(projectIDs, strings.TrimSpace(projectID))
-	}
+	policy := newAliasDescriptionPolicy(aliases, additionalProjectIDs)
 	normalized := make(map[string]string, len(descriptions))
-	for rawAlias, rawDescription := range descriptions {
-		alias := strings.ToLower(strings.TrimSpace(rawAlias))
-		description := strings.TrimSpace(rawDescription)
-		for _, projectID := range projectIDs {
-			if projectID != "" && (strings.EqualFold(alias, projectID) || strings.Contains(strings.ToLower(description), strings.ToLower(projectID))) {
-				return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must not contain a project identifier")
-			}
+	for alias, description := range descriptions {
+		if err := policy.addDescription(normalized, aliasDescription{alias, description}); err != nil {
+			return nil, err
 		}
-		if alias == "" || description == "" || len(description) > maxQueuedNotesBytes || strings.ContainsAny(description, "\r\n\x00") {
-			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains a blank or invalid description")
-		}
-		if _, ok := aliases[alias]; !ok {
-			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains an unknown alias")
-		}
-		if _, exists := normalized[alias]; exists {
-			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS contains duplicate normalized aliases")
-		}
-		normalized[alias] = description
 	}
-	for alias := range aliases {
-		if _, ok := normalized[alias]; !ok {
-			return nil, fmt.Errorf("INDEX01_TICKTICK_PROJECT_ALIAS_DESCRIPTIONS must describe every configured alias")
-		}
+	if err := validateDescriptionCoverage(aliases, normalized); err != nil {
+		return nil, err
 	}
 	return normalized, nil
+}
+
+// validRetentionDays expresses the bounded evidence retention policy.
+func validRetentionDays(days int) bool { return days >= 0 && days <= 365 }
+
+// validEvaluationPollInterval allows disabled polling or the supported range.
+func validEvaluationPollInterval(interval time.Duration) bool {
+	if interval == 0 {
+		return true
+	}
+	return interval >= time.Hour && interval <= 7*24*time.Hour
 }
