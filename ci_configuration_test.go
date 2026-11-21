@@ -109,7 +109,7 @@ func TestCIContainerIsolationAndBuilderPin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read Dockerfile: %v", err)
 	}
-	const builder = "ARG GO_IMAGE=docker.io/library/golang:1.26.10@sha256:3745f1aa11822297b79113f5e84ce2bffeb039734571c39855809cfe9e5d7be6"
+	const builder = "ARG GO_IMAGE=docker.io/library/golang:1.26.11@sha256:4165ee6bf3b7811fd7b40373290405c83d0167dcb87ee5f29c427cdcef45ff8f"
 	if !strings.Contains(string(dockerfile), builder) {
 		t.Error("Dockerfile does not use the approved default builder digest")
 	}

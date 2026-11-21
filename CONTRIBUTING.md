@@ -9,7 +9,7 @@ The README release status states when the repository is still private.
 
 Install these tools before you work on the project:
 
-- Go 1.26.10 or newer to build and test the service.
+- Go 1.26.11 or newer to build and test the service.
 - Git to clone the repository and manage branches.
 - Task to run commands in `Taskfile.yml`.
 - Node.js 20 or newer to test the release automation.
@@ -19,6 +19,23 @@ Install these tools before you work on the project:
 The `task test` command requires Task, Node.js, shell tools, and Docker Compose. A running
 Docker daemon is not required for `task test`. The `task test-compose-runtime`
 command also requires a running Docker daemon.
+
+### Check the local Go toolchain
+
+Use `go.mod` to find the minimum Go version. The CI and release workflows read this file.
+Check `go version` and `go env GOTOOLCHAIN` in a fresh shell.
+If `GOTOOLCHAIN` is `local`, Go uses the installed toolchain. It does not select a newer toolchain automatically.
+If that version is too old, select a supported Go installation in your version manager. Open a fresh shell and check again.
+For mise, run `mise install go@1.26.11`. Use `mise current go` to check which version mise selects.
+If mise still selects an older version, check `mise ls go` for the configuration that selects it.
+Verify the session tool and the project build without a version override:
+
+```sh
+go build -o dist/work-session ./scripts/work-session
+go build ./...
+```
+
+A successful build with a temporary `GOTOOLCHAIN` override does not verify the fresh-shell setup.
 
 ## Workflow
 

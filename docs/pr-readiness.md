@@ -42,14 +42,14 @@ The October 18 audit found 11 called standard-library vulnerabilities with Go 1.
 The [Go release history](https://go.dev/doc/devel/release#go1.26.9) records the fixes in Go 1.26.9.
 The October 21 scan found GO-2026-6809 in Go 1.26.9.
 Go 1.26.10 fixes this standard-library certificate validation vulnerability.
-The current repair pins the compiler and all active builder references to Go 1.26.10.
+Go 1.26.11 also fixes GO-2026-6859. Use the compiler version in `go.mod` and the pinned builder below.
 The official multi-platform builder is:
 
 ```text
-docker.io/library/golang:1.26.10@sha256:3745f1aa11822297b79113f5e84ce2bffeb039734571c39855809cfe9e5d7be6
+docker.io/library/golang:1.26.11@sha256:4165ee6bf3b7811fd7b40373290405c83d0167dcb87ee5f29c427cdcef45ff8f
 ```
 
 The digest was resolved from the official Docker image before the change.
-Local checks must select the patched compiler, for example with `GOTOOLCHAIN=go1.26.10`.
+Local checks must select the patched compiler. Verify `go version` before validation.
 CI selects the version in `go.mod`. Keep contributor checks, release builders, and fixtures aligned.
 This toolchain repair does not enable releases or change credentials, approval gates, or protection rules.
