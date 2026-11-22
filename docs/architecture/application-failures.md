@@ -18,7 +18,7 @@ The extraction evidence envelope still has root dependencies. Do not claim that 
 
 ## Validation and continuation
 
-Run `GOTOOLCHAIN=go1.26.10 task --exit-code validate-offline` on each layer.
+Use the Go version in `go.mod`. Run `task --exit-code validate-offline` on each layer.
 Add scripted-provider regressions for authentication, malformed responses, review, safe retries and ambiguous-write reconciliation.
 Compare public provider error shapes, safe diagnostics and reason codes before and after adoption.
 The dependency guard must reject provider, HTTP and SQL imports from the application package.

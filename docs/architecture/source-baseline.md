@@ -43,6 +43,6 @@ The invariant matrix now names the strengthened no-second-create and authenticat
 ## October 21 toolchain gate
 
 The current vulnerability database reports GO-2026-6809 in Go 1.26.9.
-The compiler and official multi-platform builders now use Go 1.26.10.
+That repair used Go 1.26.10 for the compiler and official multi-platform builders. For current validation, use the version in `go.mod`.
 The builder digest was resolved from the official Docker registry.
 All security checks remain enabled.

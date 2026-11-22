@@ -11,7 +11,7 @@ Missing dates, malformed values and invalid offsets retain their existing outcom
 No date parser reads a clock. Provider prompts, verification settings, schema and stored due dates remain unchanged.
 
 Run application date tables, provider error compatibility and worker/SQLite retry-and-reopen regressions before full offline validation.
-Use Go1.26.10, pinned builders, lint, manifests, vulnerability and secret scans. Verify all exact-head hosted checks after readiness.
+Use the Go version in `go.mod` and the pinned builders. Run lint, manifest, vulnerability, and secret checks. Verify the hosted checks for the final commit.
 Live providers and private calibration remain outside these synthetic checks.
 Record exact heads, source coverage, review limits and final hosted checks in Beads.
 The dependent layer owns semantic date resolution with explicit time and location.

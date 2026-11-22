@@ -18,7 +18,7 @@ Notes reject all task fields. Legacy tasks retain their existing validation erro
 
 Run focused policy and root compatibility tests before adapter adoption.
 The root compatibility test compares application results with the existing production boundaries.
-Run `GOTOOLCHAIN=go1.26.10 task --exit-code validate-offline` on each published layer.
+Use the Go version in `go.mod`. Run `task --exit-code validate-offline` on each published layer.
 Run lint, security, manifest and container gates. Verify exact final-head hosted checks after readiness.
 Record hosted CodeQL separately from manual analysis and source review.
 Live providers and private corpus validation remain outside this offline slice.
